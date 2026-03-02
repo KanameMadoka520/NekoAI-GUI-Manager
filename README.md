@@ -4,6 +4,10 @@
 
 > 完全替代旧版 `NekoAI-GUI-Manager/`（Node.js + Express + Vue 3 CDN 方案）和四个独立 HTML 工具（`api_manager.html`、`config_editor.html`、`dashboard.html`、`history_viewer.html`），以原生桌面应用的形式提供更快的性能、更丰富的功能和更一体化的体验。
 
+这四个独立HTML传到文件夹Legacy_html_tools和release里面了，感兴趣的可以自己翻出来用。
+
+---
+
 本工具是为了服务koishi中的插件koishi-plugin-Enhanced-NekoAI而诞生的。
 
 【警告】当前仅为测试阶段,前端有待优化，后端功能完备性尚未完全测试！
