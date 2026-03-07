@@ -3,8 +3,10 @@ import { StatCard } from '../components/common/StatCard';
 import { SearchBar } from '../components/common/SearchBar';
 import { ConfirmDialog } from '../components/common/ConfirmDialog';
 import { Modal } from '../components/common/Modal';
+import { ImportExportActions } from '../components/common/ImportExportActions';
 import { useUiStore } from '../stores/uiStore';
 import { getConfig, saveConfig } from '../lib/tauri-commands';
+import { downloadJsonWithTimestamp, pickJsonAndParse } from '../lib/json-transfer';
 
 export function CommandManager() {
   const addToast = useUiStore((s) => s.addToast);
@@ -106,6 +108,27 @@ export function CommandManager() {
     }
   }
 
+  function exportCommands() {
+    downloadJsonWithTimestamp(commands, 'commands.json');
+    addToast('success', '已导出命令管理配置');
+  }
+
+  async function importCommands() {
+    try {
+      const picked = await pickJsonAndParse();
+      if (!picked) return;
+      if (!Array.isArray(picked.data) || !picked.data.every((x) => typeof x === 'string')) {
+        addToast('error', '导入失败：JSON 必须是字符串数组');
+        return;
+      }
+      setCommands(picked.data as string[]);
+      setSelected(new Set());
+      addToast('success', `已导入 ${(picked.data as string[]).length} 条命令（请点击保存生效）`);
+    } catch (e: any) {
+      addToast('error', `导入失败: ${e?.message ?? e}`);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -153,6 +176,11 @@ export function CommandManager() {
             </button>
           </>
         )}
+        <ImportExportActions
+          onExport={exportCommands}
+          onImport={importCommands}
+          confirmTitle="导入命令配置"
+        />
         <button
           onClick={save}
           disabled={!dirty}
@@ -185,7 +213,7 @@ export function CommandManager() {
       </div>
 
       {/* Command list */}
-      <div className="bg-white rounded-[var(--radius)] overflow-hidden" style={{ boxShadow: 'var(--shadow-3d)' }}>
+      <div className="rounded-[var(--radius)] overflow-hidden border border-[var(--border-subtle)]" style={{ background: 'var(--surface-card)', boxShadow: 'var(--shadow-card)' }}>
         {filtered.length === 0 ? (
           <p className="text-sm text-[var(--text-muted)] text-center py-8 px-6">
             {search ? '没有匹配的命令' : '命令列表为空'}

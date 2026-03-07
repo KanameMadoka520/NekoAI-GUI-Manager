@@ -1,9 +1,9 @@
 import { useUiStore } from '../../stores/uiStore';
 
 const typeStyles = {
-  success: { bg: '#dcfce7', text: '#166534', icon: '✓' },
-  error: { bg: '#fee2e2', text: '#991b1b', icon: '✕' },
-  warning: { bg: '#ffedd5', text: '#9a3412', icon: '!' },
+  success: { bg: 'var(--toast-success-bg)', text: 'var(--toast-success-text)', icon: '✓' },
+  error: { bg: 'var(--toast-error-bg)', text: 'var(--toast-error-text)', icon: '✕' },
+  warning: { bg: 'var(--toast-warning-bg)', text: 'var(--toast-warning-text)', icon: '!' },
 };
 
 export function ToastContainer() {
@@ -19,11 +19,11 @@ export function ToastContainer() {
         return (
           <div
             key={t.id}
-            className="flex items-center gap-3 px-5 py-3.5 rounded-[var(--radius-sm)] animate-[slideIn_0.3s_ease-out]"
+            className="flex items-center gap-3 px-4 py-3 rounded-[var(--radius-sm)] animate-[slideIn_0.2s_ease-out] border border-[var(--border-subtle)]"
             style={{
               background: style.bg,
               color: style.text,
-              boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+              boxShadow: 'var(--shadow-card)',
             }}
           >
             <span className="font-bold text-sm">{style.icon}</span>

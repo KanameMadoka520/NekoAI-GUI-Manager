@@ -13,6 +13,14 @@
   "tauri": {
     "allowlist": {
       "all": false,
+      "window": {
+        "all": false,
+        "minimize": true,
+        "maximize": true,
+        "unmaximize": true,
+        "close": true,
+        "startDragging": true
+      },
       "dialog": {
         "all": true,
         "open": true,
@@ -65,6 +73,7 @@
     },
     "windows": [
       {
+        "decorations": false,
         "fullscreen": false,
         "height": 800,
         "resizable": true,

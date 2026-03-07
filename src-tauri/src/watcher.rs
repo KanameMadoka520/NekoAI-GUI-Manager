@@ -1,7 +1,14 @@
 use notify::{Config, Event, RecommendedWatcher, RecursiveMode, Watcher};
+use serde::Serialize;
 use std::path::PathBuf;
 use std::sync::mpsc;
 use tauri::{AppHandle, Manager};
+
+#[derive(Serialize)]
+struct FileChangePayload {
+    file: String,
+    kind: String,
+}
 
 pub fn start_file_watcher(app: &AppHandle, plugin_dir: PathBuf) -> Result<RecommendedWatcher, String> {
     let (tx, rx) = mpsc::channel::<Result<Event, notify::Error>>();
@@ -53,9 +60,11 @@ pub fn start_file_watcher(app: &AppHandle, plugin_dir: PathBuf) -> Result<Recomm
                         .unwrap_or("");
 
                     if parent == "group" || parent == "private" {
-                        let _ = app_handle.emit_all("memory-changed", &filename);
+                        let payload = FileChangePayload { file: filename, kind: "memory".to_string() };
+                        let _ = app_handle.emit_all("memory-changed", &payload);
                     } else {
-                        let _ = app_handle.emit_all("config-changed", &filename);
+                        let payload = FileChangePayload { file: filename, kind: "config".to_string() };
+                        let _ = app_handle.emit_all("config-changed", &payload);
                     }
                 }
             }

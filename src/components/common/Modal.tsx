@@ -26,8 +26,8 @@ export function Modal({ open, onClose, title, children, width = '480px' }: Modal
       <div className="absolute inset-0 bg-black/40" style={{ backdropFilter: 'blur(5px)' }} />
       {/* Panel with bounce pop animation */}
       <div
-        className="relative bg-white rounded-[var(--radius)] flex flex-col max-h-[85vh] overflow-hidden animate-[modalPop_0.35s_var(--ease-bounce)]"
-        style={{ width, boxShadow: '0 10px 25px rgba(0,0,0,0.15)' }}
+        className="relative rounded-[var(--radius)] flex flex-col max-h-[85vh] overflow-hidden animate-[modalPop_0.25s_var(--ease-spring)] border border-[var(--border-subtle)]"
+        style={{ width, background: 'var(--surface-card)', boxShadow: 'var(--shadow-card)' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-6 py-5 border-b border-[var(--border-subtle)]">

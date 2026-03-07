@@ -1,8 +1,10 @@
+use crate::ops::{append_audit_log, auto_snapshot_on_save};
 use crate::state::AppState;
+use crate::watcher::start_file_watcher;
 use chrono::Local;
 use serde_json::Value;
 use std::fs;
-use tauri::State;
+use tauri::{AppHandle, State};
 
 fn config_key_to_filename(key: &str) -> Result<&str, String> {
     match key {
@@ -52,7 +54,17 @@ pub fn save_config(key: String, data: Value, state: State<'_, AppState>) -> Resu
     let content = serde_json::to_string_pretty(&data)
         .map_err(|e| format!("Failed to serialize: {}", e))?;
     fs::write(&path, content)
-        .map_err(|e| format!("Failed to write {}: {}", filename, e))
+        .map_err(|e| format!("Failed to write {}: {}", filename, e))?;
+
+    let _ = auto_snapshot_on_save(&dir, &key);
+    let _ = append_audit_log(
+        "config.save",
+        filename,
+        "ok",
+        Some(serde_json::json!({ "key": key })),
+    );
+
+    Ok(())
 }
 
 #[derive(serde::Serialize)]
@@ -103,7 +115,7 @@ pub fn get_system_info(state: State<'_, AppState>) -> Result<SystemInfo, String>
 }
 
 #[tauri::command]
-pub fn set_plugin_dir(dir: String, state: State<'_, AppState>) -> Result<(), String> {
+pub fn set_plugin_dir(dir: String, app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
     let path = std::path::PathBuf::from(&dir);
     if !path.exists() {
         return Err(format!("目录不存在: {}", dir));
@@ -111,6 +123,49 @@ pub fn set_plugin_dir(dir: String, state: State<'_, AppState>) -> Result<(), Str
     if !path.is_dir() {
         return Err(format!("路径不是一个目录: {}", dir));
     }
-    state.set_plugin_dir(path)?;
+
+    state.set_plugin_dir(path.clone())?;
+
+    let watcher = start_file_watcher(&app, path)?;
+    state.set_watcher(Some(watcher))?;
+
     Ok(())
+}
+
+#[tauri::command]
+pub fn open_path_in_explorer(path: String) -> Result<(), String> {
+    let pb = std::path::PathBuf::from(&path);
+    if !pb.exists() {
+        return Err(format!("路径不存在: {}", path));
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("explorer")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| format!("打开目录失败: {}", e))?;
+        return Ok(());
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| format!("打开目录失败: {}", e))?;
+        return Ok(());
+    }
+
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| format!("打开目录失败: {}", e))?;
+        return Ok(());
+    }
+
+    #[allow(unreachable_code)]
+    Err("当前平台不支持打开目录".to_string())
 }

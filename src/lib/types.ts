@@ -23,6 +23,10 @@ export interface SmartRouter {
   retryDelay?: number;
   excludeIndices?: number[];
   rules?: SmartRouterRule[];
+  primaryApiIndex?: number;
+  fallbackApiIndices?: number[];
+  degradeStrategy?: 'on-failure' | 'on-timeout' | 'on-any-error';
+  maxSwitches?: number;
 }
 
 export interface MemorySummary {
@@ -79,6 +83,12 @@ export interface RuntimeConfig {
   memorySummary: MemorySummary;
   requestQueue: RequestQueue;
   apiParams: ApiParams;
+  apiHealthWeights?: {
+    liveWeight?: number;
+    historyWeight?: number;
+    timeoutWeight?: number;
+    jitterWeight?: number;
+  };
 }
 
 // ===== Personality =====
@@ -115,6 +125,7 @@ export interface HistoryEntry {
   promptLength?: number;
   replyLength?: number;
   contextLength?: number;
+  responseTime?: number;
   modelName?: string;
   apiRemark?: string;
 }
@@ -122,7 +133,18 @@ export interface HistoryEntry {
 export interface SearchFilters {
   chat_type?: string | null;
   model?: string | null;
+  models?: string[] | null;
   errors_only?: boolean | null;
+  from_ts?: string | null;
+  to_ts?: string | null;
+  error_categories?: string[] | null;
+}
+
+export interface HistoryFilterPreset {
+  id: string;
+  name: string;
+  query: string;
+  filters: SearchFilters;
 }
 
 export interface SearchResult {
@@ -151,4 +173,53 @@ export interface PingResult {
   latency_ms: number;
   status: number;
   error?: string;
+}
+
+export interface ApiHistoryMetric {
+  index: number;
+  total: number;
+  errors: number;
+  error_rate: number;
+  timeout_errors?: number;
+  timeout_rate?: number;
+  avg_response_time_ms: number;
+  jitter_ms?: number;
+  apiRemark?: string;
+  modelName?: string;
+}
+
+// ===== Ops / Phase 1+2 =====
+export interface SnapshotMeta {
+  snapshot_id: string;
+  created_at: string;
+  reason: string;
+  operator: string;
+  files: string[];
+}
+
+export interface SnapshotDiff {
+  left: string;
+  right: string;
+  changed_files: string[];
+  changed_keys_by_file: Record<string, string[]>;
+}
+
+export interface DeployPackageResult {
+  package_name: string;
+  package_path: string;
+}
+
+export interface SelfCheckItem {
+  code: string;
+  level: 'error' | 'warn' | 'info' | string;
+  message: string;
+  fixable: boolean;
+}
+
+export interface SelfCheckReport {
+  ok: boolean;
+  plugin_dir: string;
+  generated_at: string;
+  items: SelfCheckItem[];
+  report_path: string;
 }

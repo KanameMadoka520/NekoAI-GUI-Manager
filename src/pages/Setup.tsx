@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useUiStore } from '../stores/uiStore';
-import { setPluginDir, getSystemInfo } from '../lib/tauri-commands';
+import { setPluginDir, getSystemInfo, openPathInExplorer } from '../lib/tauri-commands';
 
 interface SetupProps {
   onComplete: () => void;
@@ -27,6 +27,18 @@ export function Setup({ onComplete }: SetupProps) {
     }
   }
 
+  async function openCurrentDir() {
+    if (!dir.trim()) {
+      addToast('warning', '请先输入或选择插件目录');
+      return;
+    }
+
+    try {
+      await openPathInExplorer(dir.trim());
+    } catch (e: any) {
+      addToast('error', `打开目录失败: ${e?.message ?? e}`);
+    }
+  }
   async function validate() {
     if (!dir.trim()) {
       setError('请输入或选择插件目录路径');
@@ -65,7 +77,7 @@ export function Setup({ onComplete }: SetupProps) {
 
   return (
     <div className="flex items-center justify-center h-full w-full">
-      <div className="w-[460px] bg-white rounded-[var(--radius)] p-8" style={{ boxShadow: 'var(--shadow-3d)' }}>
+      <div className="w-[460px] rounded-[var(--radius)] p-8 border border-[var(--border-subtle)]" style={{ background: 'var(--surface-card)', boxShadow: 'var(--shadow-card)' }}>
         {/* Logo */}
         <div className="text-center mb-8">
           <span className="text-6xl block mb-3">🐱</span>
@@ -90,7 +102,7 @@ export function Setup({ onComplete }: SetupProps) {
                 value={dir}
                 onChange={(e) => { setDir(e.target.value); setError(''); }}
                 onKeyDown={(e) => e.key === 'Enter' && validate()}
-                placeholder="C:\Users\...\koishi\data\antigravity-gemini"
+                placeholder="C:\\Users\\...\\Koishi\\plugins\\koishi-plugin-Enhanced-NekoAI"
                 className="flex-1 px-3 py-2.5 text-sm mono rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)] placeholder:text-[var(--text-muted)]"
               />
               <button
@@ -98,6 +110,12 @@ export function Setup({ onComplete }: SetupProps) {
                 className="px-4 py-2.5 text-sm rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-purple)] transition-colors cursor-pointer flex-shrink-0"
               >
                 📁 浏览
+              </button>
+              <button
+                onClick={openCurrentDir}
+                className="px-4 py-2.5 text-sm rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-purple)] transition-colors cursor-pointer flex-shrink-0"
+              >
+                📂 打开目录
               </button>
             </div>
           </div>
@@ -123,7 +141,7 @@ export function Setup({ onComplete }: SetupProps) {
           {/* Tips */}
           <div className="pt-2 border-t border-[var(--border-subtle)]">
             <p className="text-[10px] text-[var(--text-muted)] leading-relaxed">
-              💡 提示：插件目录通常在 Koishi 的 <code className="mono">data</code> 文件夹下，例如 <code className="mono text-[var(--accent-purple)]">koishi/data/antigravity-gemini</code>
+              💡 提示：插件目录通常在 Koishi 的 <code className="mono">plugins</code> 文件夹下，例如 <code className="mono text-[var(--accent-purple)]">Koishi\\plugins\\koishi-plugin-Enhanced-NekoAI</code>
             </p>
           </div>
         </div>

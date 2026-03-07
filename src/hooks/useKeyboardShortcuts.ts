@@ -9,6 +9,7 @@ const pageKeys: Record<string, PageId> = {
   '5': 'memory',
   '6': 'history',
   '7': 'commands',
+  '8': 'ops',
 };
 
 interface ShortcutHandlers {
@@ -53,7 +54,7 @@ export function useKeyboardShortcuts(handlers: ShortcutHandlers) {
         return;
       }
 
-      // Ctrl+1~7 — Page switch
+      // Ctrl+1~8 — Page switch
       if (e.key in pageKeys) {
         e.preventDefault();
         handlers.onNavigate?.(pageKeys[e.key]);
@@ -78,4 +79,5 @@ export const shortcutList = [
   { keys: 'Ctrl+5', desc: '长期记忆' },
   { keys: 'Ctrl+6', desc: '历史记录' },
   { keys: 'Ctrl+7', desc: '命令管理' },
+  { keys: 'Ctrl+8', desc: '安全发布中心' },
 ];

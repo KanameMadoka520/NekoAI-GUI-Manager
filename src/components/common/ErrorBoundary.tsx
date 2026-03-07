@@ -25,7 +25,7 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.error) {
       return (
         <div className="flex items-center justify-center h-full w-full">
-          <div className="w-[480px] bg-white rounded-[var(--radius)] p-8 text-center" style={{ boxShadow: 'var(--shadow-3d)' }}>
+          <div className="w-[480px] rounded-[var(--radius)] p-8 text-center border border-[var(--border-subtle)]" style={{ background: 'var(--surface-card)', boxShadow: 'var(--shadow-card)' }}>
             <span className="text-5xl block mb-4">😿</span>
             <h2 className="text-lg font-bold text-[var(--text-primary)] mb-2">界面出错了</h2>
             <p className="text-sm text-[var(--text-secondary)] mb-4">
