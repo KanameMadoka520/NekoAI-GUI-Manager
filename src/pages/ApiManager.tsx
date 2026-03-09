@@ -683,7 +683,7 @@ export function ApiManager() {
             <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2">
               <p className="text-[10px] text-[var(--text-muted)]">评分权重</p>
               <p className="text-[11px] text-[var(--text-secondary)] mt-1 mono break-all">
-                Live / History / Timeout / Jitter = {weightLive} / {historyWeight} / {weightTimeout} / {weightJitter}
+                实时 / 历史 / 超时 / 抖动 = {weightLive} / {historyWeight} / {weightTimeout} / {weightJitter}
               </p>
             </div>
           </div>
@@ -739,7 +739,7 @@ export function ApiManager() {
           <SummaryCard label="保存状态" value={dirty ? '待保存' : '已同步'} hint={dirty ? '配置有改动，尚未写入文件' : '当前编辑状态已落盘'} tone={dirty ? 'warning' : 'neutral'} />
         </div>
 
-        <Panel title="操作区" subtitle="主操作放在前面，低频管理项收进高级区。" padding="sm">
+        <Panel title="操作区" padding="sm">
           <div className="flex flex-wrap items-center gap-2">
             <button onClick={save} disabled={!dirty}
               className={`px-4 py-2 text-xs rounded-[var(--radius-sm)] font-medium transition-colors cursor-pointer ${dirty ? 'bg-[var(--accent-purple)] text-white hover:opacity-90 pulse-dirty' : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed'}`}
@@ -786,8 +786,7 @@ export function ApiManager() {
             <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
               <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-3">
                 <div>
-                  <p className="text-xs font-medium text-[var(--text-primary)]">高频外的管理操作</p>
-                  <p className="text-[11px] text-[var(--text-muted)] mt-1">把低频动作收纳到这里，减少主工具栏拥挤。</p>
+                  <p className="text-xs font-medium text-[var(--text-primary)]">更多操作</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <ImportExportActions
@@ -829,13 +828,12 @@ export function ApiManager() {
 
               <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-3">
                 <div>
-                  <p className="text-xs font-medium text-[var(--text-primary)]">评分权重面板</p>
-                  <p className="text-[11px] text-[var(--text-muted)] mt-1">把评分调节从主操作里移开，但仍然随时可调。</p>
+                  <p className="text-xs font-medium text-[var(--text-primary)]">评分权重</p>
                 </div>
-                <WeightSlider label="Live" value={weightLive} onChange={setWeightLive} />
-                <WeightSlider label="Timeout" value={weightTimeout} onChange={setWeightTimeout} />
-                <WeightSlider label="Jitter" value={weightJitter} onChange={setWeightJitter} />
-                <div className="text-[11px] text-[var(--text-muted)] mono">History 自动补足为 {historyWeight}%</div>
+                <WeightSlider label="实时" value={weightLive} onChange={setWeightLive} />
+                <WeightSlider label="超时" value={weightTimeout} onChange={setWeightTimeout} />
+                <WeightSlider label="抖动" value={weightJitter} onChange={setWeightJitter} />
+                <div className="text-[11px] text-[var(--text-muted)] mono">历史 自动补足为 {historyWeight}%</div>
               </div>
             </div>
           )}
@@ -1104,10 +1102,10 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
             <p className="text-[10px] text-[var(--text-muted)] mt-1">{health?.reason ?? '暂无评分解释'}</p>
           </div>
 
-          <MetricBar label="Live" score={health?.liveScore} weight={health?.liveWeight ?? 0} color="var(--accent-purple)" hint={pingResult?.pass ? `最近测试 ${pingResult.latency_ms}ms` : pingResult?.error || undefined} />
-          <MetricBar label="History" score={health?.historyScore} weight={health?.historyWeight ?? 0} color="var(--info)" />
-          <MetricBar label="Timeout" score={health?.timeoutScore} weight={health?.timeoutWeight ?? 0} color="var(--warning)" hint={health?.timeoutScore !== null && (health?.timeoutScore ?? 0) < 80 ? '超时占比偏高' : undefined} />
-          <MetricBar label="Jitter" score={health?.jitterScore} weight={health?.jitterWeight ?? 0} color="var(--success)" hint={health?.jitterScore !== null && (health?.jitterScore ?? 0) < 80 ? '响应波动偏大' : undefined} />
+          <MetricBar label="实时" score={health?.liveScore} weight={health?.liveWeight ?? 0} color="var(--accent-purple)" hint={pingResult?.pass ? `最近测试 ${pingResult.latency_ms}ms` : pingResult?.error || undefined} />
+          <MetricBar label="历史" score={health?.historyScore} weight={health?.historyWeight ?? 0} color="var(--info)" />
+          <MetricBar label="超时" score={health?.timeoutScore} weight={health?.timeoutWeight ?? 0} color="var(--warning)" hint={health?.timeoutScore !== null && (health?.timeoutScore ?? 0) < 80 ? '超时占比偏高' : undefined} />
+          <MetricBar label="抖动" score={health?.jitterScore} weight={health?.jitterWeight ?? 0} color="var(--success)" hint={health?.jitterScore !== null && (health?.jitterScore ?? 0) < 80 ? '响应波动偏大' : undefined} />
         </div>
       </div>
 
