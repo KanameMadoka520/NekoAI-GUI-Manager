@@ -97,6 +97,69 @@ export interface Personality {
   prompt: string;
 }
 
+export type PersonalityAbMode = 'group' | 'private';
+
+export interface PersonalityAbCandidate {
+  index: number;
+  remark: string;
+  prompt: string;
+}
+
+export interface PersonalityAbRunRequest {
+  mode: PersonalityAbMode;
+  apiNode: ApiNode;
+  apiParams: ApiParams;
+  contextText?: string;
+  latestUserMessage: string;
+  candidateA: PersonalityAbCandidate;
+  candidateB: PersonalityAbCandidate;
+}
+
+export interface PersonalityAbExecutionResult {
+  ok: boolean;
+  latencyMs: number;
+  httpStatus: number;
+  responseText: string;
+  responseChars: number;
+  error?: string;
+}
+
+export interface PersonalityAbApiNodeRecord {
+  index: number;
+  remark: string;
+  modelName: string;
+  aiType: string;
+  urlRedacted: string;
+}
+
+export interface PersonalityAbRecord {
+  schemaVersion: number;
+  id: string;
+  createdAt: string;
+  mode: PersonalityAbMode;
+  input: {
+    contextText: string;
+    latestUserMessage: string;
+  };
+  apiNode: PersonalityAbApiNodeRecord;
+  apiParamsSnapshot: ApiParams;
+  candidateA: PersonalityAbCandidate;
+  candidateB: PersonalityAbCandidate;
+  resultA: PersonalityAbExecutionResult;
+  resultB: PersonalityAbExecutionResult;
+}
+
+export interface PersonalityAbTestSummary {
+  id: string;
+  createdAt: string;
+  mode: PersonalityAbMode;
+  apiLabel: string;
+  pairLabel: string;
+  latestUserMessagePreview: string;
+  aOk: boolean;
+  bOk: boolean;
+}
+
 // ===== Memory =====
 export interface MemoryMeta {
   id: string;

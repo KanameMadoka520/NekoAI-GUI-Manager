@@ -7,6 +7,7 @@ mod data_root;
 mod history;
 mod memory;
 mod ops;
+mod personality_ab;
 mod state;
 mod watcher;
 
@@ -45,6 +46,9 @@ fn main() {
             ops::run_startup_self_check,
             ops::apply_self_check_fixes,
             ops::list_audit_logs,
+            personality_ab::run_personality_ab_test,
+            personality_ab::list_personality_ab_tests,
+            personality_ab::get_personality_ab_test,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

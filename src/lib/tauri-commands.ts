@@ -3,6 +3,7 @@ import type {
   MemoryMeta, HistoryFileMeta, SearchFilters, SearchResult,
   SystemInfo, PingResult, SnapshotMeta, SnapshotDiff,
   DeployPackageResult, SelfCheckReport, ApiHistoryMetric,
+  PersonalityAbRunRequest, PersonalityAbRecord, PersonalityAbTestSummary,
 } from './types';
 
 // ===== Config =====
@@ -74,6 +75,16 @@ export const batchPingApisStream = (sessionId: string, nodes: Array<{
   index: number; api_url: string; api_key: string; model_name: string; ai_type: string;
 }>) =>
   invoke<void>('batch_ping_apis_stream', { sessionId, nodes });
+
+// ===== Personality A/B =====
+export const runPersonalityAbTest = (payload: PersonalityAbRunRequest) =>
+  invoke<PersonalityAbRecord>('run_personality_ab_test', { payload });
+
+export const listPersonalityAbTests = (limit = 20) =>
+  invoke<PersonalityAbTestSummary[]>('list_personality_ab_tests', { limit });
+
+export const getPersonalityAbTest = (id: string) =>
+  invoke<PersonalityAbRecord>('get_personality_ab_test', { id });
 
 // ===== Ops / Phase 1+2 =====
 export const listSnapshots = () =>

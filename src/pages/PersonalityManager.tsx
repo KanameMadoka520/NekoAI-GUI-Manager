@@ -6,16 +6,18 @@ import { ConfirmDialog } from '../components/common/ConfirmDialog';
 import { ImportExportActions } from '../components/common/ImportExportActions';
 import { Panel } from '../components/common/Panel';
 import { SummaryCard } from '../components/common/SummaryCard';
+import { PersonalityAbWorkbench } from '../components/personality/PersonalityAbWorkbench';
 import { useUiStore } from '../stores/uiStore';
 import { getConfig, saveConfig } from '../lib/tauri-commands';
 import { downloadJsonWithTimestamp, pickJsonAndParse } from '../lib/json-transfer';
-import type { Personality, RuntimeConfig } from '../lib/types';
+import type { ApiNode, Personality, RuntimeConfig } from '../lib/types';
 
 export function PersonalityManager() {
   const addToast = useUiStore((s) => s.addToast);
   const settings = useUiStore((s) => s.settings);
   const [groupList, setGroupList] = useState<Personality[]>([]);
   const [privateList, setPrivateList] = useState<Personality[]>([]);
+  const [apiNodes, setApiNodes] = useState<(ApiNode & { index: number })[]>([]);
   const [runtime, setRuntime] = useState<RuntimeConfig | null>(null);
   const [origGroup, setOrigGroup] = useState<string>('');
   const [origPrivate, setOrigPrivate] = useState<string>('');
@@ -37,10 +39,11 @@ export function PersonalityManager() {
   async function load() {
     setLoading(true);
     try {
-      const [gp, pp, rt] = await Promise.all([
+      const [gp, pp, rt, api] = await Promise.all([
         getConfig<Personality[]>('groupPersonality'),
         getConfig<Personality[]>('privatePersonality'),
         getConfig<RuntimeConfig>('runtime'),
+        getConfig<ApiNode[]>('api'),
       ]);
       const g = gp ?? [];
       const p = pp ?? [];
@@ -48,6 +51,7 @@ export function PersonalityManager() {
       setPrivateList(p);
       setOrigGroup(JSON.stringify(g));
       setOrigPrivate(JSON.stringify(p));
+      setApiNodes((api ?? []).map((node, index) => ({ ...node, index })));
       setRuntime(rt);
     } catch (e: any) {
       addToast('error', `加载失败: ${e?.message ?? e}`);
@@ -219,6 +223,7 @@ export function PersonalityManager() {
   const filteredGroup = filterList(groupList);
   const filteredPrivate = filterList(privateList);
   const densityClass = settings.contentDensity === 'spacious' ? 'gap-5' : settings.contentDensity === 'compact' ? 'gap-3' : 'gap-4';
+  const abApiNodes = apiNodes.map((node, index) => ({ ...node, index: node.index ?? index }));
 
   return (
     <div className="space-y-4">
@@ -296,6 +301,14 @@ export function PersonalityManager() {
           </div>
         )}
       </div>
+
+      <PersonalityAbWorkbench
+        groupList={groupList}
+        privateList={privateList}
+        runtimeApiIndex={runtime?.activeApiIndex ?? 0}
+        apiNodes={abApiNodes}
+        apiParams={runtime?.apiParams ?? {}}
+      />
 
       <div className={`grid grid-cols-1 xl:grid-cols-2 ${densityClass}`}>
         <PersonalityColumn
