@@ -8,6 +8,7 @@ mod history;
 mod memory;
 mod ops;
 mod personality_ab;
+mod personality_eval;
 mod state;
 mod watcher;
 
@@ -49,6 +50,12 @@ fn main() {
             personality_ab::run_personality_ab_test,
             personality_ab::list_personality_ab_tests,
             personality_ab::get_personality_ab_test,
+            personality_ab::delete_personality_ab_test,
+            personality_eval::run_personality_eval_experiment_stream,
+            personality_eval::list_personality_eval_experiments,
+            personality_eval::get_personality_eval_experiment,
+            personality_eval::set_personality_eval_score,
+            personality_eval::delete_personality_eval_experiment,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

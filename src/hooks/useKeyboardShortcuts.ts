@@ -6,10 +6,11 @@ const pageKeys: Record<string, PageId> = {
   '2': 'api',
   '3': 'config',
   '4': 'personality',
-  '5': 'memory',
-  '6': 'history',
-  '7': 'commands',
-  '8': 'ops',
+  '5': 'evaluation',
+  '6': 'memory',
+  '7': 'history',
+  '8': 'commands',
+  '9': 'ops',
 };
 
 interface ShortcutHandlers {
@@ -76,8 +77,9 @@ export const shortcutList = [
   { keys: 'Ctrl+2', desc: 'API管理' },
   { keys: 'Ctrl+3', desc: '配置编辑' },
   { keys: 'Ctrl+4', desc: '人格管理' },
-  { keys: 'Ctrl+5', desc: '长期记忆' },
-  { keys: 'Ctrl+6', desc: '历史记录' },
-  { keys: 'Ctrl+7', desc: '命令管理' },
-  { keys: 'Ctrl+8', desc: '安全发布中心' },
+  { keys: 'Ctrl+5', desc: '人格评测实验室' },
+  { keys: 'Ctrl+6', desc: '长期记忆' },
+  { keys: 'Ctrl+7', desc: '历史记录' },
+  { keys: 'Ctrl+8', desc: '命令管理' },
+  { keys: 'Ctrl+9', desc: '安全发布中心' },
 ];

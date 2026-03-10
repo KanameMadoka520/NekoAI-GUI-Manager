@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-export type PageId = 'dashboard' | 'api' | 'config' | 'personality' | 'memory' | 'history' | 'commands' | 'ops';
+export type PageId = 'dashboard' | 'api' | 'config' | 'personality' | 'evaluation' | 'memory' | 'history' | 'commands' | 'ops';
 
 interface NavItem {
   id: PageId;
@@ -14,10 +14,11 @@ const navItems: NavItem[] = [
   { id: 'api', icon: '🔌', label: 'API管理', shortcut: '2' },
   { id: 'config', icon: '⚙', label: '配置编辑', shortcut: '3' },
   { id: 'personality', icon: '🎭', label: '人格管理', shortcut: '4' },
-  { id: 'memory', icon: '🧠', label: '长期记忆', shortcut: '5' },
-  { id: 'history', icon: '📜', label: '历史记录', shortcut: '6' },
-  { id: 'commands', icon: '📋', label: '命令管理', shortcut: '7' },
-  { id: 'ops', icon: '🛡️', label: '安全发布', shortcut: '8' },
+  { id: 'evaluation', icon: '📊', label: '人格评测', shortcut: '5' },
+  { id: 'memory', icon: '🧠', label: '长期记忆', shortcut: '6' },
+  { id: 'history', icon: '📜', label: '历史记录', shortcut: '7' },
+  { id: 'commands', icon: '📋', label: '命令管理', shortcut: '8' },
+  { id: 'ops', icon: '🛡️', label: '安全发布', shortcut: '9' },
 ];
 
 interface SidebarProps {

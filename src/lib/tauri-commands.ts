@@ -4,6 +4,8 @@ import type {
   SystemInfo, PingResult, SnapshotMeta, SnapshotDiff,
   DeployPackageResult, SelfCheckReport, ApiHistoryMetric,
   PersonalityAbRunRequest, PersonalityAbRecord, PersonalityAbTestSummary,
+  RunPersonalityEvalExperimentRequest, PersonalityEvalExperimentSummary, PersonalityEvalExperimentRecord,
+  SetPersonalityEvalScoreRequest,
 } from './types';
 
 // ===== Config =====
@@ -85,6 +87,25 @@ export const listPersonalityAbTests = (limit = 20) =>
 
 export const getPersonalityAbTest = (id: string) =>
   invoke<PersonalityAbRecord>('get_personality_ab_test', { id });
+
+export const deletePersonalityAbTest = (id: string) =>
+  invoke<void>('delete_personality_ab_test', { id });
+
+// ===== Personality Evaluation Lab =====
+export const runPersonalityEvalExperimentStream = (sessionId: string, payload: RunPersonalityEvalExperimentRequest) =>
+  invoke<void>('run_personality_eval_experiment_stream', { sessionId, payload });
+
+export const listPersonalityEvalExperiments = (limit = 20) =>
+  invoke<PersonalityEvalExperimentSummary[]>('list_personality_eval_experiments', { limit });
+
+export const getPersonalityEvalExperiment = (id: string) =>
+  invoke<PersonalityEvalExperimentRecord>('get_personality_eval_experiment', { id });
+
+export const setPersonalityEvalScore = (payload: SetPersonalityEvalScoreRequest) =>
+  invoke<void>('set_personality_eval_score', { payload });
+
+export const deletePersonalityEvalExperiment = (id: string) =>
+  invoke<void>('delete_personality_eval_experiment', { id });
 
 // ===== Ops / Phase 1+2 =====
 export const listSnapshots = () =>

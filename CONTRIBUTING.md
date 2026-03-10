@@ -43,7 +43,8 @@ NekoAI GUI Manager/
 │  ├─ pages/
 │  │  ├─ ApiManager.tsx           # API 管理（拖拽、测试、保存）
 │  │  ├─ ConfigEditor.tsx         # 运行时配置编辑
-│  │  ├─ PersonalityManager.tsx   # 人格管理
+│  │  ├─ PersonalityManager.tsx   # 人格管理（含 A/B 快速试跑入口）
+│  │  ├─ EvaluationLab.tsx        # 人格评测实验室（多 API / 多轮次 / 人工打分 / 统计）
 │  │  ├─ MemoryViewer.tsx         # 记忆查看与编辑
 │  │  ├─ HistoryViewer.tsx        # 历史查看与统计（模型主题映射）
 │  │  ├─ CommandManager.tsx       # 命令列表管理
@@ -55,15 +56,18 @@ NekoAI GUI Manager/
 │  │  ├─ useUndoRedo.ts           # 撤销/重做
 │  │  └─ useKeyboardShortcuts.ts  # 快捷键
 │  ├─ lib/
-│  │  ├─ types.ts                 # TS 类型定义
-│  │  ├─ tauri-commands.ts        # 前端调用 Tauri 命令封装
+│  │  ├─ types.ts                 # TS 类型定义（含人格 A/B / 评测实验室类型）
+│  │  ├─ tauri-commands.ts        # 前端调用 Tauri 命令封装（含人格 A/B / 评测实验室命令）
 │  │  └─ json-transfer.ts         # 统一 JSON 导入/导出（时间戳命名 + 文件读取）
 │  ├─ stores/
 │  │  └─ uiStore.ts               # UI 持久化设置（主题/缩放/侧栏/漂浮密度）
 │  ├─ components/
-│  │  └─ layout/
-│  │     ├─ CustomTitlebar.tsx    # 主题化窗口标题栏与窗口控制按钮
-│  │     └─ AmbientFx.tsx         # 全局背景漂浮层（伪代码串+几何图形）
+│  │  ├─ layout/
+│  │  │  ├─ CustomTitlebar.tsx    # 主题化窗口标题栏与窗口控制按钮
+│  │  │  └─ AmbientFx.tsx         # 全局背景漂浮层（伪代码串+几何图形）
+│  │  ├─ common/                  # Panel / SummaryCard / ConfirmDialog 等公共组件
+│  │  └─ personality/
+│  │     └─ PersonalityAbWorkbench.tsx # 人格 A/B 快速试跑工具
 ├─ src-tauri/
 │  ├─ src/main.rs                 # 注册 Tauri 命令
 │  ├─ src/data_root.rs            # EXE 同级数据目录工具
@@ -72,6 +76,8 @@ NekoAI GUI Manager/
 │  ├─ src/memory.rs               # 记忆读写
 │  ├─ src/history.rs              # 历史读写与导出/导入
 │  ├─ src/api_test.rs             # API 连通测试
+│  ├─ src/personality_ab.rs       # 人格 A/B 快速试跑后端
+│  ├─ src/personality_eval.rs     # 人格评测实验室后端（实验执行 / 评分 / 删除）
 │  └─ src/watcher.rs              # 文件变更监听
 └─ README.md
 ```
@@ -90,6 +96,8 @@ NekoAI GUI Manager/
   - `env-templates/`（环境模板）
   - `diagnostics/`（自检报告）
   - `audit/`（审计日志）
+  - `personality-ab-tests/`（人格 A/B 快速试跑记录）
+  - `personality-eval-lab/experiments/`（人格评测实验室实验记录）
 
 开发/调试涉及这些功能时，请优先检查该目录是否有读写权限。
 
@@ -251,10 +259,14 @@ npm install
    - 修改后可保存
    - runtime 导入/导出可用（导入二级确认）
    - 恢复全部默认为二级确认
-4. **人格管理**：
+4. **人格管理 / 人格评测实验室**：
    - 启用/克隆/删除按钮可用
    - 删除后活跃索引正确
    - 群聊/私聊人格分别导入导出可用（导入二级确认）
+   - 人格 A/B 测试台可运行固定 API 节点的快速试跑
+   - 测试记录回看、模式筛选、关键词搜索、单条删除可用
+   - 人格评测实验室可选择多个人格 / 多 API / 多用例 / 多轮次并启动实验
+   - 实验记录可加载、单条输出可打分并保存、统计摘要可显示
 5. **长期记忆**：
    - 当前会话导入/导出可用（导入二级确认）
 6. **历史记录**：
@@ -342,6 +354,7 @@ npm install
   - OpsCenter 布局优化：新增顶部摘要、面板说明与可折叠工具区，统一安全治理页面层级
 - EXE 同级数据目录（新增）
   - `NekoAI-GUI-Data/` 自动创建并持久化 `snapshots/`、`deploy-packages/`、`env-templates/`、`diagnostics/`、`audit/`
+  - `personality-ab-tests/` 用于保存人格 A/B 快速试跑记录
 
 - API 批量测试流式回传（progress/done 事件）
 - API 治理（P0）
@@ -379,6 +392,11 @@ npm install
 - 配置编辑“恢复全部默认”改为二级确认
 - ConfigEditor 布局优化：新增“常用 / 完整”模式、顶部摘要栏与更清晰的章节说明，降低表单堆叠感
 - PersonalityManager 布局优化：新增顶部摘要、导入导出折叠区与更清晰的人格卡片信息层级
+- 人格 A/B 测试台（快速试跑工具）
+  - ✅ 已完成 MVP：支持同模式（群聊 / 私聊）人格 A/B 对比
+  - ✅ 已完成 MVP：支持指定固定 API 节点执行测试
+  - ✅ 已完成 MVP：支持保存、回看、筛选、搜索与删除测试记录
+  - 当前定位：用于“快速试跑 / 草稿验证”，不再继续在该工具内堆叠严谨统计逻辑
 - Dashboard 布局优化：新增顶部摘要条、统一面板说明与概览区块层级
 - 公共组件抽取（本轮已完成一轮）：已新增并接入 `Panel` / `SummaryCard`，统一 Dashboard / ApiManager / HistoryViewer / ConfigEditor / PersonalityManager / MemoryViewer / OpsCenter 的主要面板与摘要样式
 - 修复 Rust 编译错误：恢复 `export_history` 命令注册链路
@@ -443,19 +461,30 @@ npm install
 
 ### 16.3 Prompt/人格工程（P1）
 
-#### A. 人格 A/B 测试台
+#### A. 人格 A/B 测试台（快速试跑工具）
 
-- 同一输入并行对比两个人格输出
-- 支持人工打分（质量/稳定性/风格一致性）
-- 结论可保存并可回看
+- ✅ 已完成 MVP：支持同一输入下的双人格输出对比
+- ✅ 已完成 MVP：支持群聊 / 私聊同模式对比
+- ✅ 已完成 MVP：支持固定 API 节点执行，不走智能路由
+- ✅ 已完成 MVP：支持保存、回看、筛选、搜索与删除测试记录
+- 当前定位：用于“快速试跑 / 草稿验证 / 临时比对”
+- 下一阶段不再继续把严谨评测、复杂统计、人工多维打分直接堆进这个页面
 
-#### B. 人格冲突检测器
+#### B. 人格评测实验室（独立页面，首版已落地）
+
+- ✅ 已完成首版接入：新增独立页面、侧栏入口与快捷键切换
+- ✅ 已完成首版能力：多 API 矩阵、重复轮次、多维人工打分、基础统计摘要
+- ✅ 已完成首版落盘：实验记录写入 `NekoAI-GUI-Data/personality-eval-lab/experiments/`
+- ✅ 已完成本地构建验证：`npm run build` 与用户本地 `npx tauri build`
+- 下一阶段继续补强：真实数据回归、交互细节优化、统计图表/导出增强
+
+#### C. 人格冲突检测器
 
 - 检测 prompt 内部互相矛盾指令
 - 检测过长提示、重复规则
 - 输出问题清单 + 修正建议（不直接自动改写原 prompt）
 
-#### C. 人格模板市场（本地）
+#### D. 人格模板市场（本地）
 
 - 提供本地模板库
 - 支持一键套用与参数化替换
@@ -480,8 +509,8 @@ npm install
 
 ### 16.5 执行顺序建议
 
-1. API 治理（先做策略编辑器 MVP，再做评分）
-2. Prompt/人格工程（先 A/B，再冲突检测，再模板市场）
+1. API 治理（P0 增强仅做细化与回归，不再重做 MVP）
+2. Prompt/人格工程（先“人格评测实验室”独立页面，再做冲突检测器，再做模板市场）
 3. 长期记忆治理（先压缩归档，再评分，再关系图）
 
 ### 16.6 每轮迭代交付要求

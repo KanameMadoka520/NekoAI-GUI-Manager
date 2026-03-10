@@ -160,6 +160,132 @@ export interface PersonalityAbTestSummary {
   bOk: boolean;
 }
 
+// ===== Personality Evaluation Lab =====
+export type PersonalityEvalMode = 'group' | 'private';
+
+export type PersonalityEvalDimensionKey = 'style' | 'stability' | 'completion' | 'humanlikeness';
+
+export const PERSONA_EVAL_DIMENSIONS: Array<{ key: PersonalityEvalDimensionKey; label: string }> = [
+  { key: 'style', label: '风格一致性' },
+  { key: 'stability', label: '稳定性' },
+  { key: 'completion', label: '任务完成度' },
+  { key: 'humanlikeness', label: '拟人感' },
+];
+
+export interface PersonalityEvalCase {
+  id: string;
+  name: string;
+  tags: string[];
+  contextText?: string;
+  latestUserMessage: string;
+}
+
+export interface PersonalityEvalCandidate {
+  index: number;
+  remark: string;
+  prompt: string;
+}
+
+export interface PersonalityEvalApiNodeRecord {
+  index: number;
+  remark: string;
+  modelName: string;
+  aiType: string;
+  urlRedacted: string;
+}
+
+export interface PersonalityEvalRunKey {
+  apiIndex: number;
+  candidateIndex: number;
+  caseId: string;
+  round: number;
+}
+
+export interface PersonalityEvalExecutionResult {
+  ok: boolean;
+  latencyMs: number;
+  httpStatus: number;
+  responseText: string;
+  responseChars: number;
+  error?: string;
+}
+
+export interface PersonalityEvalHumanScore {
+  dims: Record<PersonalityEvalDimensionKey, number>;
+  note: string;
+  scoredAt: string;
+}
+
+export interface PersonalityEvalRunRecord {
+  key: PersonalityEvalRunKey;
+  apiNode: PersonalityEvalApiNodeRecord;
+  candidate: PersonalityEvalCandidate;
+  caseId: string;
+  round: number;
+  result: PersonalityEvalExecutionResult;
+  score?: PersonalityEvalHumanScore;
+}
+
+export interface PersonalityEvalExperimentRecord {
+  schemaVersion: number;
+  id: string;
+  createdAt: string;
+  mode: PersonalityEvalMode;
+  apiParamsSnapshot: ApiParams;
+  apis: PersonalityEvalApiNodeRecord[];
+  candidates: PersonalityEvalCandidate[];
+  cases: PersonalityEvalCase[];
+  rounds: number;
+  runs: PersonalityEvalRunRecord[];
+}
+
+export interface PersonalityEvalExperimentSummary {
+  id: string;
+  createdAt: string;
+  mode: PersonalityEvalMode;
+  totalRuns: number;
+  scoredRuns: number;
+  apiCount: number;
+  candidateCount: number;
+  caseCount: number;
+}
+
+export interface RunPersonalityEvalExperimentRequest {
+  mode: PersonalityEvalMode;
+  apis: ApiNode[];
+  apiParams: ApiParams;
+  candidates: PersonalityEvalCandidate[];
+  cases: PersonalityEvalCase[];
+  rounds: number;
+}
+
+export interface EvalProgressEvent {
+  sessionId: string;
+  done: number;
+  total: number;
+  ok: number;
+  failed: number;
+  last?: {
+    apiLabel: string;
+    candidateLabel: string;
+    caseName: string;
+    round: number;
+    ok: boolean;
+    latencyMs: number;
+  };
+}
+
+export interface EvalDoneEvent {
+  sessionId: string;
+  experimentId: string;
+}
+
+export interface SetPersonalityEvalScoreRequest {
+  experimentId: string;
+  runKey: PersonalityEvalRunKey;
+  score: PersonalityEvalHumanScore;
+}
+
 // ===== Memory =====
 export interface MemoryMeta {
   id: string;

@@ -17,6 +17,7 @@ import { useUiStore } from './stores/uiStore';
 const Dashboard = lazy(() => import('./pages/Dashboard').then((m) => ({ default: m.Dashboard })));
 const CommandManager = lazy(() => import('./pages/CommandManager').then((m) => ({ default: m.CommandManager })));
 const PersonalityManager = lazy(() => import('./pages/PersonalityManager').then((m) => ({ default: m.PersonalityManager })));
+const EvaluationLab = lazy(() => import('./pages/EvaluationLab').then((m) => ({ default: m.EvaluationLab })));
 const MemoryViewer = lazy(() => import('./pages/MemoryViewer').then((m) => ({ default: m.MemoryViewer })));
 const ConfigEditor = lazy(() => import('./pages/ConfigEditor').then((m) => ({ default: m.ConfigEditor })));
 const ApiManager = lazy(() => import('./pages/ApiManager').then((m) => ({ default: m.ApiManager })));
@@ -27,6 +28,7 @@ const pageTitles: Record<PageId, { title: string; subtitle: string }> = {
   api: { title: 'API管理', subtitle: '管理API节点、密钥和模型配置' },
   config: { title: '配置编辑', subtitle: '可视化编辑运行时配置' },
   personality: { title: '人格管理', subtitle: '编辑群聊和私聊人格系统提示词' },
+  evaluation: { title: '人格评测实验室', subtitle: '多 API / 多轮次 / 多维人工打分 / 统计报表' },
   memory: { title: '长期记忆', subtitle: '查看和管理对话记忆' },
   history: { title: '历史记录', subtitle: '解析和分析对话历史日志' },
   commands: { title: '命令管理', subtitle: '管理命令回避列表' },
@@ -174,7 +176,7 @@ function App() {
         await setPluginDir(savedDir);
       }
 
-      if (activePage === 'config' || activePage === 'api' || activePage === 'personality' || activePage === 'commands' || activePage === 'dashboard' || activePage === 'memory' || activePage === 'history' || activePage === 'ops') {
+      if (activePage === 'config' || activePage === 'api' || activePage === 'personality' || activePage === 'evaluation' || activePage === 'commands' || activePage === 'dashboard' || activePage === 'memory' || activePage === 'history' || activePage === 'ops') {
         setRefreshKey((k) => k + 1);
       }
     } catch {
@@ -294,6 +296,7 @@ function App() {
                 {activePage === 'dashboard' && <Dashboard key={refreshKey} />}
                 {activePage === 'commands' && <CommandManager key={refreshKey} />}
                 {activePage === 'personality' && <PersonalityManager key={refreshKey} />}
+                {activePage === 'evaluation' && <EvaluationLab key={refreshKey} />}
                 {activePage === 'memory' && <MemoryViewer key={refreshKey} />}
                 {activePage === 'config' && <ConfigEditor key={refreshKey} />}
                 {activePage === 'api' && <ApiManager key={refreshKey} />}
