@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Panel } from '../common/Panel';
 import { SummaryCard } from '../common/SummaryCard';
+import { SearchBar } from '../common/SearchBar';
+import { ConfirmDialog } from '../common/ConfirmDialog';
 import type {
   ApiNode,
   ApiParams,
@@ -10,7 +12,7 @@ import type {
   PersonalityAbRunRequest,
   PersonalityAbTestSummary,
 } from '../../lib/types';
-import { getPersonalityAbTest, listPersonalityAbTests, runPersonalityAbTest } from '../../lib/tauri-commands';
+import { deletePersonalityAbTest, getPersonalityAbTest, listPersonalityAbTests, runPersonalityAbTest } from '../../lib/tauri-commands';
 import { useUiStore } from '../../stores/uiStore';
 
 interface WorkbenchProps {
@@ -33,6 +35,9 @@ export function PersonalityAbWorkbench({ groupList, privateList, runtimeApiIndex
   const [result, setResult] = useState<PersonalityAbRecord | null>(null);
   const [history, setHistory] = useState<PersonalityAbTestSummary[]>([]);
   const [historyBusy, setHistoryBusy] = useState(false);
+  const [historySearch, setHistorySearch] = useState('');
+  const [historyModeFilter, setHistoryModeFilter] = useState<'all' | PersonalityAbMode>('all');
+  const [deleteTarget, setDeleteTarget] = useState<PersonalityAbTestSummary | null>(null);
 
   const personalities = useMemo(() => (mode === 'group' ? groupList : privateList), [mode, groupList, privateList]);
   const selectedApi = apiNodes[apiIndex];
@@ -114,6 +119,17 @@ export function PersonalityAbWorkbench({ groupList, privateList, runtimeApiIndex
     }
   }
 
+  async function deleteHistory(id: string) {
+    try {
+      await deletePersonalityAbTest(id);
+      setHistory((items) => items.filter((item) => item.id !== id));
+      setResult((prev) => (prev?.id === id ? null : prev));
+      addToast('success', `已删除测试记录 ${id}`);
+    } catch (e: any) {
+      addToast('error', `删除记录失败: ${e?.message ?? e}`);
+    }
+  }
+
   useEffect(() => {
     void loadHistory();
   }, []);
@@ -121,6 +137,12 @@ export function PersonalityAbWorkbench({ groupList, privateList, runtimeApiIndex
   const summaryHint = selectedApi
     ? `${selectedApi.remark || '未备注'} / ${selectedApi.modelName} / ${selectedApi.aiType}`
     : '尚未选择可用 API';
+  const filteredHistory = history.filter((item) => {
+    if (historyModeFilter !== 'all' && item.mode !== historyModeFilter) return false;
+    const q = historySearch.trim().toLowerCase();
+    if (!q) return true;
+    return [item.pairLabel, item.apiLabel, item.latestUserMessagePreview].some((field) => field.toLowerCase().includes(q));
+  });
 
   return (
     <Panel title="人格 A/B 测试台" subtitle="同一输入、同一 API 节点，对比两个人格输出差异。" icon="🧪" padding="sm">
@@ -241,22 +263,50 @@ export function PersonalityAbWorkbench({ groupList, privateList, runtimeApiIndex
               {historyBusy ? '刷新中...' : '刷新'}
             </button>
           </div>
+          <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_120px]">
+            <SearchBar value={historySearch} onChange={setHistorySearch} placeholder="搜索人格对比、API 或输入摘要..." />
+            <select
+              value={historyModeFilter}
+              onChange={(e) => setHistoryModeFilter(e.target.value as 'all' | PersonalityAbMode)}
+              className="w-full px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-primary)]"
+            >
+              <option value="all">全部模式</option>
+              <option value="group">群聊</option>
+              <option value="private">私聊</option>
+            </select>
+          </div>
           <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
-            {history.length === 0 ? (
-              <p className="text-xs text-[var(--text-muted)]">暂无测试记录。</p>
-            ) : history.map((item) => (
-              <button
+            {filteredHistory.length === 0 ? (
+              <p className="text-xs text-[var(--text-muted)]">暂无匹配的测试记录。</p>
+            ) : filteredHistory.map((item) => (
+              <div
                 key={item.id}
-                onClick={() => openHistory(item.id)}
-                className="w-full text-left rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 py-2 hover:border-[var(--border-hover)] transition-colors cursor-pointer"
+                className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 py-2"
               >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-medium text-[var(--text-primary)] truncate">{item.pairLabel}</span>
-                  <span className="text-[10px] text-[var(--text-muted)]">{item.mode === 'group' ? '群聊' : '私聊'}</span>
+                <div className="flex items-start justify-between gap-2">
+                  <button
+                    onClick={() => openHistory(item.id)}
+                    className="flex-1 text-left min-w-0 hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-medium text-[var(--text-primary)] truncate">{item.pairLabel}</span>
+                      <span className="text-[10px] text-[var(--text-muted)]">{item.mode === 'group' ? '群聊' : '私聊'}</span>
+                    </div>
+                    <p className="mt-1 text-[10px] text-[var(--text-muted)] truncate">{item.apiLabel}</p>
+                    <p className="mt-1 text-[11px] text-[var(--text-secondary)] line-clamp-2">{item.latestUserMessagePreview}</p>
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDeleteTarget(item);
+                    }}
+                    className="px-2 py-1 text-[10px] rounded border border-[var(--error)] text-[var(--error)] bg-[rgba(255,82,82,0.08)] hover:bg-[rgba(255,82,82,0.18)] transition-colors cursor-pointer"
+                    title="删除测试记录"
+                  >
+                    删除
+                  </button>
                 </div>
-                <p className="mt-1 text-[10px] text-[var(--text-muted)] truncate">{item.apiLabel}</p>
-                <p className="mt-1 text-[11px] text-[var(--text-secondary)] line-clamp-2">{item.latestUserMessagePreview}</p>
-              </button>
+              </div>
             ))}
           </div>
         </div>
@@ -266,6 +316,16 @@ export function PersonalityAbWorkbench({ groupList, privateList, runtimeApiIndex
         <ResultCard title="人格 A 输出" candidate={result?.candidateA} outcome={result?.resultA} />
         <ResultCard title="人格 B 输出" candidate={result?.candidateB} outcome={result?.resultB} />
       </div>
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (deleteTarget) void deleteHistory(deleteTarget.id);
+        }}
+        title="删除测试记录"
+        message={deleteTarget ? `确定要删除测试记录「${deleteTarget.pairLabel}」吗？` : ''}
+      />
     </Panel>
   );
 }

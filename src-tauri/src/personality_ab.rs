@@ -430,3 +430,13 @@ pub fn get_personality_ab_test(id: String) -> Result<PersonalityAbRecord, String
     let value = read_json_file(&path)?;
     serde_json::from_value(value).map_err(|e| format!("Parse record failed: {}", e))
 }
+
+#[tauri::command]
+pub fn delete_personality_ab_test(id: String) -> Result<(), String> {
+    let path = record_path(&id)?;
+    if !path.exists() {
+        return Err(format!("测试记录不存在: {}", id));
+    }
+    fs::remove_file(&path).map_err(|e| format!("删除测试记录失败: {}", e))?;
+    Ok(())
+}
