@@ -15,7 +15,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-开发交接文档-当前开发目标.md
+
+# Local Claude / planning artifacts
+.claude/
 
 # Editor
 .vscode/*
