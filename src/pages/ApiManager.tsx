@@ -17,9 +17,9 @@ import { Panel } from '../components/common/Panel';
 import { SummaryCard } from '../components/common/SummaryCard';
 import { useUiStore } from '../stores/uiStore';
 import { useUndoRedo } from '../hooks/useUndoRedo';
-import { getConfig, saveConfig, pingApi, batchPingApis, batchPingApisStream, getApiHistoryMetrics } from '../lib/tauri-commands';
+import { getConfig, saveConfig, pingApi, batchPingApis, batchPingApisStream, getApiHistoryMetrics, getApiHealthWeights, saveApiHealthWeights } from '../lib/tauri-commands';
 import { downloadJsonWithTimestamp, pickJsonAndParse } from '../lib/json-transfer';
-import type { ApiNode, RuntimeConfig, PingResult, ApiHistoryMetric } from '../lib/types';
+import type { ApiNode, RuntimeConfig, PingResult, ApiHistoryMetric, ApiHealthWeights } from '../lib/types';
 
 interface NodeState {
   nodes: ApiNode[];
@@ -139,6 +139,7 @@ export function ApiManager() {
   const settings = useUiStore((s) => s.settings);
   const { state, set, reset, undo, redo, canUndo, canRedo } = useUndoRedo<NodeState>({ nodes: [], activeIndex: 0 });
   const [original, setOriginal] = useState('');
+  const [originalWeights, setOriginalWeights] = useState('');
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -162,9 +163,15 @@ export function ApiManager() {
   const cardRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
   const { nodes, activeIndex } = state;
-  const dirty = useMemo(() => JSON.stringify(state) !== original, [state, original]);
-  const density = getDensityClass(settings.contentDensity);
   const historyWeight = Math.max(0, 100 - Math.max(0, Math.min(100, weightLive)) - Math.max(0, Math.min(100, weightTimeout)) - Math.max(0, Math.min(100, weightJitter)));
+  const weightState = useMemo(() => ({
+    liveWeight: Math.max(0, Math.min(100, weightLive)),
+    historyWeight,
+    timeoutWeight: Math.max(0, Math.min(100, weightTimeout)),
+    jitterWeight: Math.max(0, Math.min(100, weightJitter)),
+  }), [weightLive, historyWeight, weightTimeout, weightJitter]);
+  const dirty = useMemo(() => JSON.stringify(state) !== original || JSON.stringify(weightState) !== originalWeights, [state, original, weightState, originalWeights]);
+  const density = getDensityClass(settings.contentDensity);
   const allApiKeyExpanded = nodes.length > 0 && nodes.every((_, i) => expandedCards.has(i));
 
   useEffect(() => { load(); }, []);
@@ -204,7 +211,7 @@ export function ApiManager() {
           setBatchSessionId(null);
           setBatchProgress({ done: 0, total: 0 });
           const passed = (payload.results ?? []).filter((r) => r.pass).length;
-          addToast('success', `批量测试完成: ${passed}/${payload.results?.length ?? 0} 通过`);
+        addToast('success', `批量测试完成：${passed}/${payload.results?.length ?? 0} 个节点可用。可以优先看风险节点，再决定默认节点要不要换。`);
         });
       } catch {
         // fallback handled below
@@ -221,10 +228,11 @@ export function ApiManager() {
   async function load() {
     setLoading(true);
     try {
-      const [apiData, rt, metrics] = await Promise.all([
+      const [apiData, rt, metrics, healthWeights] = await Promise.all([
         getConfig<ApiNode[]>('api'),
         getConfig<RuntimeConfig>('runtime'),
         getApiHistoryMetrics().catch(() => []),
+        getApiHealthWeights().catch(() => ({ liveWeight: 60, historyWeight: 0, timeoutWeight: 20, jitterWeight: 20 } as ApiHealthWeights)),
       ]);
       const initial: NodeState = {
         nodes: apiData ?? [],
@@ -235,12 +243,18 @@ export function ApiManager() {
       setSelected(new Set());
       setPingResults(new Map());
       setRuntimeConfig(rt ?? null);
-      const liveW = Number(rt?.apiHealthWeights?.liveWeight ?? 60);
-      const timeoutW = Number(rt?.apiHealthWeights?.timeoutWeight ?? 20);
-      const jitterW = Number(rt?.apiHealthWeights?.jitterWeight ?? 20);
+      const liveW = Number(healthWeights?.liveWeight ?? 60);
+      const timeoutW = Number(healthWeights?.timeoutWeight ?? 20);
+      const jitterW = Number(healthWeights?.jitterWeight ?? 20);
       setWeightLive(Math.max(0, Math.min(100, Number.isFinite(liveW) ? liveW : 60)));
       setWeightTimeout(Math.max(0, Math.min(100, Number.isFinite(timeoutW) ? timeoutW : 20)));
       setWeightJitter(Math.max(0, Math.min(100, Number.isFinite(jitterW) ? jitterW : 20)));
+      setOriginalWeights(JSON.stringify({
+        liveWeight: Math.max(0, Math.min(100, Number.isFinite(liveW) ? liveW : 60)),
+        historyWeight: Math.max(0, 100 - Math.max(0, Math.min(100, Number.isFinite(liveW) ? liveW : 60)) - Math.max(0, Math.min(100, Number.isFinite(timeoutW) ? timeoutW : 20)) - Math.max(0, Math.min(100, Number.isFinite(jitterW) ? jitterW : 20))),
+        timeoutWeight: Math.max(0, Math.min(100, Number.isFinite(timeoutW) ? timeoutW : 20)),
+        jitterWeight: Math.max(0, Math.min(100, Number.isFinite(jitterW) ? jitterW : 20)),
+      }));
       setHistoryMetrics((metrics as any[]).map((m) => ({
         index: -1,
         total: Number(m.total ?? 0),
@@ -369,7 +383,7 @@ export function ApiManager() {
         results.forEach((r) => map.set(r.index, r));
         setPingResults(map);
         const passed = results.filter((r) => r.pass).length;
-        addToast('success', `批量测试完成: ${passed}/${results.length} 通过`);
+        addToast('success', `批量测试完成：${passed}/${results.length} 个节点可用。可以优先看风险节点，再决定默认节点要不要换。`);
       } catch (e: any) {
         addToast('error', `批量测试失败: ${e?.message ?? e}`);
       } finally {
@@ -385,23 +399,31 @@ export function ApiManager() {
     try {
       await saveConfig('api', nodes);
       const rt = runtimeConfig ?? await getConfig<RuntimeConfig>('runtime');
+      const nextLiveWeight = Math.max(0, Math.min(100, weightLive));
+      const nextTimeoutWeight = Math.max(0, Math.min(100, weightTimeout));
+      const nextJitterWeight = Math.max(0, Math.min(100, weightJitter));
+      const nextHistoryWeight = Math.max(0, 100 - nextLiveWeight - nextTimeoutWeight - nextJitterWeight);
       if (rt) {
-        const nextLiveWeight = Math.max(0, Math.min(100, weightLive));
-        const nextTimeoutWeight = Math.max(0, Math.min(100, weightTimeout));
-        const nextJitterWeight = Math.max(0, Math.min(100, weightJitter));
-        const nextHistoryWeight = Math.max(0, 100 - nextLiveWeight - nextTimeoutWeight - nextJitterWeight);
-        await saveConfig('runtime', {
+        const updatedRuntime = {
           ...rt,
           activeApiIndex: activeIndex,
-          apiHealthWeights: {
-            liveWeight: nextLiveWeight,
-            historyWeight: nextHistoryWeight,
-            timeoutWeight: nextTimeoutWeight,
-            jitterWeight: nextJitterWeight,
-          },
-        });
+        };
+        await saveConfig('runtime', updatedRuntime);
+        setRuntimeConfig(updatedRuntime);
       }
+      await saveApiHealthWeights({
+        liveWeight: nextLiveWeight,
+        historyWeight: nextHistoryWeight,
+        timeoutWeight: nextTimeoutWeight,
+        jitterWeight: nextJitterWeight,
+      });
       setOriginal(JSON.stringify(state));
+      setOriginalWeights(JSON.stringify({
+        liveWeight: nextLiveWeight,
+        historyWeight: nextHistoryWeight,
+        timeoutWeight: nextTimeoutWeight,
+        jitterWeight: nextJitterWeight,
+      }));
       addToast('success', 'API 配置已保存');
     } catch (e: any) {
       addToast('error', `保存失败: ${e?.message ?? e}`);
@@ -641,7 +663,7 @@ export function ApiManager() {
   return (
     <div className={`flex h-full ${density.pageGap}`}>
       <div className="w-64 flex-shrink-0">
-        <Panel title="节点目录" subtitle="先筛选，再定位，再展开编辑。" padding="sm">
+        <Panel title="节点目录" subtitle="先缩小范围，再点进具体节点。这样看起来不会像一整面表单墙。" padding="sm">
           <div className={density.sectionGap}>
             <SearchBar value={search} onChange={setSearch} placeholder="搜索模型 / 备注 / 类型..." />
 
@@ -709,7 +731,7 @@ export function ApiManager() {
                       <span className="mono text-[10px] text-[var(--text-muted)] w-6 text-right">#{i}</span>
                       <span className="flex-1 min-w-0">
                         <span className="block truncate text-xs text-[var(--text-primary)]">{n.modelName || '(空)'}</span>
-                        <span className="block truncate text-[10px] text-[var(--text-muted)]">{n.remark || '未备注'}</span>
+                        <span className="block truncate text-[10px] text-[var(--text-muted)]">{n.remark || '还没写备注'}</span>
                       </span>
                       <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: levelMeta.bg, color: levelMeta.color }}>
                         {health?.score ?? 0}
@@ -732,14 +754,14 @@ export function ApiManager() {
 
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
         <div className={`grid grid-cols-2 xl:grid-cols-5 ${density.summaryGrid} mb-4`}>
-          <SummaryCard label="节点总数" value={String(nodes.length)} hint="当前 API 池规模" />
-          <SummaryCard label="活跃节点" value={summary.activeNode} hint={`索引 #${activeIndex}`} />
-          <SummaryCard label="健康 / 警告 / 风险" value={`${summary.healthy} / ${summary.warning} / ${summary.risk}`} hint="按当前评分结果统计" />
-          <SummaryCard label="批量测试" value={batchPinging ? `${batchProgress.done}/${batchProgress.total || nodes.length}` : `${summary.tested} 个结果`} hint={batchPinging ? '测试进行中' : '当前会话已缓存结果'} />
-          <SummaryCard label="保存状态" value={dirty ? '待保存' : '已同步'} hint={dirty ? '配置有改动，尚未写入文件' : '当前编辑状态已落盘'} tone={dirty ? 'warning' : 'neutral'} />
+          <SummaryCard label="节点总数" value={String(nodes.length)} hint="这是你当前可以切换和测试的 API 节点总数。" />
+          <SummaryCard label="活跃节点" value={summary.activeNode} hint={`机器人默认会从 #${activeIndex} 这个节点开始用。`} />
+          <SummaryCard label="健康 / 警告 / 风险" value={`${summary.healthy} / ${summary.warning} / ${summary.risk}`} hint="这是 GUI 按测试结果和历史表现给出的参考分组，不是插件硬限制。" />
+          <SummaryCard label="批量测试" value={batchPinging ? `${batchProgress.done}/${batchProgress.total || nodes.length}` : `${summary.tested} 个结果`} hint={batchPinging ? '正在逐个测试节点可不可用。' : '这里显示的是本次会话里已经拿到的测试结果。'} />
+          <SummaryCard label="保存状态" value={dirty ? '待保存' : '已同步'} hint={dirty ? '你已经改了节点列表或默认节点，但还没真正写回文件。' : '当前编辑内容已经和文件一致。'} tone={dirty ? 'warning' : 'neutral'} />
         </div>
 
-        <Panel title="操作区" padding="sm">
+        <Panel title="操作区" subtitle="常规顺序通常是：新增或修改节点 -> 测试可用性 -> 确认默认节点 -> 最后保存。" padding="sm">
           <div className="flex flex-wrap items-center gap-2">
             <button onClick={save} disabled={!dirty}
               className={`px-4 py-2 text-xs rounded-[var(--radius-sm)] font-medium transition-colors cursor-pointer ${dirty ? 'bg-[var(--accent-purple)] text-white hover:opacity-90 pulse-dirty' : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed'}`}
@@ -752,14 +774,14 @@ export function ApiManager() {
             </button>
             <button onClick={testAll} disabled={batchPinging}
               className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer">
-              {batchPinging ? `⏳ 对全部 API 可用性测试中 (${batchProgress.done}/${batchProgress.total || nodes.length})` : '🔍 对全部API可用性测试'}
+              {batchPinging ? `⏳ 正在逐个测试 (${batchProgress.done}/${batchProgress.total || nodes.length})` : '🔍 测试全部节点'}
             </button>
             <button
               onClick={toggleAllApiKeyExpanded}
               disabled={nodes.length === 0}
               className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] transition-colors ${nodes.length === 0 ? 'bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed opacity-60' : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer'}`}
             >
-              {allApiKeyExpanded ? '收起全部API key栏' : '展开全部API key栏'}
+              {allApiKeyExpanded ? '收起全部 Key 区域' : '展开全部 Key 区域'}
             </button>
             <div className="flex-1" />
             <div className="flex items-center gap-2">
@@ -773,13 +795,13 @@ export function ApiManager() {
                 onClick={() => setShowAdvancedToolbar((v) => !v)}
                 className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] border cursor-pointer ${showAdvancedToolbar ? 'border-transparent bg-[var(--accent-purple)] text-white' : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
               >
-                {showAdvancedToolbar ? '收起高级区' : '更多操作'}
+                {showAdvancedToolbar ? '收起更多操作' : '展开更多操作'}
               </button>
             </div>
           </div>
 
           {dirty && (
-            <p className="mt-2 text-xs text-[var(--warning)]">当前有未保存改动，保存后才会写入配置文件与活跃节点设置。</p>
+            <p className="mt-2 text-xs text-[var(--warning)]">当前有未保存改动。只有点保存之后，节点列表和默认节点设置才会真正写回文件。</p>
           )}
 
           {showAdvancedToolbar && (
@@ -829,6 +851,7 @@ export function ApiManager() {
               <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-3">
                 <div>
                   <p className="text-xs font-medium text-[var(--text-primary)]">评分权重</p>
+                  <p className="text-[11px] text-[var(--text-muted)] mt-1">这些权重只影响 GUI 里“健康分怎么看”，不会改插件本身的运行行为，也不会写回 `runtime_config.json`。</p>
                 </div>
                 <WeightSlider label="实时" value={weightLive} onChange={setWeightLive} />
                 <WeightSlider label="超时" value={weightTimeout} onChange={setWeightTimeout} />
@@ -841,19 +864,19 @@ export function ApiManager() {
 
         <div className="mb-3 rounded-[var(--radius-sm)] border border-[rgba(255,82,82,0.35)] bg-[rgba(255,82,82,0.08)] px-3 py-2">
           <p className="text-[11px] text-[var(--error)] leading-relaxed">
-            安全提示：导出 API 配置或分享快照前，请确认是否包含 <span className="mono">api_config.json</span>。
-            若不打算把全部 API Key 交给对方，请先删除该文件再分享；一旦泄露，可能需要去各平台删除/更换密钥来降低损失。
+            这里最敏感的是 <span className="mono">api_config.json</span>。如果你只是想分享界面截图、差异结果或快照摘要，不一定要把这个文件一起带出去。
+            一旦把 API Key 发错人，通常就只能去原平台删掉或更换密钥。
           </p>
         </div>
 
         <div className="flex-1 overflow-y-auto pr-1">
           {nodes.length === 0 ? (
             <div className="flex items-center justify-center h-full rounded-[var(--radius)] border border-dashed border-[var(--border-subtle)]">
-              <p className="text-sm text-[var(--text-muted)]">暂无 API 节点，点击“新增节点”开始配置。</p>
+              <p className="text-sm text-[var(--text-muted)]">你这里还没有任何 API 节点。先点“新增节点”，把 URL、Key 和模型名填进去，再测试它可不可用。</p>
             </div>
           ) : displayedIndices.length === 0 ? (
             <div className="flex items-center justify-center h-full rounded-[var(--radius)] border border-dashed border-[var(--border-subtle)]">
-              <p className="text-sm text-[var(--text-muted)]">当前筛选条件下没有匹配节点。</p>
+              <p className="text-sm text-[var(--text-muted)]">当前筛选条件下没有匹配节点。可以清掉搜索词，或者放宽健康等级筛选再试一次。</p>
             </div>
           ) : (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -993,9 +1016,9 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
               {isDuplicate && <span className="text-[10px] px-1.5 py-0.5 rounded bg-[rgba(255,171,64,0.2)] text-[var(--warning)]">重复</span>}
             </div>
             <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-[var(--text-muted)]">
-              <span className="truncate max-w-[240px]">{node.remark || '未填写备注'}</span>
+              <span className="truncate max-w-[240px]">{node.remark || '还没写备注'}</span>
               <span>·</span>
-              <span className="truncate max-w-[360px] mono">{node.apiUrl || '未填写 URL'}</span>
+              <span className="truncate max-w-[360px] mono">{node.apiUrl || '还没填 URL'}</span>
             </div>
           </div>
         </div>
@@ -1019,7 +1042,7 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
             onClick={() => onToggleExpanded(index)}
             className="px-2.5 py-1.5 text-[10px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
           >
-            {isExpanded ? '收起API key栏' : '展开API key栏'}
+              {isExpanded ? '收起 Key 区域' : '展开 Key 区域'}
           </button>
         </div>
       </div>
@@ -1045,7 +1068,7 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
                 value={node.remark}
                 onChange={(e) => onUpdate(index, 'remark', e.target.value)}
                 className="w-full px-2.5 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
-                placeholder="备注"
+                placeholder="写一个你自己看得懂的备注"
               />
             </div>
           </div>

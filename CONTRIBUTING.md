@@ -47,6 +47,7 @@ NekoAI GUI Manager/
 │  │  ├─ EvaluationLab.tsx        # 人格评测实验室（多 API / 多轮次 / 人工打分 / 统计）
 │  │  ├─ MemoryViewer.tsx         # 记忆查看与编辑
 │  │  ├─ HistoryViewer.tsx        # 历史查看与统计（模型主题映射）
+│  │  ├─ UsageManager.tsx         # 群聊用量 / 限流计数管理
 │  │  ├─ CommandManager.tsx       # 命令列表管理
 │  │  ├─ OpsCenter.tsx            # 安全发布中心（快照/模板/自检/审计）
 │  │  ├─ Dashboard.tsx            # 概览页
@@ -58,6 +59,7 @@ NekoAI GUI Manager/
 │  ├─ lib/
 │  │  ├─ types.ts                 # TS 类型定义（含人格 A/B / 评测实验室类型）
 │  │  ├─ tauri-commands.ts        # 前端调用 Tauri 命令封装（含人格 A/B / 评测实验室命令）
+│  │  ├─ human-issues.ts          # 技术术语 -> 人话解释映射（供自检/迁移提醒展示）
 │  │  └─ json-transfer.ts         # 统一 JSON 导入/导出（时间戳命名 + 文件读取）
 │  ├─ stores/
 │  │  └─ uiStore.ts               # UI 持久化设置（主题/缩放/侧栏/漂浮密度）
@@ -72,6 +74,7 @@ NekoAI GUI Manager/
 │  ├─ src/main.rs                 # 注册 Tauri 命令
 │  ├─ src/data_root.rs            # EXE 同级数据目录工具
 │  ├─ src/ops.rs                  # 安全发布中心后端能力
+│  ├─ src/gui_prefs.rs            # GUI 本地偏好（如 API 健康评分权重）
 │  ├─ src/config.rs               # 配置读写（保存时自动快照+审计）
 │  ├─ src/memory.rs               # 记忆读写
 │  ├─ src/history.rs              # 历史读写与导出/导入
@@ -96,6 +99,7 @@ NekoAI GUI Manager/
   - `env-templates/`（环境模板）
   - `diagnostics/`（自检报告）
   - `audit/`（审计日志）
+  - `preferences/`（GUI 本地偏好，如 API 健康评分权重）
   - `personality-ab-tests/`（人格 A/B 快速试跑记录）
   - `personality-eval-lab/experiments/`（人格评测实验室实验记录）
 
@@ -234,9 +238,10 @@ npm install
 以下区域影响面大，改动时请额外谨慎并加强验证：
 
 - `src/pages/ApiManager.tsx`：拖拽排序、activeIndex 映射、批量状态映射
-- `src/pages/ConfigEditor.tsx`：默认值和空配置加载逻辑
+- `src/pages/ConfigEditor.tsx`：schema 驱动字段渲染、导入校验、迁移修复与差异概览
 - `src/hooks/useFileWatcher.ts` + `src/App.tsx`：外部变更提示与刷新逻辑
 - `src-tauri/src/api_test.rs`：连通性测试实现
+- `src-tauri/src/ops.rs`：启动前自检 / 已废弃字段提示 / 快照契约
 
 ### 当前项目约定（务必遵守）
 
@@ -257,7 +262,11 @@ npm install
 3. **配置编辑**：
    - 空配置可加载
    - 修改后可保存
+   - `runtime_schema.json` 能被识别并显示版本 / 字段数
    - runtime 导入/导出可用（导入二级确认）
+   - 导入时未知字段 / 已废弃字段 / 旧枚举值 / 越界值提示正常
+   - “自动修复可修项”可把旧字段或旧值迁到当前写法
+   - “配置差异概览”能正确显示相对默认值 / 相对上次保存的差异
    - 恢复全部默认为二级确认
 4. **人格管理 / 人格评测实验室**：
    - 启用/克隆/删除按钮可用
@@ -278,6 +287,9 @@ npm install
    - 当前文件导入/导出可用（导入二级确认）
 7. **命令管理**：
    - 导入/导出可用（导入二级确认）
+8. **用量管理**：
+   - `group_usage_counts.json` 可加载、修改、保存
+   - 当前周期重置 / 清理非监听群 / 导入导出可用
 8. **外部修改监听**：
    - 修改配置文件后出现提示
    - “刷新页面”可生效

@@ -5,7 +5,7 @@ import { Panel } from '../components/common/Panel';
 import { SummaryCard } from '../components/common/SummaryCard';
 import { useUiStore } from '../stores/uiStore';
 import { getConfig, getSystemInfo, listMemory } from '../lib/tauri-commands';
-import type { RuntimeConfig, ApiNode, Personality, MemoryMeta, SystemInfo } from '../lib/types';
+import type { RuntimeConfig, ApiNode, Personality, MemoryMeta, SystemInfo, RuntimeSchema } from '../lib/types';
 
 const MEMORY_CAPACITY = 50;
 
@@ -23,6 +23,14 @@ function formatTime(iso: string): string {
   return d.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
 
+function formatDurationMs(ms?: number): string {
+  if (ms === undefined || ms === null) return '-';
+  if (ms <= 0) return '关闭';
+  if (ms < 1000) return `${ms} ms`;
+  if (ms < 60000) return `${Math.round(ms / 1000)} 秒`;
+  return `${Math.round(ms / 60000)} 分钟`;
+}
+
 export function Dashboard() {
   const addToast = useUiStore((s) => s.addToast);
   const settings = useUiStore((s) => s.settings);
@@ -34,6 +42,7 @@ export function Dashboard() {
   const [groupMemories, setGroupMemories] = useState<MemoryMeta[]>([]);
   const [privateMemories, setPrivateMemories] = useState<MemoryMeta[]>([]);
   const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
+  const [runtimeSchema, setRuntimeSchema] = useState<RuntimeSchema | null>(null);
 
   useEffect(() => {
     loadAll();
@@ -42,8 +51,9 @@ export function Dashboard() {
   async function loadAll() {
     setLoading(true);
     try {
-      const [rt, api, gp, pp, gm, pm, si] = await Promise.all([
+      const [rt, schema, api, gp, pp, gm, pm, si] = await Promise.all([
         getConfig<RuntimeConfig>('runtime'),
+        getConfig<RuntimeSchema>('runtimeSchema').catch(() => null),
         getConfig<ApiNode[]>('api'),
         getConfig<Personality[]>('groupPersonality'),
         getConfig<Personality[]>('privatePersonality'),
@@ -52,6 +62,7 @@ export function Dashboard() {
         getSystemInfo(),
       ]);
       setRuntime(rt);
+      setRuntimeSchema(schema ?? null);
       setApis(api ?? []);
       setGroupPersonalities(gp ?? []);
       setPrivatePersonalities(pp ?? []);
@@ -94,7 +105,7 @@ export function Dashboard() {
         <StatCard label="当前活跃节点" value={runtime ? `#${runtime.activeApiIndex}` : '-'} icon="⚡" color="var(--success)" />
         <StatCard label="记忆会话数" value={totalMemorySessions} icon="🧠" color="var(--info)" />
         <StatCard label="记忆消息总数" value={totalMessages} icon="💬" color="var(--accent-pink)" />
-        <SummaryCard label="当前概览" value="运行态总览" hint="先看核心状态，再看分布、记忆和文件健康。" />
+        <SummaryCard label="Schema" value={runtimeSchema ? `v${runtimeSchema.schemaVersion}` : '缺失'} hint={runtimeSchema ? `已识别 ${Object.keys(runtimeSchema.fields ?? {}).length} 个配置字段` : '还没读到 runtime_schema.json，说明文件可能缺失或目录没连对'} tone={runtimeSchema ? 'neutral' : 'warning'} />
       </div>
 
       <div className="rounded-[var(--radius)] border border-[var(--border-subtle)] px-4 py-3" style={{ background: 'var(--surface-card)', boxShadow: 'var(--shadow-card)' }}>
@@ -102,32 +113,39 @@ export function Dashboard() {
           <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">监听群组 {runtime?.groups?.length ?? 0}</span>
           <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">群聊人格 {groupPersonalities.length}</span>
           <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">私聊人格 {privatePersonalities.length}</span>
-          <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">文件健康 {systemInfo?.files?.length ?? 0}</span>
+          <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">Schema {runtimeSchema ? `v${runtimeSchema.schemaVersion}` : '缺失'}</span>
+          <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">配置文件检查 {systemInfo?.files?.length ?? 0}</span>
           <div className="flex-1" />
           <button
             onClick={loadAll}
             className="px-3 py-1.5 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--border-subtle)] transition-colors cursor-pointer"
           >
-            🔄 刷新数据
+            🔄 重新读取
           </button>
         </div>
       </div>
 
       <div className={`grid grid-cols-1 xl:grid-cols-2 ${densityGap}`}>
-        <Panel title="核心状态" subtitle="当前昵称、活跃节点、人格和主要能力开关。" icon="⚙">
+        <Panel title="核心状态" subtitle="先看默认模型、人格和几个关键开关，确认机器人现在大概会怎么工作。" icon="⚙">
           <div className="space-y-3">
             <StatusRow label="昵称" value={runtime?.nickName ?? '-'} />
             <StatusRow label="当前 API" value={activeApi ? `#${runtime!.activeApiIndex} ${activeApi.modelName}` : '-'} badge={activeApi?.aiType} />
             <StatusRow label="群聊人格" value={activeGroupPersonality ? `#${runtime!.activeGroupPersonalityIndex} ${activeGroupPersonality.remark}` : '-'} />
             <StatusRow label="私聊人格" value={activePrivatePersonality ? `#${runtime!.activePrivatePersonalityIndex} ${activePrivatePersonality.remark}` : '-'} />
             <StatusRow label="智能路由" value={runtime?.smartRouter?.enabled ? `开启 · ${runtime.smartRouter.mode}` : '关闭'} dot={runtime?.smartRouter?.enabled ? 'var(--success)' : 'var(--text-muted)'} />
+            <StatusRow label="运行时 Schema" value={runtimeSchema ? `v${runtimeSchema.schemaVersion} · ${Object.keys(runtimeSchema.fields ?? {}).length} 字段` : '缺失'} dot={runtimeSchema ? 'var(--success)' : 'var(--error)'} />
             <StatusRow label="记忆压缩" value={runtime?.memorySummary?.enabled ? `开启 · 阈值 ${runtime.memorySummary.threshold}` : '关闭'} dot={runtime?.memorySummary?.enabled ? 'var(--success)' : 'var(--text-muted)'} />
+            <StatusRow label="闲置自动清空" value={formatDurationMs(runtime?.contextAutoForgetMs)} dot={(runtime?.contextAutoForgetMs ?? 0) > 0 ? 'var(--success)' : 'var(--text-muted)'} />
+            <StatusRow label="API 超时" value={formatDurationMs(runtime?.apiTimeoutMs)} />
+            <StatusRow label="处理中提示" value={runtime?.sendProcessingNotice === false ? '关闭' : `开启 · ${formatDurationMs(runtime?.processingNoticeDelayMs ?? 0)}`} dot={runtime?.sendProcessingNotice === false ? 'var(--text-muted)' : 'var(--success)'} />
+            <StatusRow label="失败提示" value={runtime?.sendFailureNotice === false ? '关闭' : `开启 · ${(runtime?.failureNoticeDetailMode ?? 'full')}`} dot={runtime?.sendFailureNotice === false ? 'var(--text-muted)' : 'var(--success)'} />
             <StatusRow label="表情包" value={runtime?.enableMemes ? `开启 · ${Math.round((runtime.memeProb ?? 0) * 100)}%` : '关闭'} dot={runtime?.enableMemes ? 'var(--success)' : 'var(--text-muted)'} />
             <StatusRow label="随机回复" value={runtime ? `${Math.round((runtime.randomReply ?? 0) * 100)}%` : '-'} />
+            <StatusRow label="图片风格" value={`UI ${runtime?.uiStyle ?? 1}`} />
           </div>
         </Panel>
 
-        <Panel title="群组与用户" subtitle="查看监听范围、权限列表和群级映射使用情况。" icon="👥">
+        <Panel title="群组与用户" subtitle="这里能快速看出机器人会在哪些群说话、会拒绝谁、以及哪些群绑了专属模型或人格。" icon="👥">
           <div className="space-y-3">
             <StatusRow label="主人 QQ" value={runtime?.masterQQ?.join(', ') || '-'} />
             <StatusRow label="监听群组" value={`${runtime?.groups?.length ?? 0} 个群`} />
@@ -171,7 +189,7 @@ export function Dashboard() {
       </div>
 
       {systemInfo && (
-        <Panel title="配置文件健康" subtitle="确认关键配置文件是否存在、大小是否正常、最近是否有更新。" icon="🩺">
+        <Panel title="配置文件检查" subtitle="如果这里有文件缺失，先别急着调参数，先把插件目录连对或把缺的文件补回来。" icon="🩺">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -189,7 +207,7 @@ export function Dashboard() {
                     <td className="py-2">
                       <span className="inline-flex items-center gap-1.5 text-xs" style={{ color: f.exists ? 'var(--success)' : 'var(--error)' }}>
                         <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: f.exists ? 'var(--success)' : 'var(--error)' }} />
-                        {f.exists ? '正常' : '缺失'}
+                        {f.exists ? '可读取' : '缺失'}
                       </span>
                     </td>
                     <td className="py-2 text-[var(--text-muted)] text-xs mono">{f.exists ? formatBytes(f.size) : '-'}</td>

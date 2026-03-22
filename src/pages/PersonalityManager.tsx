@@ -135,7 +135,7 @@ export function PersonalityManager() {
     try {
       await saveConfig('runtime', updated);
       setRuntime(updated);
-      addToast('success', `已切换${side === 'group' ? '群聊' : '私聊'}活跃人格为 #${index}`);
+      addToast('success', `已切换${side === 'group' ? '群聊' : '私聊'}默认人格到 #${index}。接下来新的对话会优先按这个人格来回复。`);
     } catch (e: any) {
       addToast('error', `切换失败: ${e?.message ?? e}`);
     }
@@ -148,7 +148,7 @@ export function PersonalityManager() {
       if (runtime) await saveConfig('runtime', runtime);
       setOrigGroup(JSON.stringify(groupList));
       setOrigPrivate(JSON.stringify(privateList));
-      addToast('success', '人格列表已保存');
+      addToast('success', '人格列表已保存。现在这些改动已经真正写回文件了。');
     } catch (e: any) {
       addToast('error', `保存失败: ${e?.message ?? e}`);
     }
@@ -158,7 +158,7 @@ export function PersonalityManager() {
     const list = side === 'group' ? groupList : privateList;
     const filename = side === 'group' ? 'group_personality.json' : 'private_personality.json';
     downloadJsonWithTimestamp(list, filename);
-    addToast('success', `已导出${side === 'group' ? '群聊' : '私聊'}人格配置`);
+    addToast('success', `已导出${side === 'group' ? '群聊' : '私聊'}人格配置。若你只是想分享一个范例，记得先确认里面没有私人设定。`);
   }
 
   async function importPersonality(side: 'group' | 'private') {
@@ -193,7 +193,7 @@ export function PersonalityManager() {
         }
       }
 
-      addToast('success', `已导入${side === 'group' ? '群聊' : '私聊'}人格 ${list.length} 条（请点击保存生效）`);
+      addToast('success', `已导入${side === 'group' ? '群聊' : '私聊'}人格 ${list.length} 条。当前只是载入到编辑区，记得再点保存才会生效。`);
     } catch (e: any) {
       addToast('error', `导入失败: ${e?.message ?? e}`);
     }
@@ -232,19 +232,19 @@ export function PersonalityManager() {
         <StatCard label="私聊人格数" value={privateList.length} icon="👤" color="var(--accent-pink)" />
         <StatCard label="群聊活跃" value={`#${activeGroupIdx}`} icon="⚡" color="var(--success)" />
         <StatCard label="私聊活跃" value={`#${activePrivateIdx}`} icon="⚡" color="var(--info)" />
-        <SummaryCard label="保存状态" value={dirty ? '待保存' : '已同步'} hint={dirty ? '人格或活跃索引有改动' : '当前列表已保存'} tone={dirty ? 'warning' : 'neutral'} />
+        <SummaryCard label="保存状态" value={dirty ? '待保存' : '已同步'} hint={dirty ? '你已经改了人格列表或默认人格，但还没真正写回文件。' : '当前列表已经和文件一致。'} tone={dirty ? 'warning' : 'neutral'} />
       </div>
 
       <div className="rounded-[var(--radius)] border border-[var(--border-subtle)] px-4 py-3" style={{ background: 'var(--surface-card)', boxShadow: 'var(--shadow-card)' }}>
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex-1 min-w-[280px]">
-            <SearchBar value={search} onChange={setSearch} placeholder="搜索人格名称或提示词..." />
+            <SearchBar value={search} onChange={setSearch} placeholder="搜索人格名称或提示词，快速缩小范围..." />
           </div>
           <button
             onClick={() => setShowImportExport((v) => !v)}
             className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] border transition-colors cursor-pointer ${showImportExport ? 'bg-[var(--nav-active-bg)] text-[var(--accent-purple)] border-[var(--accent-purple)]' : 'bg-[var(--bg-elevated)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
           >
-            {showImportExport ? '收起导入导出' : '更多操作'}
+            {showImportExport ? '收起导入导出' : '展开更多操作'}
           </button>
           <button
             onClick={() => addPersonality('group')}
@@ -271,14 +271,14 @@ export function PersonalityManager() {
           <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)]">群聊显示 {filteredGroup.length}/{groupList.length}</span>
           <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)]">私聊显示 {filteredPrivate.length}/{privateList.length}</span>
           {search.trim() ? <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)]">关键词：{search}</span> : null}
-          {dirty ? <span className="ml-auto text-[var(--warning)]">当前有未保存改动</span> : <span className="ml-auto text-[var(--text-muted)]">建议编辑完成后统一保存</span>}
+          {dirty ? <span className="ml-auto text-[var(--warning)]">当前有未保存改动，确认没问题后再统一保存。</span> : <span className="ml-auto text-[var(--text-muted)]">一般做法是先改几项，再一起保存，比较不容易漏。</span>}
         </div>
 
         {showImportExport && (
           <div className="mt-4 grid gap-3 xl:grid-cols-2">
             <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-2">
               <p className="text-xs font-medium text-[var(--text-primary)]">群聊人格导入 / 导出</p>
-              <p className="text-[11px] text-[var(--text-muted)]">适合群聊场景的系统提示词集合。</p>
+              <p className="text-[11px] text-[var(--text-muted)]">适合在群里说话时使用的人格集合。适合做备份、迁移，或者从别的版本拿一套群聊设定过来。</p>
               <ImportExportActions
                 onExport={() => exportPersonality('group')}
                 onImport={() => importPersonality('group')}
@@ -289,7 +289,7 @@ export function PersonalityManager() {
             </div>
             <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-2">
               <p className="text-xs font-medium text-[var(--text-primary)]">私聊人格导入 / 导出</p>
-              <p className="text-[11px] text-[var(--text-muted)]">适合单聊场景的系统提示词集合。</p>
+              <p className="text-[11px] text-[var(--text-muted)]">适合一对一聊天时使用的人格集合。通常语气会更贴近私聊场景，也更适合单独整理。</p>
               <ImportExportActions
                 onExport={() => exportPersonality('private')}
                 onImport={() => importPersonality('private')}
@@ -313,7 +313,7 @@ export function PersonalityManager() {
       <div className={`grid grid-cols-1 xl:grid-cols-2 ${densityClass}`}>
         <PersonalityColumn
           title="群聊人格"
-          subtitle="用于群聊对话、群上下文和群场景风格控制。"
+          subtitle="这里决定机器人在群里说话像谁、怎么说，以及群场景下的整体语气。"
           icon="👥"
           items={filteredGroup}
           activeIndex={activeGroupIdx}
@@ -325,7 +325,7 @@ export function PersonalityManager() {
         />
         <PersonalityColumn
           title="私聊人格"
-          subtitle="用于私聊对话、私密场景和一对一语气控制。"
+          subtitle="这里决定机器人在私聊里怎么说话。通常会比群聊更贴近一对一场景。"
           icon="👤"
           items={filteredPrivate}
           activeIndex={activePrivateIdx}

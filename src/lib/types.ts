@@ -8,39 +8,24 @@ export interface ApiNode {
 }
 
 // ===== Runtime Config =====
-export interface SmartRouterRule {
-  groups?: string[];
-  users?: string[];
-  apiIndex: number;
-  priority: number;
-}
+export type SmartRouterMode = 'failover' | 'round-robin' | 'random';
 
 export interface SmartRouter {
   enabled: boolean;
-  mode: string;
-  defaultApiIndex: number;
+  mode: SmartRouterMode;
   retryCount?: number;
   retryDelay?: number;
   excludeIndices?: number[];
-  rules?: SmartRouterRule[];
-  primaryApiIndex?: number;
-  fallbackApiIndices?: number[];
-  degradeStrategy?: 'on-failure' | 'on-timeout' | 'on-any-error';
-  maxSwitches?: number;
 }
 
 export interface MemorySummary {
   enabled: boolean;
   threshold: number;
-  model?: string;
-  maxSummaryLength?: number;
   summaryPrompt?: string;
 }
 
 export interface RequestQueue {
   maxConcurrent: number;
-  retryAttempts?: number;
-  retryDelay?: number;
 }
 
 export interface ApiParams {
@@ -57,6 +42,8 @@ export interface RuntimeConfig {
   activeApiIndex: number;
   activeGroupPersonalityIndex: number;
   activePrivatePersonalityIndex: number;
+  forwardModelList?: boolean;
+  modelListImageEnabled?: boolean;
   groups: string[];
   allowPrivateTalkingUsers: string[];
   userBlacklist: string[];
@@ -68,14 +55,24 @@ export interface RuntimeConfig {
   memeProb: number;
   logLevel: string;
   privateRefuse: string;
+  memesPath?: string;
   sleepTime?: number;
   singleAskSleep?: number;
   singleTalkWaiting?: number;
+  apiTimeoutMs?: number;
+  sendProcessingNotice?: boolean;
+  processingNoticeText?: string;
+  processingNoticeDelayMs?: number;
+  sendFailureNotice?: boolean;
+  failureNoticeDetailMode?: 'full' | 'brief' | 'off';
+  generationFailedText?: string;
   forwardMaxLength?: number;
   forwardMaxSegments?: number;
-  forwardStrategy?: string;
+  forwardStrategy?: 'auto' | 'on' | 'off';
   eachLetterCost?: number;
   groupMentionWait?: number;
+  contextAutoForgetMs?: number;
+  uiStyle?: number;
   groupLimits: Record<string, number>;
   groupPersonalityMap: Record<string, number>;
   groupApiMap: Record<string, number>;
@@ -83,12 +80,61 @@ export interface RuntimeConfig {
   memorySummary: MemorySummary;
   requestQueue: RequestQueue;
   apiParams: ApiParams;
-  apiHealthWeights?: {
-    liveWeight?: number;
-    historyWeight?: number;
-    timeoutWeight?: number;
-    jitterWeight?: number;
-  };
+}
+
+export interface ApiHealthWeights {
+  liveWeight: number;
+  historyWeight: number;
+  timeoutWeight: number;
+  jitterWeight: number;
+}
+
+export interface UsageData {
+  periodId: string;
+  counts: Record<string, number>;
+}
+
+export interface RuntimeSchemaSection {
+  id: string;
+  title: string;
+  summary: string;
+  mode: 'common' | 'advanced' | 'both';
+  fields: string[];
+}
+
+export interface RuntimeSchemaField {
+  title: string;
+  type: string;
+  description: string;
+  default?: unknown;
+  enum?: Array<string | number | boolean>;
+  minimum?: number;
+  maximum?: number;
+  step?: number;
+  ui?: string;
+  placeholder?: string;
+  keyPlaceholder?: string;
+  valuePlaceholder?: string;
+  rows?: number;
+  displayAsPercentage?: boolean;
+  deprecatedValues?: Record<string, {
+    replacedBy?: string;
+    note?: string;
+  }>;
+}
+
+export interface RuntimeSchemaDeprecatedField {
+  replacedBy?: string;
+  note?: string;
+}
+
+export interface RuntimeSchema {
+  schemaVersion: number;
+  plugin: string;
+  sections: RuntimeSchemaSection[];
+  allowAdditionalPaths?: string[];
+  deprecatedFields?: Record<string, RuntimeSchemaDeprecatedField>;
+  fields: Record<string, RuntimeSchemaField>;
 }
 
 // ===== Personality =====

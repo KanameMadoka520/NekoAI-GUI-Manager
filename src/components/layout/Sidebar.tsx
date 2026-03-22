@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-export type PageId = 'dashboard' | 'api' | 'config' | 'personality' | 'evaluation' | 'memory' | 'history' | 'commands' | 'ops';
+export type PageId = 'dashboard' | 'api' | 'config' | 'personality' | 'evaluation' | 'memory' | 'history' | 'usage' | 'commands' | 'ops';
 
 interface NavItem {
   id: PageId;
@@ -17,8 +17,9 @@ const navItems: NavItem[] = [
   { id: 'evaluation', icon: '📊', label: '人格评测', shortcut: '5' },
   { id: 'memory', icon: '🧠', label: '长期记忆', shortcut: '6' },
   { id: 'history', icon: '📜', label: '历史记录', shortcut: '7' },
-  { id: 'commands', icon: '📋', label: '命令管理', shortcut: '8' },
-  { id: 'ops', icon: '🛡️', label: '安全发布', shortcut: '9' },
+  { id: 'usage', icon: '⏱️', label: '用量管理', shortcut: '8' },
+  { id: 'commands', icon: '📋', label: '命令管理', shortcut: '9' },
+  { id: 'ops', icon: '🛡️', label: '安全发布', shortcut: '0' },
 ];
 
 interface SidebarProps {

@@ -83,7 +83,7 @@ export function Setup({ onComplete }: SetupProps) {
           <span className="text-6xl block mb-3">🐱</span>
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">NekoAI 管理面板</h1>
           <p className="text-sm text-[var(--text-muted)] mt-1">
-            {isReconfig ? '重新选择插件目录' : '首次运行设置'}
+            {isReconfig ? '重新连接插件目录' : '第一次使用前，先把插件目录连上'}
           </p>
         </div>
 
@@ -91,10 +91,10 @@ export function Setup({ onComplete }: SetupProps) {
         <div className="space-y-4">
           <div>
             <label className="text-sm text-[var(--text-secondary)] mb-2 block">
-              请选择 NekoAI 插件目录
+              请选择 NekoAI 插件所在的文件夹
             </label>
             <p className="text-xs text-[var(--text-muted)] mb-3">
-              该目录应包含 <code className="mono text-[var(--accent-purple)]">runtime_config.json</code> 或 <code className="mono text-[var(--accent-purple)]">api_config.json</code> 等配置文件
+              这个文件夹里通常会有 <code className="mono text-[var(--accent-purple)]">runtime_config.json</code>、<code className="mono text-[var(--accent-purple)]">runtime_schema.json</code>、<code className="mono text-[var(--accent-purple)]">api_config.json</code> 这些配置文件。选对目录后，GUI 才能读取和管理插件配置。
             </p>
             <div className="flex gap-2">
               <input
@@ -135,13 +135,13 @@ export function Setup({ onComplete }: SetupProps) {
                 : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed'
               }`}
           >
-            {validating ? '正在验证目录...' : isReconfig ? '确认并重新连接' : '开始使用'}
+            {validating ? '正在检查这个目录能不能正常使用...' : isReconfig ? '用这个目录重新连接' : '连接这个目录'}
           </button>
 
           {/* Tips */}
           <div className="pt-2 border-t border-[var(--border-subtle)]">
             <p className="text-[10px] text-[var(--text-muted)] leading-relaxed">
-              💡 提示：插件目录通常在 Koishi 的 <code className="mono">plugins</code> 文件夹下，例如 <code className="mono text-[var(--accent-purple)]">Koishi\\plugins\\koishi-plugin-Enhanced-NekoAI</code>
+              💡 常见位置：插件目录通常在 Koishi 的 <code className="mono">plugins</code> 文件夹下，例如 <code className="mono text-[var(--accent-purple)]">Koishi\\plugins\\koishi-plugin-Enhanced-NekoAI</code>。如果你不确定，就先打开 Koishi 的插件目录，再从里面找到 NekoAI。
             </p>
           </div>
         </div>

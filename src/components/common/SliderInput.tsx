@@ -6,9 +6,10 @@ interface SliderInputProps {
   step?: number;
   label?: string;
   suffix?: string;
+  displayValue?: string;
 }
 
-export function SliderInput({ value, onChange, min = 0, max = 1, step = 0.01, label, suffix = '' }: SliderInputProps) {
+export function SliderInput({ value, onChange, min = 0, max = 1, step = 0.01, label, suffix = '', displayValue }: SliderInputProps) {
   const pct = ((value - min) / (max - min)) * 100;
 
   return (
@@ -27,7 +28,7 @@ export function SliderInput({ value, onChange, min = 0, max = 1, step = 0.01, la
         }}
       />
       <span className="text-sm text-[var(--accent-purple)] mono min-w-[50px] text-right">
-        {value.toFixed(step < 1 ? 2 : 0)}{suffix}
+        {displayValue ?? `${value.toFixed(step < 1 ? 2 : 0)}${suffix}`}
       </span>
     </div>
   );

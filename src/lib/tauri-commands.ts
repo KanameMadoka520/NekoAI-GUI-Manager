@@ -3,6 +3,7 @@ import type {
   MemoryMeta, HistoryFileMeta, SearchFilters, SearchResult,
   SystemInfo, PingResult, SnapshotMeta, SnapshotDiff,
   DeployPackageResult, SelfCheckReport, ApiHistoryMetric,
+  ApiHealthWeights,
   PersonalityAbRunRequest, PersonalityAbRecord, PersonalityAbTestSummary,
   RunPersonalityEvalExperimentRequest, PersonalityEvalExperimentSummary, PersonalityEvalExperimentRecord,
   SetPersonalityEvalScoreRequest,
@@ -23,6 +24,12 @@ export const setPluginDir = (dir: string) =>
 
 export const openPathInExplorer = (path: string) =>
   invoke<void>('open_path_in_explorer', { path });
+
+export const getApiHealthWeights = () =>
+  invoke<ApiHealthWeights>('get_api_health_weights');
+
+export const saveApiHealthWeights = (weights: ApiHealthWeights) =>
+  invoke<void>('save_api_health_weights', { weights });
 
 // ===== Memory =====
 export const listMemory = (memType: string) =>

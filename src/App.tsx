@@ -12,6 +12,7 @@ import { useKeyboardShortcuts, shortcutList } from './hooks/useKeyboardShortcuts
 import { useFileWatcher } from './hooks/useFileWatcher';
 import { setPluginDir, runStartupSelfCheck, applySelfCheckFixes } from './lib/tauri-commands';
 import type { SelfCheckReport } from './lib/types';
+import { explainSelfCheckItem } from './lib/human-issues';
 import { useUiStore } from './stores/uiStore';
 
 const Dashboard = lazy(() => import('./pages/Dashboard').then((m) => ({ default: m.Dashboard })));
@@ -22,6 +23,7 @@ const MemoryViewer = lazy(() => import('./pages/MemoryViewer').then((m) => ({ de
 const ConfigEditor = lazy(() => import('./pages/ConfigEditor').then((m) => ({ default: m.ConfigEditor })));
 const ApiManager = lazy(() => import('./pages/ApiManager').then((m) => ({ default: m.ApiManager })));
 const HistoryViewer = lazy(() => import('./pages/HistoryViewer').then((m) => ({ default: m.HistoryViewer })));
+const UsageManager = lazy(() => import('./pages/UsageManager').then((m) => ({ default: m.UsageManager })));
 const OpsCenter = lazy(() => import('./pages/OpsCenter').then((m) => ({ default: m.OpsCenter })));
 const pageTitles: Record<PageId, { title: string; subtitle: string }> = {
   dashboard: { title: '概览', subtitle: '系统状态总览' },
@@ -31,6 +33,7 @@ const pageTitles: Record<PageId, { title: string; subtitle: string }> = {
   evaluation: { title: '人格评测实验室', subtitle: '多 API / 多轮次 / 多维人工打分 / 统计报表' },
   memory: { title: '长期记忆', subtitle: '查看和管理对话记忆' },
   history: { title: '历史记录', subtitle: '解析和分析对话历史日志' },
+  usage: { title: '用量管理', subtitle: '管理 12 小时周期计数与群限流使用情况' },
   commands: { title: '命令管理', subtitle: '管理命令回避列表' },
   ops: { title: '安全发布中心', subtitle: '快照、部署包、环境模板与启动自检' },
 };
@@ -176,7 +179,7 @@ function App() {
         await setPluginDir(savedDir);
       }
 
-      if (activePage === 'config' || activePage === 'api' || activePage === 'personality' || activePage === 'evaluation' || activePage === 'commands' || activePage === 'dashboard' || activePage === 'memory' || activePage === 'history' || activePage === 'ops') {
+      if (activePage === 'config' || activePage === 'api' || activePage === 'personality' || activePage === 'evaluation' || activePage === 'commands' || activePage === 'dashboard' || activePage === 'memory' || activePage === 'history' || activePage === 'usage' || activePage === 'ops') {
         setRefreshKey((k) => k + 1);
       }
     } catch {
@@ -301,6 +304,7 @@ function App() {
                 {activePage === 'config' && <ConfigEditor key={refreshKey} />}
                 {activePage === 'api' && <ApiManager key={refreshKey} />}
                 {activePage === 'history' && <HistoryViewer key={refreshKey} />}
+                {activePage === 'usage' && <UsageManager key={refreshKey} />}
                 {activePage === 'ops' && <OpsCenter key={refreshKey} />}
               </Suspense>
             </div>
@@ -369,11 +373,19 @@ function App() {
                 {(startupCheck?.items ?? []).length === 0 ? (
                   <p className="text-xs text-[var(--text-muted)]">无异常项</p>
                 ) : (
-                  startupCheck!.items.map((item, idx) => (
-                    <p key={`${item.code}-${idx}`} className="text-xs text-[var(--text-secondary)]">
-                      [{item.level}] {item.message}
-                    </p>
-                  ))
+                  startupCheck!.items.map((item, idx) => {
+                    const explained = explainSelfCheckItem(item);
+                    return (
+                      <div key={`${item.code}-${idx}`} className="text-xs text-[var(--text-secondary)] leading-relaxed rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2">
+                        <div className="flex items-start gap-2 flex-wrap">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded border mono text-[10px] ${item.level === 'error' ? 'border-[rgba(255,82,82,0.35)] text-[var(--error)]' : item.level === 'warn' ? 'border-[rgba(255,171,64,0.35)] text-[var(--warning)]' : 'border-[var(--border-subtle)] text-[var(--text-muted)]'}`}>
+                            {explained.techLabel}
+                          </span>
+                          <span className="flex-1 min-w-[240px]">：{explained.humanText}</span>
+                        </div>
+                      </div>
+                    );
+                  })
                 )}
               </div>
               <div className="flex justify-end gap-2">
