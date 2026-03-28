@@ -557,7 +557,7 @@ npx vite
 | 记忆与摘要 | 启用开关、压缩阈值、摘要模型、最大摘要长度 |
 | 智能路由 | 启用开关、路由模式(round-robin/random/priority/least-latency)、默认API索引 |
 | 表情包 | 启用开关、概率(滑块) |
-| 请求队列 | 最大并发数、重试次数、重试延迟 |
+| 请求队列 | 最大并发数、最大排队数、队列已满提示文案 |
 | 群级映射 | 群人格映射(群号→索引)、群API映射(群号→索引) |
 | API 参数 | 自定义参数键值对(temperature/maxTokens等) |
 | 转发设置 | 转发策略、最大长度、最大分段数、@等待时间、@专注回答模式 |
@@ -567,6 +567,10 @@ npx vite
 - **导入/导出** — 支持 `runtime_config.json` 的 JSON 导入/导出；导入为二级确认（两次确认）后执行，导入后可继续编辑并保存。
 - **恢复全部默认** — 改为二级确认（两次确认）后执行，降低误操作风险。
 - **Schema 驱动开关** — 只要插件在 `runtime_schema.json` 中声明了布尔字段，例如 `groupMentionFocusMode`（群聊@专注回答模式），GUI 就会在对应章节自动显示开关控件；旧配置缺少该字段时，也会按 GUI 侧默认值回填显示。
+- **队列配置可视化** — 在“请求队列”章节可直接编辑：
+  - `requestQueue.maxConcurrent`：最大并发数
+  - `requestQueue.maxPending`：最大排队数，`0` 为不限制
+  - `requestQueue.overflowText`：队列已满时发送给用户的提示文案（支持占位符）
 
 ### 人格管理
 

@@ -84,7 +84,11 @@ const defaults: Partial<RuntimeConfig> = {
     excludeIndices: [],
   },
   memorySummary: { enabled: false, threshold: 30, summaryPrompt: '' },
-  requestQueue: { maxConcurrent: 3 },
+  requestQueue: {
+    maxConcurrent: 3,
+    maxPending: 10,
+    overflowText: 'NEKOAI请求队列已达上限，当前前方有{ahead}个请求未完成。请稍后重试。',
+  },
   apiParams: {
     temperature: 0.65,
     maxTokens: 32000,
@@ -126,6 +130,10 @@ function normalizeMemorySummary(input: RuntimeConfig['memorySummary'] | undefine
 function normalizeRequestQueue(input: RuntimeConfig['requestQueue'] | undefined): RuntimeConfig['requestQueue'] {
   return {
     maxConcurrent: Number.isFinite(Number(input?.maxConcurrent)) ? Number(input?.maxConcurrent) : 3,
+    maxPending: Number.isFinite(Number(input?.maxPending)) ? Number(input?.maxPending) : 10,
+    overflowText: typeof input?.overflowText === 'string' && input.overflowText.trim()
+      ? input.overflowText
+      : 'NEKOAI请求队列已达上限，当前前方有{ahead}个请求未完成。请稍后重试。',
   };
 }
 
@@ -1144,9 +1152,11 @@ export function ConfigEditor() {
           )}
 
           {visibleSections.some((s) => s.id === 'queue') && (
-            <SectionCard id="queue" title={sectionMetaMap.get('queue')?.label ?? '请求队列'} icon="📤" summary={sectionMetaMap.get('queue')?.summary ?? '当前插件真实消费的是最大并发数，其它重试逻辑在 API 路由层处理。'} refs={sectionRefs}>
+            <SectionCard id="queue" title={sectionMetaMap.get('queue')?.label ?? '请求队列'} icon="📤" summary={sectionMetaMap.get('queue')?.summary ?? '可配置最大并发数、最大排队长度，以及队列满时发给用户的提示文案。'} refs={sectionRefs}>
               {renderSchemaField('requestQueue.maxConcurrent', { min: 1 })}
-              <InlineNote>队列配置当前只影响并发上限。请求失败后的重试由智能路由中的 retryCount / retryDelay 控制。</InlineNote>
+              {renderSchemaField('requestQueue.maxPending', { min: 0 })}
+              {renderSchemaField('requestQueue.overflowText', { asTextArea: true, rows: 3 })}
+              <InlineNote>队列配置当前会影响最大并发数、最大排队数，以及队列满时的自动撤回提示文案。请求失败后的重试仍由智能路由中的 retryCount / retryDelay 控制。</InlineNote>
             </SectionCard>
           )}
 

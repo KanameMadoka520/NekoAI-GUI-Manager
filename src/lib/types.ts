@@ -26,6 +26,8 @@ export interface MemorySummary {
 
 export interface RequestQueue {
   maxConcurrent: number;
+  maxPending?: number;
+  overflowText?: string;
 }
 
 export interface ApiParams {

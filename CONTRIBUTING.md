@@ -272,6 +272,7 @@ npm install
    - 修改后可保存
    - `runtime_schema.json` 能被识别并显示版本 / 字段数
    - 新增 schema 字段（例如 `groupMentionFocusMode`）能在对应章节真实渲染，并可在 GUI 中切换
+   - 队列相关字段（如 `requestQueue.maxConcurrent` / `requestQueue.maxPending` / `requestQueue.overflowText`）能在“请求队列”章节真实渲染并保存
    - runtime 导入/导出可用（导入二级确认）
    - 导入时未知字段 / 已废弃字段 / 旧枚举值 / 越界值提示正常
    - “自动修复可修项”可把旧字段或旧值迁到当前写法
