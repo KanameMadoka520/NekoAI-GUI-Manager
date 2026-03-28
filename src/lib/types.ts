@@ -71,6 +71,7 @@ export interface RuntimeConfig {
   forwardStrategy?: 'auto' | 'on' | 'off';
   eachLetterCost?: number;
   groupMentionWait?: number;
+  groupMentionFocusMode?: boolean;
   contextAutoForgetMs?: number;
   uiStyle?: number;
   groupLimits: Record<string, number>;
