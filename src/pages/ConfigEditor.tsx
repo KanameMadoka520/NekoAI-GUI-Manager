@@ -1192,11 +1192,12 @@ export function ConfigEditor() {
             </SectionCard>
           )}
 
-          <SectionCard id="forward" title={sectionMetaMap.get('forward')?.label ?? '转发设置'} icon="📨" summary={sectionMetaMap.get('forward')?.summary ?? '长文本转发策略、最大长度、最大分段与 @ 等待。'} refs={sectionRefs}>
+          <SectionCard id="forward" title={sectionMetaMap.get('forward')?.label ?? '转发设置'} icon="📨" summary={sectionMetaMap.get('forward')?.summary ?? '长文本转发策略、最大长度、最大分段、@等待与@专注回答模式。'} refs={sectionRefs}>
             {renderSchemaField('forwardStrategy')}
             {renderSchemaField('forwardMaxLength', { min: 100 })}
             {renderSchemaField('forwardMaxSegments', { min: 1 })}
             {renderSchemaField('groupMentionWait', { min: 0 })}
+            {renderSchemaField('groupMentionFocusMode')}
             {renderSchemaField('forwardModelList')}
             {renderSchemaField('modelListImageEnabled')}
             {renderSchemaField('uiStyle')}

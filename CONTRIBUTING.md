@@ -218,6 +218,14 @@ npm install
 - 类型导入用 `import type`
 - 尽量避免 `any`
 - 变更数据结构时同步更新 `src/lib/types.ts`
+- 如果插件新增运行时配置字段，至少同步这三处：
+  - `src/lib/types.ts` 中的 `RuntimeConfig`
+  - `src/pages/ConfigEditor.tsx` 中的 `defaults` 与 `normalizeRuntimeConfig()`
+  - 确认对应 schema 字段已经在页面章节里被实际渲染，而不是只存在于类型和默认值中
+
+例如这次新增的 `groupMentionFocusMode`：
+
+- 插件在 `runtime_schema.json` 中声明字段后，GUI 侧除了类型和默认值，还要把它挂进 ConfigEditor 的“转发设置”章节，否则用户虽然能导入/识别该字段，却无法直接在 GUI 中切换开关。
 
 ### 8.3 UI 与状态
 
@@ -263,6 +271,7 @@ npm install
    - 空配置可加载
    - 修改后可保存
    - `runtime_schema.json` 能被识别并显示版本 / 字段数
+   - 新增 schema 字段（例如 `groupMentionFocusMode`）能在对应章节真实渲染，并可在 GUI 中切换
    - runtime 导入/导出可用（导入二级确认）
    - 导入时未知字段 / 已废弃字段 / 旧枚举值 / 越界值提示正常
    - “自动修复可修项”可把旧字段或旧值迁到当前写法
