@@ -42,6 +42,18 @@ export interface RequestQueue {
   overflowText?: string;
 }
 
+export interface ImageQuotaUserLimit {
+  generateLimit?: number;
+  editLimit?: number;
+}
+
+export interface ImageQuotaConfig {
+  enabled: boolean;
+  defaultGenerateLimit: number;
+  defaultEditLimit: number;
+  userLimits: Record<string, ImageQuotaUserLimit>;
+}
+
 export interface ApiParams {
   temperature?: number;
   maxTokens?: number;
@@ -89,6 +101,7 @@ export interface RuntimeConfig {
   groupMentionFocusMode?: boolean;
   contextAutoForgetMs?: number;
   uiStyle?: number;
+  imageQuota?: ImageQuotaConfig;
   groupLimits: Record<string, number>;
   groupPersonalityMap: Record<string, number>;
   groupApiMap: Record<string, number>;
@@ -108,6 +121,16 @@ export interface ApiHealthWeights {
 export interface UsageData {
   periodId: string;
   counts: Record<string, number>;
+}
+
+export interface ImageUsageUserData {
+  generate: number;
+  edit: number;
+}
+
+export interface ImageUsageData {
+  periodId: string;
+  users: Record<string, ImageUsageUserData>;
 }
 
 export interface RuntimeSchemaSection {

@@ -74,6 +74,12 @@ const defaults: Partial<RuntimeConfig> = {
   groupMentionWait: 0,
   groupMentionFocusMode: true,
   uiStyle: 1,
+  imageQuota: {
+    enabled: false,
+    defaultGenerateLimit: 0,
+    defaultEditLimit: 0,
+    userLimits: {},
+  },
   groupLimits: {},
   groupPersonalityMap: {},
   groupApiMap: {},
@@ -135,6 +141,26 @@ function normalizeRequestQueue(input: RuntimeConfig['requestQueue'] | undefined)
     overflowText: typeof input?.overflowText === 'string' && input.overflowText.trim()
       ? input.overflowText
       : 'NEKOAI请求队列已达上限，当前前方有{ahead}个请求未完成。请稍后重试。',
+  };
+}
+
+function normalizeImageQuota(input: RuntimeConfig['imageQuota'] | undefined): NonNullable<RuntimeConfig['imageQuota']> {
+  const userLimits: NonNullable<RuntimeConfig['imageQuota']>['userLimits'] = {};
+  if (input?.userLimits && typeof input.userLimits === 'object') {
+    for (const [uid, rawRule] of Object.entries(input.userLimits)) {
+      if (!uid.trim() || !rawRule || typeof rawRule !== 'object' || Array.isArray(rawRule)) continue;
+      const rule = rawRule as { generateLimit?: unknown; editLimit?: unknown };
+      userLimits[uid] = {
+        generateLimit: Number.isFinite(Number(rule.generateLimit)) ? Math.max(0, Math.floor(Number(rule.generateLimit))) : 0,
+        editLimit: Number.isFinite(Number(rule.editLimit)) ? Math.max(0, Math.floor(Number(rule.editLimit))) : 0,
+      };
+    }
+  }
+  return {
+    enabled: input?.enabled === true,
+    defaultGenerateLimit: Number.isFinite(Number(input?.defaultGenerateLimit)) ? Math.max(0, Math.floor(Number(input?.defaultGenerateLimit))) : 0,
+    defaultEditLimit: Number.isFinite(Number(input?.defaultEditLimit)) ? Math.max(0, Math.floor(Number(input?.defaultEditLimit))) : 0,
+    userLimits,
   };
 }
 
@@ -200,6 +226,7 @@ function normalizeRuntimeConfig(input?: Partial<RuntimeConfig> | null): RuntimeC
     groupMentionFocusMode: merged.groupMentionFocusMode !== undefined ? !!merged.groupMentionFocusMode : true,
     contextAutoForgetMs: Number.isFinite(Number(merged.contextAutoForgetMs)) ? Number(merged.contextAutoForgetMs) : 600000,
     uiStyle: Number.isFinite(Number(merged.uiStyle)) ? Number(merged.uiStyle) : 1,
+    imageQuota: normalizeImageQuota(merged.imageQuota),
     groupLimits: merged.groupLimits && typeof merged.groupLimits === 'object' ? merged.groupLimits : {},
     groupPersonalityMap: merged.groupPersonalityMap && typeof merged.groupPersonalityMap === 'object' ? merged.groupPersonalityMap : {},
     groupApiMap: merged.groupApiMap && typeof merged.groupApiMap === 'object' ? merged.groupApiMap : {},

@@ -12,6 +12,7 @@ fn config_key_to_filename(key: &str) -> Result<&str, String> {
         "runtimeSchema" => Ok("runtime_schema.json"),
         "api" => Ok("api_config.json"),
         "imageApi" => Ok("image_api_config.json"),
+        "imageUsage" => Ok("image_usage_counts.json"),
         "groupPersonality" => Ok("group_personality.json"),
         "privatePersonality" => Ok("private_personality.json"),
         "commands" => Ok("commands.json"),
@@ -87,7 +88,7 @@ pub struct SystemInfo {
 #[tauri::command]
 pub fn get_system_info(state: State<'_, AppState>) -> Result<SystemInfo, String> {
     let dir = state.get_plugin_dir()?;
-    let keys = vec!["runtime", "runtimeSchema", "api", "imageApi", "groupPersonality", "privatePersonality", "commands", "usage"];
+    let keys = vec!["runtime", "runtimeSchema", "api", "imageApi", "groupPersonality", "privatePersonality", "commands", "usage", "imageUsage"];
 
     let files: Vec<FileHealth> = keys
         .iter()
