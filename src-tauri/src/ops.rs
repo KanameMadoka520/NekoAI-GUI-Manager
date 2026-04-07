@@ -34,6 +34,15 @@ fn write_json(path: &Path, data: &Value) -> Result<(), String> {
     fs::write(path, content).map_err(|e| format!("Write {} failed: {}", path.display(), e))
 }
 
+fn default_fixable_file_content(filename: &str) -> Option<Value> {
+    match filename {
+        // 图像节点配置缺失时，安全地补一个空数组即可。
+        // 这样不会伪造示例 key，也能让 activeImageApiIndex 的自检/修复回到正常状态。
+        "image_api_config.json" => Some(json!([])),
+        _ => None,
+    }
+}
+
 fn snapshot_manifest_path(snapshot_dir: &Path) -> PathBuf {
     snapshot_dir.join("manifest.json")
 }
@@ -518,7 +527,7 @@ pub fn run_startup_self_check(state: State<'_, AppState>) -> Result<SelfCheckRep
                 "file.missing",
                 "error",
                 format!("缺失文件: {}", filename),
-                false,
+                default_fixable_file_content(filename).is_some(),
             );
             continue;
         }
@@ -665,8 +674,20 @@ pub fn apply_self_check_fixes(state: State<'_, AppState>) -> Result<Vec<String>,
         return Ok(vec!["runtime_config.json 不存在，跳过修复".to_string()]);
     }
 
-    let mut rt = read_json_file(&runtime_path)?;
     let mut changed: Vec<String> = Vec::new();
+
+    for filename in SNAPSHOT_KEYS {
+        let path = plugin_file(&plugin_dir, filename);
+        if path.exists() {
+            continue;
+        }
+        if let Some(default_content) = default_fixable_file_content(filename) {
+            write_json(&path, &default_content)?;
+            changed.push(format!("创建缺失文件: {}", filename));
+        }
+    }
+
+    let mut rt = read_json_file(&runtime_path)?;
 
     let api_len = read_file_if_exists(&plugin_file(&plugin_dir, "api_config.json"))?
         .and_then(|v| v.as_array().map(|a| a.len() as i64))
@@ -686,36 +707,38 @@ pub fn apply_self_check_fixes(state: State<'_, AppState>) -> Result<Vec<String>,
     };
 
     if let Some(obj) = rt.as_object_mut() {
-        let api_old = obj.get("activeApiIndex").and_then(|v| v.as_i64()).unwrap_or(0);
+        let api_raw = obj.get("activeApiIndex").and_then(|v| v.as_i64());
+        let api_old = api_raw.unwrap_or(0);
         let api_new = clamp(api_old, api_len);
-        if api_old != api_new {
+        if api_raw.is_none() || api_old != api_new {
             obj.insert("activeApiIndex".to_string(), json!(api_new));
             changed.push(format!("activeApiIndex: {} -> {}", api_old, api_new));
         }
 
-        let image_api_old = obj.get("activeImageApiIndex").and_then(|v| v.as_i64()).unwrap_or(0);
+        let image_api_raw = obj.get("activeImageApiIndex").and_then(|v| v.as_i64());
+        let image_api_old = image_api_raw.unwrap_or(0);
         let image_api_new = clamp(image_api_old, image_api_len);
-        if image_api_old != image_api_new {
+        if image_api_raw.is_none() || image_api_old != image_api_new {
             obj.insert("activeImageApiIndex".to_string(), json!(image_api_new));
             changed.push(format!("activeImageApiIndex: {} -> {}", image_api_old, image_api_new));
         }
 
-        let gp_old = obj
+        let gp_raw = obj
             .get("activeGroupPersonalityIndex")
-            .and_then(|v| v.as_i64())
-            .unwrap_or(0);
+            .and_then(|v| v.as_i64());
+        let gp_old = gp_raw.unwrap_or(0);
         let gp_new = clamp(gp_old, gp_len);
-        if gp_old != gp_new {
+        if gp_raw.is_none() || gp_old != gp_new {
             obj.insert("activeGroupPersonalityIndex".to_string(), json!(gp_new));
             changed.push(format!("activeGroupPersonalityIndex: {} -> {}", gp_old, gp_new));
         }
 
-        let pp_old = obj
+        let pp_raw = obj
             .get("activePrivatePersonalityIndex")
-            .and_then(|v| v.as_i64())
-            .unwrap_or(0);
+            .and_then(|v| v.as_i64());
+        let pp_old = pp_raw.unwrap_or(0);
         let pp_new = clamp(pp_old, pp_len);
-        if pp_old != pp_new {
+        if pp_raw.is_none() || pp_old != pp_new {
             obj.insert("activePrivatePersonalityIndex".to_string(), json!(pp_new));
             changed.push(format!("activePrivatePersonalityIndex: {} -> {}", pp_old, pp_new));
         }

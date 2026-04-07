@@ -157,6 +157,30 @@ function appendXaiImageEditSuffix(url: string) {
   return appendKnownSuffix(url, '/v1/images/edits', /\/v1\/images\/edits(?:[/?#]|$)/i);
 }
 
+const IMAGE_ASPECT_RATIO_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: '', label: '默认比例（沿用命令或节点）' },
+  { value: 'auto', label: 'auto（自动）' },
+  { value: '1:1', label: '1:1（正方形）' },
+  { value: '16:9', label: '16:9（横屏）' },
+  { value: '9:16', label: '9:16（竖屏）' },
+  { value: '4:3', label: '4:3（横向标准）' },
+  { value: '3:4', label: '3:4（纵向标准）' },
+  { value: '3:2', label: '3:2（横向摄影）' },
+  { value: '2:3', label: '2:3（纵向摄影）' },
+  { value: '2:1', label: '2:1（超宽横幅）' },
+  { value: '1:2', label: '1:2（超长竖幅）' },
+  { value: '19.5:9', label: '19.5:9（手机横屏）' },
+  { value: '9:19.5', label: '9:19.5（手机竖屏）' },
+  { value: '20:9', label: '20:9（超长横屏）' },
+  { value: '9:20', label: '9:20（超长竖屏）' },
+];
+
+const IMAGE_RESOLUTION_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: '', label: '默认清晰度（沿用命令或节点）' },
+  { value: '1k', label: '1k（标准）' },
+  { value: '2k', label: '2k（高清）' },
+];
+
 function getLevelMeta(level: NodeHealth['level'] | undefined) {
   if (level === 'healthy') {
     return {
@@ -1354,7 +1378,7 @@ function ImageApiManagerPanel({
         </div>
       </Panel>
 
-      <div className="w-full">
+      <div className="flex-1 min-h-0 overflow-y-auto pr-1">
         <Panel title="图像节点列表" subtitle="xAI 图像生成、图像编辑 URL 和默认参数在这里单独维护。" padding="sm">
           <div className="space-y-3">
             <SearchBar value={search} onChange={onSearchChange} placeholder="搜索备注 / 模型 / URL..." />
@@ -1456,22 +1480,15 @@ function ImageApiManagerPanel({
                             onChange={(e) => onUpdate(index, 'aspectRatio', e.target.value)}
                             className="w-full px-2.5 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)] cursor-pointer"
                           >
-                            <option value="">默认比例</option>
-                            <option value="auto">auto</option>
-                            <option value="1:1">1:1</option>
-                            <option value="16:9">16:9</option>
-                            <option value="9:16">9:16</option>
-                            <option value="4:3">4:3</option>
-                            <option value="3:4">3:4</option>
-                            <option value="3:2">3:2</option>
-                            <option value="2:3">2:3</option>
-                            <option value="2:1">2:1</option>
-                            <option value="1:2">1:2</option>
-                            <option value="19.5:9">19.5:9</option>
-                            <option value="9:19.5">9:19.5</option>
-                            <option value="20:9">20:9</option>
-                            <option value="9:20">9:20</option>
+                            {IMAGE_ASPECT_RATIO_OPTIONS.map((option) => (
+                              <option key={option.value || 'default'} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
                           </select>
+                          <p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">
+                            xAI 常用比例预设。命令里如果手动写 `--ratio 16:9`，冒号请使用英文冒号 `:`
+                          </p>
                         </div>
 
                         <div>
@@ -1481,10 +1498,15 @@ function ImageApiManagerPanel({
                             onChange={(e) => onUpdate(index, 'resolution', e.target.value)}
                             className="w-full px-2.5 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)] cursor-pointer"
                           >
-                            <option value="">默认清晰度</option>
-                            <option value="1k">1k</option>
-                            <option value="2k">2k</option>
+                            {IMAGE_RESOLUTION_OPTIONS.map((option) => (
+                              <option key={option.value || 'default'} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
                           </select>
+                          <p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">
+                            当前内置清晰度预设是 `1k（标准）` 和 `2k（高清）`。不填写时，命令会优先走这里保存的默认值。
+                          </p>
                         </div>
 
                         {keyVisible ? (
