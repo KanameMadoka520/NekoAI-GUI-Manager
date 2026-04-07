@@ -72,16 +72,16 @@ export const importHistoryFile = (filename: string, data: unknown) =>
   invoke<void>('import_history_file', { filename, data });
 
 // ===== API Test =====
-export const pingApi = (url: string, key: string, model: string, aiType: string) =>
-  invoke<PingResult>('ping_api', { url, key, model, aiType });
+export const pingApi = (url: string, key: string, model: string, aiType: string, xaiWebSearchEnabled = false) =>
+  invoke<PingResult>('ping_api', { url, key, model, aiType, xaiWebSearchEnabled });
 
 export const batchPingApis = (nodes: Array<{
-  index: number; api_url: string; api_key: string; model_name: string; ai_type: string;
+  index: number; api_url: string; api_key: string; model_name: string; ai_type: string; xai_web_search_enabled?: boolean;
 }>) =>
   invoke<PingResult[]>('batch_ping_apis', { nodes });
 
 export const batchPingApisStream = (sessionId: string, nodes: Array<{
-  index: number; api_url: string; api_key: string; model_name: string; ai_type: string;
+  index: number; api_url: string; api_key: string; model_name: string; ai_type: string; xai_web_search_enabled?: boolean;
 }>) =>
   invoke<void>('batch_ping_apis_stream', { sessionId, nodes });
 

@@ -15,6 +15,8 @@ pub struct ApiNodePayload {
     pub model_name: String,
     pub remark: String,
     pub ai_type: String,
+    #[serde(default)]
+    pub xai_web_search_enabled: bool,
 }
 
 #[derive(Deserialize, Serialize, Clone, Default)]
@@ -306,15 +308,20 @@ async fn execute_candidate(
                 "content": [{ "type": "input_text", "text": latest_user_message }]
             }));
 
+            let mut payload = json!({
+                "model": api_node.model_name,
+                "instructions": prompt,
+                "input": input,
+                "temperature": temperature,
+                "max_output_tokens": api_params.max_tokens.unwrap_or(32000),
+                "store": false,
+            });
+            if api_node.xai_web_search_enabled {
+                payload["tools"] = json!([{ "type": "web_search" }]);
+            }
+
             (
-                json!({
-                    "model": api_node.model_name,
-                    "instructions": prompt,
-                    "input": input,
-                    "temperature": temperature,
-                    "max_output_tokens": api_params.max_tokens.unwrap_or(32000),
-                    "store": false,
-                }),
+                payload,
                 vec![("Authorization".to_string(), format!("Bearer {}", api_node.api_key))],
             )
         }

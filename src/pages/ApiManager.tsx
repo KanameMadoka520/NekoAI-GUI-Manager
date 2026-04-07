@@ -67,6 +67,18 @@ function normalizeAiType(input: string | undefined, apiUrl?: string) {
   return 'openai';
 }
 
+function normalizeApiNode(input?: Partial<ApiNode>): ApiNode {
+  const apiUrl = typeof input?.apiUrl === 'string' ? input.apiUrl : '';
+  return {
+    apiUrl,
+    apiKey: typeof input?.apiKey === 'string' ? input.apiKey : '',
+    modelName: typeof input?.modelName === 'string' ? input.modelName : '',
+    remark: typeof input?.remark === 'string' ? input.remark : '',
+    aiType: normalizeAiType(typeof input?.aiType === 'string' ? input.aiType : '', apiUrl),
+    xaiWebSearchEnabled: input?.xaiWebSearchEnabled === true,
+  };
+}
+
 function formatAiTypeLabel(aiType: ApiNode['aiType']) {
   if (aiType === 'responses') return 'openai-response';
   if (aiType === 'openai') return 'openai (completions)';
@@ -78,6 +90,10 @@ function getDefaultSuffix(aiType: ApiNode['aiType'], modelName?: string) {
   if (aiType === 'anthropic') return '/v1/messages';
   if (aiType === 'gemini') return `/v1beta/models/${(modelName ?? '').trim() || '{model}'}:generateContent`;
   return '/v1/chat/completions';
+}
+
+function getDefaultSuffixActionLabel(aiType: ApiNode['aiType'], modelName?: string) {
+  return `补 ${getDefaultSuffix(aiType, modelName)}`;
 }
 
 function getDefaultSuffixHint(aiType: ApiNode['aiType'], modelName?: string) {
@@ -282,8 +298,9 @@ export function ApiManager() {
         getApiHistoryMetrics().catch(() => []),
         getApiHealthWeights().catch(() => ({ liveWeight: 60, historyWeight: 0, timeoutWeight: 20, jitterWeight: 20 } as ApiHealthWeights)),
       ]);
+      const normalizedNodes = Array.isArray(apiData) ? apiData.map((node) => normalizeApiNode(node)) : [];
       const initial: NodeState = {
-        nodes: apiData ?? [],
+        nodes: normalizedNodes,
         activeIndex: rt?.activeApiIndex ?? 0,
       };
       reset(initial);
@@ -322,9 +339,9 @@ export function ApiManager() {
     }
   }
 
-  function updateNode(index: number, field: keyof ApiNode, value: string) {
+  function updateNode(index: number, field: keyof ApiNode, value: ApiNode[keyof ApiNode]) {
     const next = [...nodes];
-    next[index] = { ...next[index], [field]: value };
+    next[index] = { ...next[index], [field]: value } as ApiNode;
     set({ ...state, nodes: next });
   }
 
@@ -354,7 +371,7 @@ export function ApiManager() {
 
   function insertAfter(index: number) {
     const next = [...nodes];
-    next.splice(index + 1, 0, { apiUrl: '', apiKey: '', modelName: '', remark: '新节点', aiType: 'openai' });
+    next.splice(index + 1, 0, normalizeApiNode({ remark: '新节点', aiType: 'openai' }));
     set({ ...state, nodes: next });
   }
 
@@ -413,7 +430,7 @@ export function ApiManager() {
     }
     setPinging((p) => new Set(p).add(index));
     try {
-      const result = await pingApi(node.apiUrl, node.apiKey, node.modelName, node.aiType);
+      const result = await pingApi(node.apiUrl, node.apiKey, node.modelName, node.aiType, node.xaiWebSearchEnabled === true);
       setPingResults((m) => new Map(m).set(index, { ...result, index }));
     } catch (e: any) {
       setPingResults((m) => new Map(m).set(index, { index, pass: false, latency_ms: 0, status: 0, error: String(e) }));
@@ -426,7 +443,7 @@ export function ApiManager() {
     if (nodes.length === 0) return;
 
     const payload = nodes.map((n, i) => ({
-      index: i, api_url: n.apiUrl, api_key: n.apiKey, model_name: n.modelName, ai_type: n.aiType,
+      index: i, api_url: n.apiUrl, api_key: n.apiKey, model_name: n.modelName, ai_type: n.aiType, xai_web_search_enabled: n.xaiWebSearchEnabled === true,
     }));
 
     const sessionId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
@@ -506,13 +523,7 @@ export function ApiManager() {
       }
 
       const imported = picked.data as Array<Partial<ApiNode>>;
-      const normalized: ApiNode[] = imported.map((item) => ({
-        apiUrl: typeof item.apiUrl === 'string' ? item.apiUrl : '',
-        apiKey: typeof item.apiKey === 'string' ? item.apiKey : '',
-        modelName: typeof item.modelName === 'string' ? item.modelName : '',
-        remark: typeof item.remark === 'string' ? item.remark : '',
-        aiType: normalizeAiType(typeof item.aiType === 'string' ? item.aiType : '', typeof item.apiUrl === 'string' ? item.apiUrl : ''),
-      }));
+      const normalized: ApiNode[] = imported.map((item) => normalizeApiNode(item));
 
       const next: NodeState = { nodes: normalized, activeIndex: Math.max(0, Math.min(activeIndex, Math.max(0, normalized.length - 1))) };
       set(next);
@@ -830,7 +841,7 @@ export function ApiManager() {
               title="Ctrl+S">
               💾 保存
             </button>
-            <button onClick={() => set({ ...state, nodes: [...nodes, { apiUrl: '', apiKey: '', modelName: '', remark: '', aiType: 'openai' }] })}
+            <button onClick={() => set({ ...state, nodes: [...nodes, normalizeApiNode({ aiType: 'openai' })] })}
               className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--accent-purple)] hover:bg-[var(--border-subtle)] transition-colors cursor-pointer">
               + 新增节点
             </button>
@@ -1030,7 +1041,7 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
   pingResult?: PingResult;
   health?: NodeHealth;
   showKey: boolean;
-  onUpdate: (i: number, field: keyof ApiNode, value: string) => void;
+  onUpdate: (i: number, field: keyof ApiNode, value: ApiNode[keyof ApiNode]) => void;
   onRemove: (i: number) => void;
   onClone: (i: number) => void;
   onInsert: (i: number) => void;
@@ -1153,7 +1164,7 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
                 className="px-2.5 py-2 text-[11px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-purple)] cursor-pointer whitespace-nowrap"
                 title="只会补这类接口的常见默认后缀，不会覆盖你自己写的自定义路径"
               >
-                添加默认后缀
+                {getDefaultSuffixActionLabel(node.aiType, node.modelName)}
               </button>
             </div>
             <p className="mt-1 text-[10px] text-[var(--text-muted)]">
@@ -1169,6 +1180,24 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
               className={`w-full px-2.5 py-2 text-xs mono rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)] ${!node.modelName ? 'border-[var(--error)]' : 'border-[var(--border-subtle)]'}`}
               placeholder="gpt-4"
             />
+          </div>
+
+          <div className={`rounded-[var(--radius-sm)] border p-3 ${node.aiType === 'responses' ? 'border-[var(--border-subtle)] bg-[var(--bg-elevated)]' : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)] opacity-65'}`}>
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={node.xaiWebSearchEnabled === true}
+                disabled={node.aiType !== 'responses'}
+                onChange={(e) => onUpdate(index, 'xaiWebSearchEnabled', e.target.checked)}
+                className="mt-0.5 accent-[var(--accent-purple)] cursor-pointer disabled:cursor-not-allowed"
+              />
+              <span className="min-w-0">
+                <span className="block text-xs text-[var(--text-primary)]">启用 xAI Web Search</span>
+                <span className="block mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">
+                  仅在 `openai-response` 下生效，只支持 xAI 官方 API + Grok 模型。若你的 URL 来自第三方兼容站、中转站，或模型不是 Grok，请保持关闭。
+                </span>
+              </span>
+            </label>
           </div>
 
           {isExpanded && (

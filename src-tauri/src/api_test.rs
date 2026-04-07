@@ -20,6 +20,8 @@ pub struct ApiNode {
     pub api_key: String,
     pub model_name: String,
     pub ai_type: String,
+    #[serde(default)]
+    pub xai_web_search_enabled: bool,
 }
 
 #[derive(serde::Serialize, Clone)]
@@ -42,8 +44,9 @@ pub async fn ping_api(
     key: String,
     model: String,
     ai_type: String,
+    xai_web_search_enabled: Option<bool>,
 ) -> Result<PingResult, String> {
-    do_ping(0, &url, &key, &model, &ai_type).await
+    do_ping(0, &url, &key, &model, &ai_type, xai_web_search_enabled.unwrap_or(false)).await
 }
 
 #[tauri::command]
@@ -80,7 +83,7 @@ pub async fn batch_ping_apis_stream(
         while queued < concurrency {
             let node = nodes[queued].clone();
             join_set.spawn(async move {
-                let result = do_ping(node.index, &node.api_url, &node.api_key, &node.model_name, &node.ai_type).await;
+                let result = do_ping(node.index, &node.api_url, &node.api_key, &node.model_name, &node.ai_type, node.xai_web_search_enabled).await;
                 (node.index, result)
             });
             queued += 1;
@@ -146,7 +149,7 @@ pub async fn batch_ping_apis_stream(
             if queued < total {
                 let node = nodes[queued].clone();
                 join_set.spawn(async move {
-                    let result = do_ping(node.index, &node.api_url, &node.api_key, &node.model_name, &node.ai_type).await;
+                    let result = do_ping(node.index, &node.api_url, &node.api_key, &node.model_name, &node.ai_type, node.xai_web_search_enabled).await;
                     (node.index, result)
                 });
                 queued += 1;
@@ -180,7 +183,7 @@ async fn run_batch(nodes: Vec<ApiNode>) -> Result<Vec<PingResult>, String> {
     while queued < concurrency {
         let node = nodes[queued].clone();
         join_set.spawn(async move {
-            let result = do_ping(node.index, &node.api_url, &node.api_key, &node.model_name, &node.ai_type).await;
+            let result = do_ping(node.index, &node.api_url, &node.api_key, &node.model_name, &node.ai_type, node.xai_web_search_enabled).await;
             (node.index, result)
         });
         queued += 1;
@@ -208,7 +211,7 @@ async fn run_batch(nodes: Vec<ApiNode>) -> Result<Vec<PingResult>, String> {
         if queued < total {
             let node = nodes[queued].clone();
             join_set.spawn(async move {
-                let result = do_ping(node.index, &node.api_url, &node.api_key, &node.model_name, &node.ai_type).await;
+                let result = do_ping(node.index, &node.api_url, &node.api_key, &node.model_name, &node.ai_type, node.xai_web_search_enabled).await;
                 (node.index, result)
             });
             queued += 1;
@@ -244,7 +247,7 @@ fn resolve_ai_type(ai_type: &str, url: &str) -> String {
     raw
 }
 
-async fn do_ping(index: usize, url: &str, key: &str, model: &str, ai_type: &str) -> Result<PingResult, String> {
+async fn do_ping(index: usize, url: &str, key: &str, model: &str, ai_type: &str, xai_web_search_enabled: bool) -> Result<PingResult, String> {
     let client = Client::builder()
         .timeout(std::time::Duration::from_secs(15))
         .danger_accept_invalid_certs(true)
@@ -260,12 +263,18 @@ async fn do_ping(index: usize, url: &str, key: &str, model: &str, ai_type: &str)
             "max_tokens": 1,
             "messages": [{"role": "user", "content": [{"type": "text", "text": "hi"}]}]
         }),
-        "responses" => json!({
-            "model": model,
-            "input": "hi",
-            "max_output_tokens": 1,
-            "store": false
-        }),
+        "responses" => {
+            let mut payload = json!({
+                "model": model,
+                "input": "hi",
+                "max_output_tokens": 1,
+                "store": false
+            });
+            if xai_web_search_enabled {
+                payload["tools"] = json!([{ "type": "web_search" }]);
+            }
+            payload
+        }
         "gemini" => json!({
             "contents": [{"role": "user", "parts": [{"text": "hi"}]}],
             "generationConfig": {"maxOutputTokens": 1}
@@ -300,8 +309,22 @@ async fn do_ping(index: usize, url: &str, key: &str, model: &str, ai_type: &str)
         Ok(resp) => {
             let latency = start.elapsed().as_millis() as u64;
             let status = resp.status().as_u16();
-            let pass = matches!(status, 200 | 400 | 401 | 403 | 422 | 429);
-            Ok(PingResult { index, pass, latency_ms: latency, status, error: None })
+            let is_xai_web_search_check = ai == "responses" && xai_web_search_enabled;
+            let pass = if is_xai_web_search_check {
+                matches!(status, 200 | 401 | 403 | 429)
+            } else {
+                matches!(status, 200 | 400 | 401 | 403 | 422 | 429)
+            };
+            let body = resp.text().await.unwrap_or_default();
+            let compact_body = body.split_whitespace().collect::<Vec<_>>().join(" ");
+            let error = if pass {
+                None
+            } else if compact_body.is_empty() {
+                Some(format!("HTTP {}", status))
+            } else {
+                Some(compact_body.chars().take(300).collect())
+            };
+            Ok(PingResult { index, pass, latency_ms: latency, status, error })
         }
         Err(e) => {
             let latency = start.elapsed().as_millis() as u64;

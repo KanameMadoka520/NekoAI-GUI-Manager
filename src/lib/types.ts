@@ -5,6 +5,7 @@ export interface ApiNode {
   modelName: string;
   remark: string;
   aiType: 'openai' | 'responses' | 'anthropic' | 'gemini';
+  xaiWebSearchEnabled?: boolean;
 }
 
 // ===== Runtime Config =====
