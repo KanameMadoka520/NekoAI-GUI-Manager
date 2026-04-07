@@ -650,6 +650,23 @@ export function ApiManager() {
     addToast('success', '已导出图像 API 配置');
   }
 
+  function exportImageApiTemplate() {
+    const template = [
+      normalizeImageApiNode({
+        providerType: 'xai',
+        generationUrl: 'https://api.x.ai/v1/images/generations',
+        editUrl: 'https://api.x.ai/v1/images/edits',
+        apiKey: 'xai-your-key',
+        modelName: 'grok-imagine-image',
+        remark: 'xAI 官方图像模板',
+        aspectRatio: '',
+        resolution: '',
+      }),
+    ];
+    downloadJsonWithTimestamp(template, 'image_api_config.template.json');
+    addToast('success', '已导出图像节点模板');
+  }
+
   async function importImageApiConfig() {
     try {
       const picked = await pickJsonAndParse();
@@ -939,6 +956,7 @@ export function ApiManager() {
           onRedo={redoImage}
           onSave={saveImageApis}
           onExport={exportImageApiConfig}
+          onExportTemplate={exportImageApiTemplate}
           onImport={importImageApiConfig}
           onAdd={addImageNode}
           onClone={cloneImageNode}
@@ -1246,6 +1264,7 @@ function ImageApiManagerPanel({
   onRedo,
   onSave,
   onExport,
+  onExportTemplate,
   onImport,
   onAdd,
   onClone,
@@ -1268,6 +1287,7 @@ function ImageApiManagerPanel({
   onRedo: () => void;
   onSave: () => void | Promise<void>;
   onExport: () => void;
+  onExportTemplate: () => void;
   onImport: () => void | Promise<void>;
   onAdd: () => void;
   onClone: (index: number) => void;
@@ -1310,6 +1330,12 @@ function ImageApiManagerPanel({
             confirmTitle="导入图像 API 配置"
             size="xs"
           />
+          <button
+            onClick={onExportTemplate}
+            className="px-3 py-1.5 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--info)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+          >
+            🧩 下载 xAI 模板
+          </button>
           <div className="flex-1" />
           <button
             onClick={onUndo}
