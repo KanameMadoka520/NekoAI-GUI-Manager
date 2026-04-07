@@ -4,7 +4,7 @@ export interface ApiNode {
   apiKey: string;
   modelName: string;
   remark: string;
-  aiType: 'openai' | 'anthropic' | 'gemini';
+  aiType: 'openai' | 'responses' | 'anthropic' | 'gemini';
 }
 
 // ===== Runtime Config =====

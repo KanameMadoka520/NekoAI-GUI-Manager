@@ -218,6 +218,103 @@ fn normalize_request_url(url: &str, ai_type: &str, key: &str) -> String {
     }
 }
 
+fn resolve_ai_type(ai_type: &str, url: &str) -> String {
+    let raw = ai_type.to_lowercase();
+    if raw == "response" || raw == "responses" || raw == "openai-response" {
+        return "responses".to_string();
+    }
+
+    if raw == "openai" && url.to_lowercase().contains("/responses") {
+        return "responses".to_string();
+    }
+
+    raw
+}
+
+fn extract_text_blocks(blocks: &[Value]) -> String {
+    blocks
+        .iter()
+        .filter_map(|block| {
+            block
+                .get("text")
+                .and_then(|v| v.as_str())
+                .or_else(|| block.get("output_text").and_then(|v| v.as_str()))
+        })
+        .map(|text| text.trim())
+        .filter(|text| !text.is_empty())
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn extract_anthropic_text(body: &Value) -> String {
+    body.get("content")
+        .and_then(|v| v.as_array())
+        .map(|blocks| extract_text_blocks(blocks))
+        .filter(|text| !text.is_empty())
+        .unwrap_or_default()
+}
+
+fn extract_responses_text(body: &Value) -> String {
+    if let Some(text) = body.get("output_text").and_then(|v| v.as_str()) {
+        let text = text.trim();
+        if !text.is_empty() {
+            return text.to_string();
+        }
+    }
+
+    body.get("output")
+        .and_then(|v| v.as_array())
+        .map(|items| {
+            items
+                .iter()
+                .flat_map(|item| {
+                    let mut texts = Vec::new();
+                    if let Some(text) = item.get("text").and_then(|v| v.as_str()) {
+                        let trimmed = text.trim();
+                        if !trimmed.is_empty() {
+                            texts.push(trimmed.to_string());
+                        }
+                    }
+                    if let Some(blocks) = item.get("content").and_then(|v| v.as_array()) {
+                        let block_text = extract_text_blocks(blocks);
+                        if !block_text.is_empty() {
+                            texts.push(block_text);
+                        }
+                    }
+                    texts
+                })
+                .collect::<Vec<_>>()
+                .join("\n")
+        })
+        .unwrap_or_default()
+}
+
+fn extract_gemini_text(body: &Value) -> String {
+    body.get("candidates")
+        .and_then(|v| v.as_array())
+        .and_then(|arr| arr.first())
+        .and_then(|x| x.get("content"))
+        .and_then(|x| x.get("parts"))
+        .and_then(|v| v.as_array())
+        .map(|parts| extract_text_blocks(parts))
+        .unwrap_or_default()
+}
+
+fn extract_openai_text(body: &Value) -> String {
+    let content = body
+        .get("choices")
+        .and_then(|v| v.as_array())
+        .and_then(|arr| arr.first())
+        .and_then(|x| x.get("message"))
+        .and_then(|x| x.get("content"));
+
+    match content {
+        Some(Value::String(text)) => text.trim().to_string(),
+        Some(Value::Array(blocks)) => extract_text_blocks(blocks),
+        _ => String::new(),
+    }
+}
+
 fn validate_scale(payload: &RunPersonalityEvalExperimentRequest) -> Result<(), String> {
     let api_count = payload.apis.len();
     let candidate_count = payload.candidates.len();
@@ -260,7 +357,7 @@ async fn execute_once(
     context_text: Option<&str>,
     latest_user_message: &str,
 ) -> PersonalityEvalExecutionResult {
-    let ai_type = api_node.ai_type.to_lowercase();
+    let ai_type = resolve_ai_type(&api_node.ai_type, &api_node.api_url);
     let request_url = normalize_request_url(&api_node.api_url, &ai_type, &api_node.api_key);
     let temperature = api_params.temperature.unwrap_or(0.65);
     let context_text = context_text.unwrap_or("").trim();
@@ -291,6 +388,31 @@ async fn execute_once(
                     ("x-api-key".to_string(), api_node.api_key.clone()),
                     ("anthropic-version".to_string(), "2023-06-01".to_string()),
                 ],
+            )
+        }
+        "responses" => {
+            let mut input = Vec::new();
+            if !context_text.is_empty() {
+                input.push(json!({
+                    "role": "user",
+                    "content": [{ "type": "input_text", "text": context_text }]
+                }));
+            }
+            input.push(json!({
+                "role": "user",
+                "content": [{ "type": "input_text", "text": latest_user_message }]
+            }));
+
+            (
+                json!({
+                    "model": api_node.model_name,
+                    "instructions": prompt,
+                    "input": input,
+                    "temperature": temperature,
+                    "max_output_tokens": api_params.max_tokens.unwrap_or(32000),
+                    "store": false,
+                }),
+                vec![("Authorization".to_string(), format!("Bearer {}", api_node.api_key))],
             )
         }
         "gemini" => {
@@ -360,35 +482,10 @@ async fn execute_once(
             match resp.json::<Value>().await {
                 Ok(body) => {
                     let response_text = match ai_type.as_str() {
-                        "anthropic" => body
-                            .get("content")
-                            .and_then(|v| v.as_array())
-                            .and_then(|arr| arr.first())
-                            .and_then(|x| x.get("text"))
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("")
-                            .to_string(),
-                        "gemini" => body
-                            .get("candidates")
-                            .and_then(|v| v.as_array())
-                            .and_then(|arr| arr.first())
-                            .and_then(|x| x.get("content"))
-                            .and_then(|x| x.get("parts"))
-                            .and_then(|v| v.as_array())
-                            .and_then(|arr| arr.first())
-                            .and_then(|x| x.get("text"))
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("")
-                            .to_string(),
-                        _ => body
-                            .get("choices")
-                            .and_then(|v| v.as_array())
-                            .and_then(|arr| arr.first())
-                            .and_then(|x| x.get("message"))
-                            .and_then(|x| x.get("content"))
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("")
-                            .to_string(),
+                        "anthropic" => extract_anthropic_text(&body),
+                        "responses" => extract_responses_text(&body),
+                        "gemini" => extract_gemini_text(&body),
+                        _ => extract_openai_text(&body),
                     };
 
                     let normalized = response_text

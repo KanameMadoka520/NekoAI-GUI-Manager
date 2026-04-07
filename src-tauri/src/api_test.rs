@@ -231,6 +231,19 @@ fn normalize_request_url(url: &str, ai_type: &str, key: &str) -> String {
     }
 }
 
+fn resolve_ai_type(ai_type: &str, url: &str) -> String {
+    let raw = ai_type.to_lowercase();
+    if raw == "response" || raw == "responses" || raw == "openai-response" {
+        return "responses".to_string();
+    }
+
+    if raw == "openai" && url.to_lowercase().contains("/responses") {
+        return "responses".to_string();
+    }
+
+    raw
+}
+
 async fn do_ping(index: usize, url: &str, key: &str, model: &str, ai_type: &str) -> Result<PingResult, String> {
     let client = Client::builder()
         .timeout(std::time::Duration::from_secs(15))
@@ -238,7 +251,7 @@ async fn do_ping(index: usize, url: &str, key: &str, model: &str, ai_type: &str)
         .build()
         .map_err(|e| format!("Client build error: {}", e))?;
 
-    let ai = ai_type.to_lowercase();
+    let ai = resolve_ai_type(ai_type, url);
     let request_url = normalize_request_url(url, &ai, key);
 
     let body: Value = match ai.as_str() {
@@ -246,6 +259,12 @@ async fn do_ping(index: usize, url: &str, key: &str, model: &str, ai_type: &str)
             "model": model,
             "max_tokens": 1,
             "messages": [{"role": "user", "content": [{"type": "text", "text": "hi"}]}]
+        }),
+        "responses" => json!({
+            "model": model,
+            "input": "hi",
+            "max_output_tokens": 1,
+            "store": false
         }),
         "gemini" => json!({
             "contents": [{"role": "user", "parts": [{"text": "hi"}]}],

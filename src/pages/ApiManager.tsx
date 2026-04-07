@@ -59,6 +59,54 @@ function normalizeModel(input: string | undefined) {
   return (input ?? '').trim().toLowerCase();
 }
 
+function normalizeAiType(input: string | undefined, apiUrl?: string) {
+  const raw = (input ?? '').trim().toLowerCase();
+  if (raw === 'responses' || raw === 'response' || raw === 'openai-response') return 'responses';
+  if (raw === 'anthropic' || raw === 'gemini') return raw;
+  if ((apiUrl ?? '').trim().match(/\/responses(?:\?|$)/i)) return 'responses';
+  return 'openai';
+}
+
+function formatAiTypeLabel(aiType: ApiNode['aiType']) {
+  if (aiType === 'responses') return 'openai-response';
+  if (aiType === 'openai') return 'openai (completions)';
+  return aiType;
+}
+
+function getDefaultSuffix(aiType: ApiNode['aiType'], modelName?: string) {
+  if (aiType === 'responses') return '/v1/responses';
+  if (aiType === 'anthropic') return '/v1/messages';
+  if (aiType === 'gemini') return `/v1beta/models/${(modelName ?? '').trim() || '{model}'}:generateContent`;
+  return '/v1/chat/completions';
+}
+
+function getDefaultSuffixHint(aiType: ApiNode['aiType'], modelName?: string) {
+  if (aiType === 'responses') return '常见默认后缀：/v1/responses';
+  if (aiType === 'anthropic') return '常见默认后缀：/v1/messages';
+  if (aiType === 'gemini') {
+    const model = (modelName ?? '').trim() || '{model}';
+    return `常见默认后缀：/v1beta/models/${model}:generateContent`;
+  }
+  return '常见默认后缀：/v1/chat/completions';
+}
+
+function hasDefaultSuffix(url: string, aiType: ApiNode['aiType']) {
+  if (aiType === 'responses') return /\/v1\/responses(?:[/?#]|$)/i.test(url);
+  if (aiType === 'anthropic') return /\/v1\/messages(?:[/?#]|$)/i.test(url);
+  if (aiType === 'gemini') return /\/v1beta\/models\/[^/?#]+:generatecontent(?:[/?#]|$)/i.test(url);
+  return /\/v1\/chat\/completions(?:[/?#]|$)/i.test(url);
+}
+
+function appendDefaultSuffix(url: string, aiType: ApiNode['aiType'], modelName?: string) {
+  const current = String(url || '').trim();
+  const suffix = getDefaultSuffix(aiType, modelName);
+  if (!current) return suffix;
+  if (hasDefaultSuffix(current, aiType)) return current;
+  if (/[?#]/.test(current)) return current;
+  const base = current.replace(/\/+$/, '');
+  return `${base}${suffix}`;
+}
+
 function getLevelMeta(level: NodeHealth['level'] | undefined) {
   if (level === 'healthy') {
     return {
@@ -280,6 +328,19 @@ export function ApiManager() {
     set({ ...state, nodes: next });
   }
 
+  function applyDefaultUrlSuffix(index: number) {
+    const node = nodes[index];
+    if (!node) return;
+    const nextUrl = appendDefaultSuffix(node.apiUrl, node.aiType, node.modelName);
+    if (nextUrl === node.apiUrl) {
+      if (/[?#]/.test(String(node.apiUrl || ''))) addToast('warning', '当前 URL 含查询参数或锚点，默认后缀请手动补在路径位置。');
+      else addToast('warning', '当前 URL 已包含这类接口的常见默认后缀，没有重复追加。');
+      return;
+    }
+    updateNode(index, 'apiUrl', nextUrl);
+    addToast('success', '已追加常见默认后缀。这里只是辅助填充，不会锁死你的自定义 URL。');
+  }
+
   function removeNode(index: number) {
     const next = nodes.filter((_, i) => i !== index);
     set({ ...state, nodes: next, activeIndex: Math.min(activeIndex, Math.max(0, next.length - 1)) });
@@ -450,7 +511,7 @@ export function ApiManager() {
         apiKey: typeof item.apiKey === 'string' ? item.apiKey : '',
         modelName: typeof item.modelName === 'string' ? item.modelName : '',
         remark: typeof item.remark === 'string' ? item.remark : '',
-        aiType: item.aiType === 'anthropic' || item.aiType === 'gemini' ? item.aiType : 'openai',
+        aiType: normalizeAiType(typeof item.aiType === 'string' ? item.aiType : '', typeof item.apiUrl === 'string' ? item.apiUrl : ''),
       }));
 
       const next: NodeState = { nodes: normalized, activeIndex: Math.max(0, Math.min(activeIndex, Math.max(0, normalized.length - 1))) };
@@ -508,7 +569,8 @@ export function ApiManager() {
       .filter(({ n }) =>
         n.modelName.toLowerCase().includes(q) ||
         n.remark.toLowerCase().includes(q) ||
-        n.aiType.toLowerCase().includes(q)
+        n.aiType.toLowerCase().includes(q) ||
+        formatAiTypeLabel(n.aiType).toLowerCase().includes(q)
       )
       .map(({ i }) => i);
   }, [nodes, search]);
@@ -902,6 +964,7 @@ export function ApiManager() {
                       onClone={cloneNode}
                       onInsert={insertAfter}
                       onTest={testNode}
+                      onApplyDefaultUrlSuffix={applyDefaultUrlSuffix}
                       onSetActive={(idx) => set({ ...state, activeIndex: idx })}
                       onToggleSelect={(idx) => {
                         const next = new Set(selected);
@@ -953,7 +1016,7 @@ function WeightSlider({ label, value, onChange }: { label: string; value: number
 }
 
 const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, density, isActive, isDuplicate, isSelected, isExpanded, isPinging, pingResult, health, showKey,
-  onUpdate, onRemove, onClone, onInsert, onTest, onSetActive, onToggleSelect, onToggleKey, onToggleExpanded, cardRef,
+  onUpdate, onRemove, onClone, onInsert, onTest, onApplyDefaultUrlSuffix, onSetActive, onToggleSelect, onToggleKey, onToggleExpanded, cardRef,
 }: {
   id: number;
   node: ApiNode;
@@ -972,6 +1035,7 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
   onClone: (i: number) => void;
   onInsert: (i: number) => void;
   onTest: (i: number) => void;
+  onApplyDefaultUrlSuffix: (i: number) => void;
   onSetActive: (i: number) => void;
   onToggleSelect: (i: number) => void;
   onToggleKey: (i: number) => void;
@@ -1009,8 +1073,8 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs mono text-[var(--text-muted)]">#{index}</span>
               <span className="text-sm font-medium text-[var(--text-primary)] truncate max-w-[320px]">{node.modelName || '(未命名模型)'}</span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--bg-elevated)]" style={{ color: node.aiType === 'openai' ? 'var(--success)' : node.aiType === 'gemini' ? 'var(--info)' : 'var(--accent-pink)' }}>
-                {node.aiType}
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--bg-elevated)]" style={{ color: node.aiType === 'openai' ? 'var(--success)' : node.aiType === 'responses' ? 'var(--accent-purple)' : node.aiType === 'gemini' ? 'var(--info)' : 'var(--accent-pink)' }}>
+                {formatAiTypeLabel(node.aiType)}
               </span>
               {isActive && <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--accent-purple)] text-white">活跃</span>}
               {isDuplicate && <span className="text-[10px] px-1.5 py-0.5 rounded bg-[rgba(255,171,64,0.2)] text-[var(--warning)]">重复</span>}
@@ -1057,7 +1121,8 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
                 onChange={(e) => onUpdate(index, 'aiType', e.target.value)}
                 className="w-full px-2.5 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)] cursor-pointer"
               >
-                <option value="openai">OpenAI</option>
+                <option value="openai">openai (completions)</option>
+                <option value="responses">openai-response</option>
                 <option value="anthropic">Anthropic</option>
                 <option value="gemini">Gemini</option>
               </select>
@@ -1075,12 +1140,25 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
 
           <div>
             <label className="text-[10px] text-[var(--text-muted)] mb-1 block">API URL</label>
-            <input
-              value={node.apiUrl}
-              onChange={(e) => onUpdate(index, 'apiUrl', e.target.value)}
-              className={`w-full px-2.5 py-2 text-xs mono rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)] ${!node.apiUrl ? 'border-[var(--error)]' : 'border-[var(--border-subtle)]'}`}
-              placeholder="https://api.example.com/v1/chat/completions"
-            />
+            <div className="flex gap-2">
+              <input
+                value={node.apiUrl}
+                onChange={(e) => onUpdate(index, 'apiUrl', e.target.value)}
+                className={`flex-1 px-2.5 py-2 text-xs mono rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)] ${!node.apiUrl ? 'border-[var(--error)]' : 'border-[var(--border-subtle)]'}`}
+                placeholder="先填基础地址，需要时点右侧按钮补常见后缀"
+              />
+              <button
+                type="button"
+                onClick={() => onApplyDefaultUrlSuffix(index)}
+                className="px-2.5 py-2 text-[11px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-purple)] cursor-pointer whitespace-nowrap"
+                title="只会补这类接口的常见默认后缀，不会覆盖你自己写的自定义路径"
+              >
+                添加默认后缀
+              </button>
+            </div>
+            <p className="mt-1 text-[10px] text-[var(--text-muted)]">
+              {getDefaultSuffixHint(node.aiType, node.modelName)}。URL 仍然完全由你决定，按钮只做辅助补全。
+            </p>
           </div>
 
           <div>
