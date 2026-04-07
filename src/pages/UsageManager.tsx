@@ -5,10 +5,11 @@ import { ConfirmDialog } from '../components/common/ConfirmDialog';
 import { ImportExportActions } from '../components/common/ImportExportActions';
 import { Panel } from '../components/common/Panel';
 import { SummaryCard } from '../components/common/SummaryCard';
+import { TagList } from '../components/common/TagList';
 import { useUiStore } from '../stores/uiStore';
 import { getConfig, saveConfig } from '../lib/tauri-commands';
 import { downloadJsonWithTimestamp, pickJsonAndParse } from '../lib/json-transfer';
-import type { RuntimeConfig, UsageData, ImageUsageData, ImageQuotaConfig, ImageQuotaUserLimit } from '../lib/types';
+import type { RuntimeConfig, UsageData, ImageUsageData, ImageQuotaConfig, ImageQuotaUserLimit, ImageAccessConfig } from '../lib/types';
 
 function getCurrentPeriodId() {
   const now = new Date();
@@ -106,6 +107,19 @@ function normalizeImageQuota(input: ImageQuotaConfig | null | undefined): ImageQ
   };
 }
 
+function normalizeImageAccess(input: ImageAccessConfig | null | undefined): ImageAccessConfig {
+  return {
+    mode: input?.mode === 'whitelist' ? 'whitelist' : 'blacklist',
+    whitelistUsers: Array.isArray(input?.whitelistUsers)
+      ? [...new Set(input.whitelistUsers.map((item) => String(item || '').trim()).filter(Boolean))]
+      : [],
+  };
+}
+
+function getImageAccessModeLabel(mode: ImageAccessConfig['mode']) {
+  return mode === 'whitelist' ? '白名单模式' : '黑名单模式';
+}
+
 function formatQuota(limit: number | null | undefined, isMaster = false) {
   if (isMaster) return '主人无限制';
   if (limit === null || limit === undefined || limit <= 0) return '不限额';
@@ -126,6 +140,9 @@ type ImageQuotaRow = {
   isMaster: boolean;
   hasOverride: boolean;
   hasStoredUsage: boolean;
+  inGlobalBlacklist: boolean;
+  inImageWhitelist: boolean;
+  accessStatus: string;
   generateLimit: number | null;
   editLimit: number | null;
   generateUsed: number;
@@ -139,11 +156,13 @@ export function UsageManager() {
 
   const [groupUsage, setGroupUsage] = useState<UsageData>(() => normalizeUsage(null));
   const [imageUsage, setImageUsage] = useState<ImageUsageData>(() => normalizeImageUsage(null));
+  const [imageAccess, setImageAccess] = useState<ImageAccessConfig>(() => normalizeImageAccess(null));
   const [imageQuota, setImageQuota] = useState<ImageQuotaConfig>(() => normalizeImageQuota(null));
   const [runtime, setRuntime] = useState<RuntimeConfig | null>(null);
 
   const [groupOriginal, setGroupOriginal] = useState('');
   const [imageOriginal, setImageOriginal] = useState('');
+  const [accessOriginal, setAccessOriginal] = useState('');
   const [quotaOriginal, setQuotaOriginal] = useState('');
 
   const [loading, setLoading] = useState(true);
@@ -151,6 +170,7 @@ export function UsageManager() {
   const [userSearch, setUserSearch] = useState('');
   const [newGroupId, setNewGroupId] = useState('');
   const [newUserId, setNewUserId] = useState('');
+  const [newWhitelistUserId, setNewWhitelistUserId] = useState('');
 
   const [confirmResetGroup, setConfirmResetGroup] = useState(false);
   const [confirmDropUnknown, setConfirmDropUnknown] = useState(false);
@@ -158,7 +178,9 @@ export function UsageManager() {
 
   const groupDirty = useMemo(() => JSON.stringify(groupUsage) !== groupOriginal, [groupUsage, groupOriginal]);
   const imageDirty = useMemo(() => JSON.stringify(imageUsage) !== imageOriginal, [imageUsage, imageOriginal]);
+  const accessDirty = useMemo(() => JSON.stringify(imageAccess) !== accessOriginal, [imageAccess, accessOriginal]);
   const quotaDirty = useMemo(() => JSON.stringify(imageQuota) !== quotaOriginal, [imageQuota, quotaOriginal]);
+  const imageRuleDirty = accessDirty || quotaDirty;
 
   useEffect(() => {
     void load();
@@ -174,12 +196,15 @@ export function UsageManager() {
       ]);
       const normalizedGroup = normalizeUsage(groupUsageData);
       const normalizedImage = normalizeImageUsage(imageUsageData);
+      const normalizedAccess = normalizeImageAccess(runtimeConfig?.imageAccess);
       const normalizedQuota = normalizeImageQuota(runtimeConfig?.imageQuota);
       setGroupUsage(normalizedGroup);
       setImageUsage(normalizedImage);
+      setImageAccess(normalizedAccess);
       setImageQuota(normalizedQuota);
       setGroupOriginal(JSON.stringify(normalizedGroup));
       setImageOriginal(JSON.stringify(normalizedImage));
+      setAccessOriginal(JSON.stringify(normalizedAccess));
       setQuotaOriginal(JSON.stringify(normalizedQuota));
       setRuntime(runtimeConfig ?? null);
     } catch (e: any) {
@@ -219,8 +244,12 @@ export function UsageManager() {
   }, [groupRows, groupSearch]);
 
   const imageRows = useMemo<ImageQuotaRow[]>(() => {
+    const blacklist = new Set((runtime?.userBlacklist ?? []).map((item) => String(item || '').trim()).filter(Boolean));
+    const whitelist = new Set((imageAccess.whitelistUsers ?? []).map((item) => String(item || '').trim()).filter(Boolean));
     const ids = new Set<string>([
       ...(runtime?.masterQQ ?? []),
+      ...(runtime?.userBlacklist ?? []),
+      ...(imageAccess.whitelistUsers ?? []),
       ...Object.keys(imageUsage.users ?? {}),
       ...Object.keys(imageQuota.userLimits ?? {}),
     ]);
@@ -231,6 +260,8 @@ export function UsageManager() {
         const isMaster = (runtime?.masterQQ ?? []).includes(uid);
         const hasOverride = Object.prototype.hasOwnProperty.call(imageQuota.userLimits ?? {}, uid);
         const override = imageQuota.userLimits?.[uid];
+        const inGlobalBlacklist = blacklist.has(uid);
+        const inImageWhitelist = whitelist.has(uid);
         const generateUsed = Math.max(0, Math.floor(Number(imageUsage.users?.[uid]?.generate ?? 0)));
         const editUsed = Math.max(0, Math.floor(Number(imageUsage.users?.[uid]?.edit ?? 0)));
         const generateLimit = isMaster
@@ -248,6 +279,15 @@ export function UsageManager() {
           isMaster,
           hasOverride,
           hasStoredUsage: Object.prototype.hasOwnProperty.call(imageUsage.users ?? {}, uid),
+          inGlobalBlacklist,
+          inImageWhitelist,
+          accessStatus: isMaster
+            ? '主人豁免'
+            : inGlobalBlacklist
+              ? '黑名单禁止'
+              : imageAccess.mode === 'whitelist'
+                ? (inImageWhitelist ? '白名单允许' : '未在白名单')
+                : '黑名单模式默认可用',
           generateLimit,
           editLimit,
           generateUsed,
@@ -256,7 +296,7 @@ export function UsageManager() {
           editRemaining: editLimit && editLimit > 0 ? Math.max(editLimit - editUsed, 0) : null,
         };
       });
-  }, [runtime?.masterQQ, imageUsage.users, imageQuota]);
+  }, [runtime?.masterQQ, runtime?.userBlacklist, imageUsage.users, imageQuota, imageAccess]);
 
   const filteredImageRows = useMemo(() => {
     if (!userSearch.trim()) return imageRows;
@@ -286,12 +326,19 @@ export function UsageManager() {
     ).length;
     return {
       trackedUsers: imageRows.length,
+      whitelistUsers: imageAccess.whitelistUsers.length,
       overrideUsers,
       totalGenerateUsed,
       totalEditUsed,
       exhaustedUsers,
     };
-  }, [imageRows, imageQuota.userLimits]);
+  }, [imageRows, imageQuota.userLimits, imageAccess.whitelistUsers.length]);
+
+  const imageAccessConflictUsers = useMemo(() => {
+    const blacklist = new Set((runtime?.userBlacklist ?? []).map((item) => String(item || '').trim()).filter(Boolean));
+    return [...new Set((imageAccess.whitelistUsers ?? []).map((item) => String(item || '').trim()).filter((uid) => blacklist.has(uid)))]
+      .sort((a, b) => a.localeCompare(b, 'zh-CN'));
+  }, [runtime?.userBlacklist, imageAccess.whitelistUsers]);
 
   function updateGroupCount(gid: string, raw: number) {
     const next = { ...groupUsage.counts };
@@ -357,6 +404,20 @@ export function UsageManager() {
     setNewUserId('');
   }
 
+  function addWhitelistUser() {
+    const uid = newWhitelistUserId.trim();
+    if (!uid) return;
+    if ((imageAccess.whitelistUsers ?? []).includes(uid)) {
+      addToast('warning', `QQ ${uid} 已在图像白名单中`);
+      return;
+    }
+    setImageAccess({
+      ...imageAccess,
+      whitelistUsers: [...imageAccess.whitelistUsers, uid],
+    });
+    setNewWhitelistUserId('');
+  }
+
   function addUserOverride(uid: string) {
     if (!uid.trim()) return;
     setImageQuota({
@@ -419,19 +480,26 @@ export function UsageManager() {
 
   async function saveImageQuotaRules() {
     if (!runtime) {
-      addToast('error', '当前运行配置尚未加载完成，无法保存图像限额规则');
+      addToast('error', '当前运行配置尚未加载完成，无法保存图像权限与限额规则');
       return;
     }
     try {
+      const normalizedAccess = normalizeImageAccess(imageAccess);
       const normalized = normalizeImageQuota(imageQuota);
-      const nextRuntime = { ...runtime, imageQuota: normalized };
+      const nextRuntime = { ...runtime, imageAccess: normalizedAccess, imageQuota: normalized };
       await saveConfig('runtime', nextRuntime);
       setRuntime(nextRuntime);
+      setImageAccess(normalizedAccess);
       setImageQuota(normalized);
+      setAccessOriginal(JSON.stringify(normalizedAccess));
       setQuotaOriginal(JSON.stringify(normalized));
-      addToast('success', '图像限额规则已保存');
+      if (imageAccessConflictUsers.length > 0) {
+        addToast('warning', `图像权限与限额规则已保存，但仍有 ${imageAccessConflictUsers.length} 个 QQ 同时出现在黑名单和图像白名单里。实际运行时黑名单优先。`);
+      } else {
+        addToast('success', '图像权限与限额规则已保存');
+      }
     } catch (e: any) {
-      addToast('error', `保存图像限额规则失败: ${e?.message ?? e}`);
+      addToast('error', `保存图像权限与限额规则失败: ${e?.message ?? e}`);
     }
   }
 
@@ -662,15 +730,25 @@ export function UsageManager() {
         </div>
       </Panel>
 
-      <Panel title="图像限额规则" subtitle="这里只管理生图 / 修图的额度规则：主人始终无限制，普通用户走全局额度，指定 QQ 可单独覆盖。默认周期与群用量一致，都是东八区 12 小时滚动。" icon="🖼️">
+      <Panel title="图像权限与限额规则" subtitle="这里同时管理谁可以生图 / 修图，以及每个 QQ 在 12 小时周期里还能用多少次。黑名单始终优先，主人始终不限额。" icon="🖼️">
         <div className="space-y-4">
-          <div className="grid grid-cols-2 xl:grid-cols-5 gap-4">
-            <SummaryCard label="状态" value={imageQuota.enabled ? '已启用' : '未启用'} hint="关闭时，普通用户的图像额度检查整体失效。" tone={imageQuota.enabled ? 'success' : 'neutral'} />
+          <div className="grid grid-cols-2 xl:grid-cols-6 gap-4">
+            <SummaryCard label="权限模式" value={getImageAccessModeLabel(imageAccess.mode)} hint={imageAccess.mode === 'whitelist' ? '只有手动加入图像白名单的 QQ 才能生图和修图。' : '只要是群友且不在黑名单中，就可以生图和修图。'} tone={imageAccess.mode === 'whitelist' ? 'warning' : 'neutral'} />
+            <SummaryCard label="图像白名单" value={String(imageSummary.whitelistUsers)} hint="仅 whitelist 模式生效。黑名单和主人仍然优先于这份名单。" />
             <SummaryCard label="默认生图额度" value={formatQuota(imageQuota.defaultGenerateLimit)} hint="0 表示不限额。生图如果使用 --count，会按实际 count 累加。" />
             <SummaryCard label="默认修图额度" value={formatQuota(imageQuota.defaultEditLimit)} hint="0 表示不限额。修图每次命令默认记 1 次。" />
             <SummaryCard label="单独限额用户" value={String(Object.keys(imageQuota.userLimits ?? {}).length)} hint="指定 QQ 的额度会覆盖全局默认额度。" />
             <SummaryCard label="已耗尽用户" value={String(imageSummary.exhaustedUsers)} hint="任一生图或修图额度耗尽，都会计入这里。" tone={imageSummary.exhaustedUsers > 0 ? 'warning' : 'neutral'} />
           </div>
+
+          {imageAccessConflictUsers.length > 0 && (
+            <div className="rounded-[var(--radius-sm)] border border-[rgba(255,82,82,0.35)] bg-[rgba(255,82,82,0.08)] px-4 py-3">
+              <p className="text-sm font-medium text-[var(--error)]">检测到图像权限冲突</p>
+              <p className="mt-1 text-xs text-[var(--text-secondary)] leading-relaxed">
+                以下 QQ 同时出现在用户黑名单和图像白名单中：<span className="mono">{imageAccessConflictUsers.join(', ')}</span>。实际运行时黑名单优先，这些人仍然无法生图或修图。建议你清理其中一侧。
+              </p>
+            </div>
+          )}
 
           <div className="flex flex-wrap items-center gap-3">
             <label className="inline-flex items-center gap-2 text-sm text-[var(--text-primary)]">
@@ -683,17 +761,79 @@ export function UsageManager() {
               启用图像限额
             </label>
             <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
+              <span>图像权限：</span>
+              <span>{getImageAccessModeLabel(imageAccess.mode)}</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
               <span>主人 QQ：</span>
               <span className="mono break-all">{(runtime?.masterQQ ?? []).join(', ') || '未配置'}</span>
             </div>
             <div className="flex-1" />
             <button
               onClick={() => void saveImageQuotaRules()}
-              disabled={!quotaDirty}
-              className={`px-4 py-2 text-xs rounded-[var(--radius-sm)] font-medium transition-colors cursor-pointer ${quotaDirty ? 'bg-[var(--accent-purple)] text-white hover:opacity-90 pulse-dirty' : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed'}`}
+              disabled={!imageRuleDirty}
+              className={`px-4 py-2 text-xs rounded-[var(--radius-sm)] font-medium transition-colors cursor-pointer ${imageRuleDirty ? 'bg-[var(--accent-purple)] text-white hover:opacity-90 pulse-dirty' : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed'}`}
             >
-              💾 保存图像限额规则
+              💾 保存图像权限与限额规则
             </button>
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-[240px_minmax(0,1fr)] gap-4">
+            <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-3">
+              <p className="text-xs font-medium text-[var(--text-primary)]">图像权限模式</p>
+              <label className="flex items-start gap-2 text-sm text-[var(--text-primary)]">
+                <input
+                  type="radio"
+                  name="image-access-mode"
+                  checked={imageAccess.mode === 'blacklist'}
+                  onChange={() => setImageAccess({ ...imageAccess, mode: 'blacklist' })}
+                  className="mt-1 accent-[var(--accent-purple)]"
+                />
+                <span>
+                  黑名单模式
+                  <span className="block text-[11px] text-[var(--text-muted)] leading-relaxed">只要是群友，且不在用户黑名单中，就可以生图和修图。</span>
+                </span>
+              </label>
+              <label className="flex items-start gap-2 text-sm text-[var(--text-primary)]">
+                <input
+                  type="radio"
+                  name="image-access-mode"
+                  checked={imageAccess.mode === 'whitelist'}
+                  onChange={() => setImageAccess({ ...imageAccess, mode: 'whitelist' })}
+                  className="mt-1 accent-[var(--accent-purple)]"
+                />
+                <span>
+                  白名单模式
+                  <span className="block text-[11px] text-[var(--text-muted)] leading-relaxed">只有手动加入图像白名单的 QQ 才能生图和修图。黑名单用户依然会被拦截。</span>
+                </span>
+              </label>
+            </div>
+
+            <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-3">
+              <p className="text-xs font-medium text-[var(--text-primary)]">图像白名单</p>
+              <TagList
+                tags={imageAccess.whitelistUsers}
+                onChange={(tags) => setImageAccess({ ...imageAccess, whitelistUsers: normalizeImageAccess({ ...imageAccess, whitelistUsers: tags }).whitelistUsers })}
+                placeholder="输入 QQ 号后回车加入图像白名单"
+              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newWhitelistUserId}
+                  onChange={(e) => setNewWhitelistUserId(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') addWhitelistUser(); }}
+                  placeholder="再手动补一个 QQ 号"
+                  className="flex-1 px-3 py-2 text-sm rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
+                />
+                <button
+                  onClick={addWhitelistUser}
+                  className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-white hover:opacity-90 cursor-pointer"
+                >
+                  加入白名单
+                </button>
+              </div>
+              <p className="text-[11px] text-[var(--text-muted)]">这份名单只控制生图 / 修图权限，不影响普通聊天。若同一个 QQ 同时在用户黑名单里，实际运行时仍以黑名单为准。</p>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-[repeat(2,minmax(0,220px))_minmax(0,1fr)] gap-4">
@@ -746,9 +886,10 @@ export function UsageManager() {
           </div>
 
           <div className="overflow-hidden rounded-[var(--radius-sm)] border border-[var(--border-subtle)]">
-            <div className="grid grid-cols-[180px_120px_140px_140px_140px_120px] gap-3 px-4 py-3 text-[11px] text-[var(--text-muted)] bg-[var(--bg-elevated)] border-b border-[var(--border-subtle)]">
+            <div className="grid grid-cols-[180px_120px_140px_140px_140px_180px_120px] gap-3 px-4 py-3 text-[11px] text-[var(--text-muted)] bg-[var(--bg-elevated)] border-b border-[var(--border-subtle)]">
               <span>QQ</span>
               <span>身份</span>
+              <span>图像权限</span>
               <span>生图额度</span>
               <span>修图额度</span>
               <span>来源</span>
@@ -760,7 +901,7 @@ export function UsageManager() {
                 <div className="px-6 py-10 text-sm text-[var(--text-muted)] text-center">没有找到符合条件的 QQ。可以先搜索，或者手动补一个单独限额用户。</div>
               ) : (
                 filteredImageRows.map((row) => (
-                  <div key={row.uid} className="grid grid-cols-[180px_120px_140px_140px_140px_120px] gap-3 px-4 py-3 text-sm items-center">
+                  <div key={row.uid} className="grid grid-cols-[180px_120px_140px_140px_140px_180px_120px] gap-3 px-4 py-3 text-sm items-center">
                     <span className="mono text-[var(--text-primary)]">{row.uid}</span>
                     <span className="text-xs">
                       {row.isMaster ? (
@@ -769,6 +910,21 @@ export function UsageManager() {
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(255,171,64,0.18)] text-[var(--warning)]">单独限额</span>
                       ) : (
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[var(--bg-elevated)] text-[var(--text-muted)]">全局默认</span>
+                      )}
+                    </span>
+                    <span className="text-xs">
+                      {row.isMaster ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(0,230,118,0.15)] text-[var(--success)]">主人豁免</span>
+                      ) : row.inGlobalBlacklist ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(255,82,82,0.15)] text-[var(--error)]">黑名单禁止</span>
+                      ) : imageAccess.mode === 'whitelist' ? (
+                        row.inImageWhitelist ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(255,171,64,0.18)] text-[var(--warning)]">白名单允许</span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[var(--bg-elevated)] text-[var(--text-muted)]">未在白名单</span>
+                        )
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(14,165,233,0.12)] text-[var(--info)]">黑名单模式默认可用</span>
                       )}
                     </span>
                     {row.isMaster ? (
@@ -797,7 +953,7 @@ export function UsageManager() {
                     ) : (
                       <span className="mono text-[var(--text-secondary)]">{formatQuota(row.editLimit)}</span>
                     )}
-                    <span className="text-[var(--text-muted)]">{row.isMaster ? '主人豁免' : row.hasOverride ? '单独规则' : '继承全局'}</span>
+                    <span className="text-[var(--text-muted)]">{row.isMaster ? '主人豁免' : row.hasOverride ? '单独规则' : row.accessStatus}</span>
                     <div className="flex justify-end gap-2">
                       {!row.isMaster && !row.hasOverride && (
                         <button

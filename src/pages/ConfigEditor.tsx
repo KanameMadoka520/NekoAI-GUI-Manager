@@ -23,7 +23,7 @@ interface Section {
 const sections: Section[] = [
   { id: 'core', label: '核心设置', icon: '⚙', summary: '昵称、主人账号、日志与基础身份。', mode: 'both' },
   { id: 'active', label: '活跃节点/人格', icon: '⚡', summary: '当前生效的 API 与人格索引。', mode: 'both' },
-  { id: 'groups', label: '群聊与用户', icon: '👥', summary: '监听群组、白名单、黑名单与群限流。', mode: 'both' },
+  { id: 'groups', label: '群聊与用户', icon: '👥', summary: '监听群组、私聊白名单、黑名单、图像权限模式与群限流。', mode: 'both' },
   { id: 'messages', label: '消息行为', icon: '💬', summary: '上下文条数、等待时间、随机回复和打字节奏。', mode: 'both' },
   { id: 'feedback', label: '请求反馈', icon: '📣', summary: '控制处理中提示、失败回报和 API 超时。', mode: 'both' },
   { id: 'memory', label: '记忆与摘要', icon: '🧠', summary: '闲置自动清空、记忆压缩与摘要提示词。', mode: 'common' },
@@ -74,6 +74,10 @@ const defaults: Partial<RuntimeConfig> = {
   groupMentionWait: 0,
   groupMentionFocusMode: true,
   uiStyle: 1,
+  imageAccess: {
+    mode: 'blacklist',
+    whitelistUsers: [],
+  },
   imageQuota: {
     enabled: false,
     defaultGenerateLimit: 0,
@@ -164,6 +168,15 @@ function normalizeImageQuota(input: RuntimeConfig['imageQuota'] | undefined): No
   };
 }
 
+function normalizeImageAccess(input: RuntimeConfig['imageAccess'] | undefined): NonNullable<RuntimeConfig['imageAccess']> {
+  return {
+    mode: input?.mode === 'whitelist' ? 'whitelist' : 'blacklist',
+    whitelistUsers: Array.isArray(input?.whitelistUsers)
+      ? [...new Set(input.whitelistUsers.map((item) => String(item || '').trim()).filter(Boolean))]
+      : [],
+  };
+}
+
 function normalizeApiParams(input: RuntimeConfig['apiParams'] | undefined): RuntimeConfig['apiParams'] {
   const base: RuntimeConfig['apiParams'] = {
     temperature: 0.65,
@@ -226,6 +239,7 @@ function normalizeRuntimeConfig(input?: Partial<RuntimeConfig> | null): RuntimeC
     groupMentionFocusMode: merged.groupMentionFocusMode !== undefined ? !!merged.groupMentionFocusMode : true,
     contextAutoForgetMs: Number.isFinite(Number(merged.contextAutoForgetMs)) ? Number(merged.contextAutoForgetMs) : 600000,
     uiStyle: Number.isFinite(Number(merged.uiStyle)) ? Number(merged.uiStyle) : 1,
+    imageAccess: normalizeImageAccess(merged.imageAccess),
     imageQuota: normalizeImageQuota(merged.imageQuota),
     groupLimits: merged.groupLimits && typeof merged.groupLimits === 'object' ? merged.groupLimits : {},
     groupPersonalityMap: merged.groupPersonalityMap && typeof merged.groupPersonalityMap === 'object' ? merged.groupPersonalityMap : {},
@@ -547,6 +561,13 @@ function getDiffPaths(config: RuntimeConfig | null, baseline: RuntimeConfig | nu
     .sort((a, b) => a.localeCompare(b, 'zh-CN'));
 }
 
+function getImageAccessConflictUsers(config: RuntimeConfig | null): string[] {
+  if (!config) return [];
+  const blacklist = new Set((config.userBlacklist ?? []).map((item) => String(item || '').trim()).filter(Boolean));
+  const whitelist = (config.imageAccess?.whitelistUsers ?? []).map((item) => String(item || '').trim()).filter(Boolean);
+  return [...new Set(whitelist.filter((uid) => blacklist.has(uid)))].sort((a, b) => a.localeCompare(b, 'zh-CN'));
+}
+
 export function ConfigEditor() {
   const addToast = useUiStore((s) => s.addToast);
   const settings = useUiStore((s) => s.settings);
@@ -602,6 +623,7 @@ export function ConfigEditor() {
   }, [original]);
   const changedFromDefaults = useMemo(() => getDiffPaths(config, defaultConfig, schema), [config, defaultConfig, schema]);
   const changedFromSaved = useMemo(() => getDiffPaths(config, savedConfig, schema), [config, savedConfig, schema]);
+  const imageAccessConflictUsers = useMemo(() => getImageAccessConflictUsers(config), [config]);
 
   const summary = useMemo(() => {
     if (!config) {
@@ -1126,6 +1148,16 @@ export function ConfigEditor() {
             {renderSchemaField('groups')}
             {renderSchemaField('allowPrivateTalkingUsers')}
             {renderSchemaField('userBlacklist')}
+            {renderSchemaField('imageAccess.mode')}
+            {renderSchemaField('imageAccess.whitelistUsers')}
+            {imageAccessConflictUsers.length > 0 && (
+              <IssueCallout
+                label="图像权限冲突"
+                text={`以下 QQ 同时出现在用户黑名单和图像白名单里：${imageAccessConflictUsers.join(', ')}。实际运行时黑名单优先，这些人仍然无法生图或修图。建议你清理其中一侧，避免误判。`}
+                tone="error"
+              />
+            )}
+            <InlineNote>图像权限模式和图像白名单只影响生图 / 修图，不影响普通聊天。黑名单用户始终会被拦截，优先级高于图像白名单。</InlineNote>
             {renderSchemaField('groupLimits')}
           </SectionCard>
 

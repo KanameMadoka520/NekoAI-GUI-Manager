@@ -599,6 +599,49 @@ pub fn run_startup_self_check(state: State<'_, AppState>) -> Result<SelfCheckRep
                 push_item(&mut items, "type.activePrivatePersonalityIndex", "error", "activePrivatePersonalityIndex 类型错误或缺失".to_string(), true);
             }
 
+            let user_blacklist: Vec<String> = rt
+                .get("userBlacklist")
+                .and_then(|v| v.as_array())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|item| item.as_str())
+                        .map(|s| s.trim().to_string())
+                        .filter(|s| !s.is_empty())
+                        .collect()
+                })
+                .unwrap_or_default();
+            let image_whitelist: Vec<String> = rt
+                .get("imageAccess")
+                .and_then(|v| v.get("whitelistUsers"))
+                .and_then(|v| v.as_array())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|item| item.as_str())
+                        .map(|s| s.trim().to_string())
+                        .filter(|s| !s.is_empty())
+                        .collect()
+                })
+                .unwrap_or_default();
+            let blacklist_set: std::collections::HashSet<String> = user_blacklist.into_iter().collect();
+            let overlap: Vec<String> = image_whitelist
+                .into_iter()
+                .filter(|uid| blacklist_set.contains(uid))
+                .collect::<std::collections::BTreeSet<_>>()
+                .into_iter()
+                .collect();
+            if !overlap.is_empty() {
+                push_item(
+                    &mut items,
+                    "imageAccess.blacklistWhitelistOverlap",
+                    "warn",
+                    format!(
+                        "这些 QQ 同时出现在 userBlacklist 和 imageAccess.whitelistUsers 中: {}。实际运行时黑名单优先，这些人仍然无法生图或修图。",
+                        overlap.join(", ")
+                    ),
+                    false,
+                );
+            }
+
             let schema_path = plugin_file(&plugin_dir, "runtime_schema.json");
             if schema_path.exists() {
                 if let Ok(schema) = read_json_file(&schema_path) {

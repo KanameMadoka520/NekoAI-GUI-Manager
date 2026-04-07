@@ -54,6 +54,13 @@ export interface ImageQuotaConfig {
   userLimits: Record<string, ImageQuotaUserLimit>;
 }
 
+export type ImageAccessMode = 'blacklist' | 'whitelist';
+
+export interface ImageAccessConfig {
+  mode: ImageAccessMode;
+  whitelistUsers: string[];
+}
+
 export interface ApiParams {
   temperature?: number;
   maxTokens?: number;
@@ -101,6 +108,7 @@ export interface RuntimeConfig {
   groupMentionFocusMode?: boolean;
   contextAutoForgetMs?: number;
   uiStyle?: number;
+  imageAccess?: ImageAccessConfig;
   imageQuota?: ImageQuotaConfig;
   groupLimits: Record<string, number>;
   groupPersonalityMap: Record<string, number>;
