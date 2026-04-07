@@ -20,6 +20,7 @@ pub fn start_file_watcher(app: &AppHandle, plugin_dir: PathBuf) -> Result<Recomm
     let config_files = vec![
         "runtime_config.json",
         "api_config.json",
+        "image_api_config.json",
         "group_personality.json",
         "private_personality.json",
         "commands.json",

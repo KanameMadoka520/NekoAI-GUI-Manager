@@ -8,10 +8,11 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use tauri::State;
 
-const SNAPSHOT_KEYS: [&str; 6] = [
+const SNAPSHOT_KEYS: [&str; 7] = [
     "runtime_config.json",
     "runtime_schema.json",
     "api_config.json",
+    "image_api_config.json",
     "group_personality.json",
     "private_personality.json",
     "commands.json",
@@ -540,10 +541,14 @@ pub fn run_startup_self_check(state: State<'_, AppState>) -> Result<SelfCheckRep
     if runtime_path.exists() {
         if let Ok(rt) = read_json_file(&runtime_path) {
             let active_api = rt.get("activeApiIndex").and_then(|v| v.as_i64());
+            let active_image_api = rt.get("activeImageApiIndex").and_then(|v| v.as_i64());
             let active_gp = rt.get("activeGroupPersonalityIndex").and_then(|v| v.as_i64());
             let active_pp = rt.get("activePrivatePersonalityIndex").and_then(|v| v.as_i64());
 
             let api_len = read_file_if_exists(&plugin_file(&plugin_dir, "api_config.json"))?
+                .and_then(|v| v.as_array().map(|a| a.len() as i64))
+                .unwrap_or(0);
+            let image_api_len = read_file_if_exists(&plugin_file(&plugin_dir, "image_api_config.json"))?
                 .and_then(|v| v.as_array().map(|a| a.len() as i64))
                 .unwrap_or(0);
             let gp_len = read_file_if_exists(&plugin_file(&plugin_dir, "group_personality.json"))?
@@ -559,6 +564,14 @@ pub fn run_startup_self_check(state: State<'_, AppState>) -> Result<SelfCheckRep
                 }
             } else {
                 push_item(&mut items, "type.activeApiIndex", "error", "activeApiIndex 类型错误或缺失".to_string(), true);
+            }
+
+            if let Some(i) = active_image_api {
+                if i < 0 || i >= image_api_len.max(1) {
+                    push_item(&mut items, "index.activeImageApiIndex", "warn", format!("activeImageApiIndex 越界: {}", i), true);
+                }
+            } else {
+                push_item(&mut items, "type.activeImageApiIndex", "error", "activeImageApiIndex 类型错误或缺失".to_string(), true);
             }
 
             if let Some(i) = active_gp {
@@ -658,6 +671,9 @@ pub fn apply_self_check_fixes(state: State<'_, AppState>) -> Result<Vec<String>,
     let api_len = read_file_if_exists(&plugin_file(&plugin_dir, "api_config.json"))?
         .and_then(|v| v.as_array().map(|a| a.len() as i64))
         .unwrap_or(0);
+    let image_api_len = read_file_if_exists(&plugin_file(&plugin_dir, "image_api_config.json"))?
+        .and_then(|v| v.as_array().map(|a| a.len() as i64))
+        .unwrap_or(0);
     let gp_len = read_file_if_exists(&plugin_file(&plugin_dir, "group_personality.json"))?
         .and_then(|v| v.as_array().map(|a| a.len() as i64))
         .unwrap_or(0);
@@ -675,6 +691,13 @@ pub fn apply_self_check_fixes(state: State<'_, AppState>) -> Result<Vec<String>,
         if api_old != api_new {
             obj.insert("activeApiIndex".to_string(), json!(api_new));
             changed.push(format!("activeApiIndex: {} -> {}", api_old, api_new));
+        }
+
+        let image_api_old = obj.get("activeImageApiIndex").and_then(|v| v.as_i64()).unwrap_or(0);
+        let image_api_new = clamp(image_api_old, image_api_len);
+        if image_api_old != image_api_new {
+            obj.insert("activeImageApiIndex".to_string(), json!(image_api_new));
+            changed.push(format!("activeImageApiIndex: {} -> {}", image_api_old, image_api_new));
         }
 
         let gp_old = obj

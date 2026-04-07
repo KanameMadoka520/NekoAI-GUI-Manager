@@ -19,10 +19,15 @@ import { useUiStore } from '../stores/uiStore';
 import { useUndoRedo } from '../hooks/useUndoRedo';
 import { getConfig, saveConfig, pingApi, batchPingApis, batchPingApisStream, getApiHistoryMetrics, getApiHealthWeights, saveApiHealthWeights } from '../lib/tauri-commands';
 import { downloadJsonWithTimestamp, pickJsonAndParse } from '../lib/json-transfer';
-import type { ApiNode, RuntimeConfig, PingResult, ApiHistoryMetric, ApiHealthWeights } from '../lib/types';
+import type { ApiNode, ImageApiNode, RuntimeConfig, PingResult, ApiHistoryMetric, ApiHealthWeights } from '../lib/types';
 
 interface NodeState {
   nodes: ApiNode[];
+  activeIndex: number;
+}
+
+interface ImageNodeState {
+  nodes: ImageApiNode[];
   activeIndex: number;
 }
 
@@ -76,12 +81,19 @@ function normalizeApiNode(input?: Partial<ApiNode>): ApiNode {
     remark: typeof input?.remark === 'string' ? input.remark : '',
     aiType: normalizeAiType(typeof input?.aiType === 'string' ? input.aiType : '', apiUrl),
     xaiWebSearchEnabled: input?.xaiWebSearchEnabled === true,
-    xaiImageEnabled: input?.xaiImageEnabled === true,
-    xaiImageGenerationUrl: typeof input?.xaiImageGenerationUrl === 'string' ? input.xaiImageGenerationUrl : '',
-    xaiImageEditUrl: typeof input?.xaiImageEditUrl === 'string' ? input.xaiImageEditUrl : '',
-    xaiImageModel: typeof input?.xaiImageModel === 'string' ? input.xaiImageModel : '',
-    xaiImageAspectRatio: typeof input?.xaiImageAspectRatio === 'string' ? input.xaiImageAspectRatio : '',
-    xaiImageResolution: typeof input?.xaiImageResolution === 'string' ? input.xaiImageResolution : '',
+  };
+}
+
+function normalizeImageApiNode(input?: Partial<ImageApiNode>): ImageApiNode {
+  return {
+    providerType: 'xai',
+    generationUrl: typeof input?.generationUrl === 'string' ? input.generationUrl : '',
+    editUrl: typeof input?.editUrl === 'string' ? input.editUrl : '',
+    apiKey: typeof input?.apiKey === 'string' ? input.apiKey : '',
+    modelName: typeof input?.modelName === 'string' && input.modelName.trim() ? input.modelName : 'grok-imagine-image',
+    remark: typeof input?.remark === 'string' ? input.remark : '',
+    aspectRatio: typeof input?.aspectRatio === 'string' ? input.aspectRatio : '',
+    resolution: typeof input?.resolution === 'string' ? input.resolution : '',
   };
 }
 
@@ -224,10 +236,22 @@ export function ApiManager() {
   const addToast = useUiStore((s) => s.addToast);
   const settings = useUiStore((s) => s.settings);
   const { state, set, reset, undo, redo, canUndo, canRedo } = useUndoRedo<NodeState>({ nodes: [], activeIndex: 0 });
+  const {
+    state: imageState,
+    set: setImageState,
+    reset: resetImageState,
+    undo: undoImage,
+    redo: redoImage,
+    canUndo: canUndoImage,
+    canRedo: canRedoImage,
+  } = useUndoRedo<ImageNodeState>({ nodes: [], activeIndex: 0 });
   const [original, setOriginal] = useState('');
+  const [imageOriginal, setImageOriginal] = useState('');
   const [originalWeights, setOriginalWeights] = useState('');
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [imageSearch, setImageSearch] = useState('');
+  const [managerMode, setManagerMode] = useState<'chat' | 'image'>('chat');
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [pingResults, setPingResults] = useState<Map<number, PingResult>>(new Map());
   const [pinging, setPinging] = useState<Set<number>>(new Set());
@@ -249,6 +273,7 @@ export function ApiManager() {
   const cardRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
   const { nodes, activeIndex } = state;
+  const { nodes: imageNodes, activeIndex: activeImageIndex } = imageState;
   const historyWeight = Math.max(0, 100 - Math.max(0, Math.min(100, weightLive)) - Math.max(0, Math.min(100, weightTimeout)) - Math.max(0, Math.min(100, weightJitter)));
   const weightState = useMemo(() => ({
     liveWeight: Math.max(0, Math.min(100, weightLive)),
@@ -257,6 +282,7 @@ export function ApiManager() {
     jitterWeight: Math.max(0, Math.min(100, weightJitter)),
   }), [weightLive, historyWeight, weightTimeout, weightJitter]);
   const dirty = useMemo(() => JSON.stringify(state) !== original || JSON.stringify(weightState) !== originalWeights, [state, original, weightState, originalWeights]);
+  const imageDirty = useMemo(() => JSON.stringify(imageState) !== imageOriginal, [imageState, imageOriginal]);
   const density = getDensityClass(settings.contentDensity);
   const allApiKeyExpanded = nodes.length > 0 && nodes.every((_, i) => expandedCards.has(i));
 
@@ -264,13 +290,13 @@ export function ApiManager() {
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); save(); }
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undo(); }
-      if ((e.ctrlKey || e.metaKey) && e.key === 'y') { e.preventDefault(); redo(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); if (managerMode === 'image') void saveImageApis(); else void save(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); if (managerMode === 'image') undoImage(); else undo(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'y') { e.preventDefault(); if (managerMode === 'image') redoImage(); else redo(); }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [undo, redo, state, original]);
+  }, [managerMode, undo, redo, undoImage, redoImage, state, original, imageState, imageOriginal]);
 
   useEffect(() => {
     if (!batchSessionId) return;
@@ -314,19 +340,27 @@ export function ApiManager() {
   async function load() {
     setLoading(true);
     try {
-      const [apiData, rt, metrics, healthWeights] = await Promise.all([
+      const [apiData, imageApiData, rt, metrics, healthWeights] = await Promise.all([
         getConfig<ApiNode[]>('api'),
+        getConfig<ImageApiNode[]>('imageApi'),
         getConfig<RuntimeConfig>('runtime'),
         getApiHistoryMetrics().catch(() => []),
         getApiHealthWeights().catch(() => ({ liveWeight: 60, historyWeight: 0, timeoutWeight: 20, jitterWeight: 20 } as ApiHealthWeights)),
       ]);
       const normalizedNodes = Array.isArray(apiData) ? apiData.map((node) => normalizeApiNode(node)) : [];
+      const normalizedImageNodes = Array.isArray(imageApiData) ? imageApiData.map((node) => normalizeImageApiNode(node)) : [];
       const initial: NodeState = {
         nodes: normalizedNodes,
         activeIndex: rt?.activeApiIndex ?? 0,
       };
+      const imageInitial: ImageNodeState = {
+        nodes: normalizedImageNodes,
+        activeIndex: rt?.activeImageApiIndex ?? 0,
+      };
       reset(initial);
+      resetImageState(imageInitial);
       setOriginal(JSON.stringify(initial));
+      setImageOriginal(JSON.stringify(imageInitial));
       setSelected(new Set());
       setPingResults(new Map());
       setRuntimeConfig(rt ?? null);
@@ -367,6 +401,12 @@ export function ApiManager() {
     set({ ...state, nodes: next });
   }
 
+  function updateImageNode(index: number, field: keyof ImageApiNode, value: ImageApiNode[keyof ImageApiNode]) {
+    const next = [...imageNodes];
+    next[index] = { ...next[index], [field]: value } as ImageApiNode;
+    setImageState({ ...imageState, nodes: next });
+  }
+
   function applyDefaultUrlSuffix(index: number) {
     const node = nodes[index];
     if (!node) return;
@@ -380,29 +420,29 @@ export function ApiManager() {
     addToast('success', '已追加常见默认后缀。这里只是辅助填充，不会锁死你的自定义 URL。');
   }
 
-  function applyXaiImageGenerationSuffix(index: number) {
-    const node = nodes[index];
+  function applyImageGenerationUrlSuffix(index: number) {
+    const node = imageNodes[index];
     if (!node) return;
-    const nextUrl = appendXaiImageGenerationSuffix(node.xaiImageGenerationUrl || '');
-    if (nextUrl === (node.xaiImageGenerationUrl || '')) {
-      if (/[?#]/.test(String(node.xaiImageGenerationUrl || ''))) addToast('warning', '当前 URL 含查询参数或锚点，图像生成后缀请手动补在路径位置。');
+    const nextUrl = appendXaiImageGenerationSuffix(node.generationUrl || '');
+    if (nextUrl === (node.generationUrl || '')) {
+      if (/[?#]/.test(String(node.generationUrl || ''))) addToast('warning', '当前 URL 含查询参数或锚点，图像生成后缀请手动补在路径位置。');
       else addToast('warning', '当前 URL 已包含图像生成接口的常见默认后缀，没有重复追加。');
       return;
     }
-    updateNode(index, 'xaiImageGenerationUrl', nextUrl);
+    updateImageNode(index, 'generationUrl', nextUrl);
     addToast('success', '已追加图像生成接口默认后缀。这里只是辅助填充，不会锁死你的自定义 URL。');
   }
 
-  function applyXaiImageEditSuffix(index: number) {
-    const node = nodes[index];
+  function applyImageEditUrlSuffix(index: number) {
+    const node = imageNodes[index];
     if (!node) return;
-    const nextUrl = appendXaiImageEditSuffix(node.xaiImageEditUrl || '');
-    if (nextUrl === (node.xaiImageEditUrl || '')) {
-      if (/[?#]/.test(String(node.xaiImageEditUrl || ''))) addToast('warning', '当前 URL 含查询参数或锚点，图像编辑后缀请手动补在路径位置。');
+    const nextUrl = appendXaiImageEditSuffix(node.editUrl || '');
+    if (nextUrl === (node.editUrl || '')) {
+      if (/[?#]/.test(String(node.editUrl || ''))) addToast('warning', '当前 URL 含查询参数或锚点，图像编辑后缀请手动补在路径位置。');
       else addToast('warning', '当前 URL 已包含图像编辑接口的常见默认后缀，没有重复追加。');
       return;
     }
-    updateNode(index, 'xaiImageEditUrl', nextUrl);
+    updateImageNode(index, 'editUrl', nextUrl);
     addToast('success', '已追加图像编辑接口默认后缀。这里只是辅助填充，不会锁死你的自定义 URL。');
   }
 
@@ -585,6 +625,49 @@ export function ApiManager() {
     }
   }
 
+  async function saveImageApis() {
+    if (!imageDirty) return;
+    try {
+      await saveConfig('imageApi', imageNodes);
+      const rt = runtimeConfig ?? await getConfig<RuntimeConfig>('runtime');
+      if (rt) {
+        const updatedRuntime = {
+          ...rt,
+          activeImageApiIndex: activeImageIndex,
+        };
+        await saveConfig('runtime', updatedRuntime);
+        setRuntimeConfig(updatedRuntime);
+      }
+      setImageOriginal(JSON.stringify(imageState));
+      addToast('success', '图像 API 配置已保存');
+    } catch (e: any) {
+      addToast('error', `保存失败: ${e?.message ?? e}`);
+    }
+  }
+
+  function exportImageApiConfig() {
+    downloadJsonWithTimestamp(imageNodes, 'image_api_config.json');
+    addToast('success', '已导出图像 API 配置');
+  }
+
+  async function importImageApiConfig() {
+    try {
+      const picked = await pickJsonAndParse();
+      if (!picked) return;
+      if (!Array.isArray(picked.data)) {
+        addToast('error', '导入失败：JSON 必须是数组');
+        return;
+      }
+
+      const imported = picked.data as Array<Partial<ImageApiNode>>;
+      const normalized = imported.map((item) => normalizeImageApiNode(item));
+      setImageState({ nodes: normalized, activeIndex: Math.max(0, Math.min(activeImageIndex, Math.max(0, normalized.length - 1))) });
+      addToast('success', `已导入 ${normalized.length} 个图像 API 节点（请点击保存生效）`);
+    } catch (e: any) {
+      addToast('error', `导入失败: ${e?.message ?? e}`);
+    }
+  }
+
   function scrollToNode(index: number) {
     cardRefs.current.get(index)?.scrollIntoView({ behavior: 'auto', block: 'center' });
   }
@@ -608,6 +691,41 @@ export function ApiManager() {
     });
   }
 
+  function addImageNode() {
+    setImageState({
+      ...imageState,
+      nodes: [...imageNodes, normalizeImageApiNode({ providerType: 'xai', remark: '', modelName: 'grok-imagine-image' })],
+    });
+  }
+
+  function cloneImageNode(index: number) {
+    const source = imageNodes[index];
+    if (!source) return;
+    const next = [...imageNodes];
+    next.splice(index + 1, 0, normalizeImageApiNode({ ...source, remark: `${source.remark || source.modelName} (副本)` }));
+    setImageState({ ...imageState, nodes: next });
+  }
+
+  function removeImageNode(index: number) {
+    const next = imageNodes.filter((_, i) => i !== index);
+    setImageState({ nodes: next, activeIndex: Math.min(activeImageIndex, Math.max(0, next.length - 1)) });
+  }
+
+  const filteredImageIndices = useMemo(() => {
+    if (!imageSearch.trim()) return imageNodes.map((_, i) => i);
+    const q = imageSearch.toLowerCase();
+    return imageNodes
+      .map((n, i) => ({ n, i }))
+      .filter(({ n }) =>
+        n.modelName.toLowerCase().includes(q) ||
+        n.remark.toLowerCase().includes(q) ||
+        n.providerType.toLowerCase().includes(q) ||
+        n.generationUrl.toLowerCase().includes(q) ||
+        n.editUrl.toLowerCase().includes(q)
+      )
+      .map(({ i }) => i);
+  }, [imageNodes, imageSearch]);
+
   const duplicates = useMemo(() => {
     const seen = new Map<string, number[]>();
     nodes.forEach((n, i) => {
@@ -629,9 +747,7 @@ export function ApiManager() {
         n.modelName.toLowerCase().includes(q) ||
         n.remark.toLowerCase().includes(q) ||
         n.aiType.toLowerCase().includes(q) ||
-        formatAiTypeLabel(n.aiType).toLowerCase().includes(q) ||
-        String(n.xaiImageModel || '').toLowerCase().includes(q) ||
-        (n.xaiImageEnabled ? 'xai 图像 xai image 生图 修图' : '').includes(q)
+        formatAiTypeLabel(n.aiType).toLowerCase().includes(q)
       )
       .map(({ i }) => i);
   }, [nodes, search]);
@@ -772,6 +888,29 @@ export function ApiManager() {
     useSensor(KeyboardSensor),
   );
 
+  const modeSwitcher = (
+    <Panel
+      title="节点分组"
+      subtitle="聊天节点与图像节点现在分别保存在不同配置文件里，互不混用。"
+      padding="sm"
+    >
+      <div className="flex flex-wrap gap-2">
+        <button
+          onClick={() => setManagerMode('chat')}
+          className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] border cursor-pointer ${managerMode === 'chat' ? 'border-transparent bg-[var(--accent-purple)] text-white' : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+        >
+          聊天节点列表
+        </button>
+        <button
+          onClick={() => setManagerMode('image')}
+          className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] border cursor-pointer ${managerMode === 'image' ? 'border-transparent bg-[var(--accent-purple)] text-white' : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+        >
+          图像节点列表
+        </button>
+      </div>
+    </Panel>
+  );
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -783,8 +922,41 @@ export function ApiManager() {
     );
   }
 
+  if (managerMode === 'image') {
+    return (
+      <div className={`flex flex-col h-full ${density.pageGap}`}>
+        {modeSwitcher}
+        <ImageApiManagerPanel
+          density={settings.contentDensity}
+          nodes={imageNodes}
+          activeIndex={activeImageIndex}
+          search={imageSearch}
+          dirty={imageDirty}
+          canUndo={canUndoImage}
+          canRedo={canRedoImage}
+          onSearchChange={setImageSearch}
+          onUndo={undoImage}
+          onRedo={redoImage}
+          onSave={saveImageApis}
+          onExport={exportImageApiConfig}
+          onImport={importImageApiConfig}
+          onAdd={addImageNode}
+          onClone={cloneImageNode}
+          onRemove={removeImageNode}
+          onSetActive={(index) => setImageState({ ...imageState, activeIndex: index })}
+          onUpdate={updateImageNode}
+          onApplyGenerationSuffix={applyImageGenerationUrlSuffix}
+          onApplyEditSuffix={applyImageEditUrlSuffix}
+          filteredIndices={filteredImageIndices}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className={`flex h-full ${density.pageGap}`}>
+    <div className={`flex flex-col h-full ${density.pageGap}`}>
+      {modeSwitcher}
+      <div className={`flex flex-1 min-h-0 ${density.pageGap}`}>
       <div className="w-64 flex-shrink-0">
         <Panel title="节点目录" subtitle="先缩小范围，再点进具体节点。这样看起来不会像一整面表单墙。" padding="sm">
           <div className={density.sectionGap}>
@@ -1026,8 +1198,6 @@ export function ApiManager() {
                       onInsert={insertAfter}
                       onTest={testNode}
                       onApplyDefaultUrlSuffix={applyDefaultUrlSuffix}
-                      onApplyXaiImageGenerationSuffix={applyXaiImageGenerationSuffix}
-                      onApplyXaiImageEditSuffix={applyXaiImageEditSuffix}
                       onSetActive={(idx) => set({ ...state, activeIndex: idx })}
                       onToggleSelect={(idx) => {
                         const next = new Set(selected);
@@ -1057,6 +1227,286 @@ export function ApiManager() {
         title="批量删除"
         message={`确定要删除选中的 ${selected.size} 个节点吗？`}
       />
+      </div>
+    </div>
+  );
+}
+
+function ImageApiManagerPanel({
+  density,
+  nodes,
+  activeIndex,
+  search,
+  dirty,
+  canUndo,
+  canRedo,
+  filteredIndices,
+  onSearchChange,
+  onUndo,
+  onRedo,
+  onSave,
+  onExport,
+  onImport,
+  onAdd,
+  onClone,
+  onRemove,
+  onSetActive,
+  onUpdate,
+  onApplyGenerationSuffix,
+  onApplyEditSuffix,
+}: {
+  density: 'compact' | 'standard' | 'spacious';
+  nodes: ImageApiNode[];
+  activeIndex: number;
+  search: string;
+  dirty: boolean;
+  canUndo: boolean;
+  canRedo: boolean;
+  filteredIndices: number[];
+  onSearchChange: (next: string) => void;
+  onUndo: () => void;
+  onRedo: () => void;
+  onSave: () => void | Promise<void>;
+  onExport: () => void;
+  onImport: () => void | Promise<void>;
+  onAdd: () => void;
+  onClone: (index: number) => void;
+  onRemove: (index: number) => void;
+  onSetActive: (index: number) => void;
+  onUpdate: (index: number, field: keyof ImageApiNode, value: ImageApiNode[keyof ImageApiNode]) => void;
+  onApplyGenerationSuffix: (index: number) => void;
+  onApplyEditSuffix: (index: number) => void;
+}) {
+  const densityClass = getDensityClass(density);
+  const [showKey, setShowKey] = useState<Set<number>>(new Set());
+
+  return (
+    <div className="flex-1 min-h-0 flex flex-col gap-4">
+      <div className={`grid grid-cols-2 xl:grid-cols-4 ${densityClass.summaryGrid}`}>
+        <SummaryCard label="图像节点总数" value={String(nodes.length)} hint="这里是独立的 image_api_config.json，不会混进聊天节点列表。" />
+        <SummaryCard label="当前图像节点" value={nodes[activeIndex]?.modelName || `#${activeIndex}`} hint={`命令会优先从 #${activeIndex} 开始使用。`} />
+        <SummaryCard label="当前显示" value={`${filteredIndices.length}/${nodes.length}`} hint="搜索只影响当前列表显示，不会改真实顺序。" />
+        <SummaryCard label="保存状态" value={dirty ? '待保存' : '已同步'} hint={dirty ? '图像节点有未保存改动。' : '图像节点列表已经和文件一致。'} tone={dirty ? 'warning' : 'neutral'} />
+      </div>
+
+      <Panel title="图像节点操作" subtitle="这里管理独立的图像 API 节点。聊天节点和图像节点已经分离，图像一键测活默认不提供，避免直接消耗图像额度。" padding="sm">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => void onSave()}
+            disabled={!dirty}
+            className={`px-4 py-2 text-xs rounded-[var(--radius-sm)] font-medium transition-colors cursor-pointer ${dirty ? 'bg-[var(--accent-purple)] text-white hover:opacity-90' : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed'}`}
+          >
+            💾 保存图像节点
+          </button>
+          <button
+            onClick={onAdd}
+            className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--accent-purple)] hover:bg-[var(--border-subtle)] transition-colors cursor-pointer"
+          >
+            + 新增图像节点
+          </button>
+          <ImportExportActions
+            onExport={onExport}
+            onImport={() => void onImport()}
+            confirmTitle="导入图像 API 配置"
+            size="xs"
+          />
+          <div className="flex-1" />
+          <button
+            onClick={onUndo}
+            disabled={!canUndo}
+            className={`px-2.5 py-2 text-xs rounded-[var(--radius-sm)] cursor-pointer transition-colors ${canUndo ? 'text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)]' : 'text-[var(--text-muted)] cursor-not-allowed opacity-40'}`}
+          >
+            ↩ 撤销
+          </button>
+          <button
+            onClick={onRedo}
+            disabled={!canRedo}
+            className={`px-2.5 py-2 text-xs rounded-[var(--radius-sm)] cursor-pointer transition-colors ${canRedo ? 'text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)]' : 'text-[var(--text-muted)] cursor-not-allowed opacity-40'}`}
+          >
+            ↪ 重做
+          </button>
+        </div>
+      </Panel>
+
+      <div className="w-full">
+        <Panel title="图像节点列表" subtitle="xAI 图像生成、图像编辑 URL 和默认参数在这里单独维护。" padding="sm">
+          <div className="space-y-3">
+            <SearchBar value={search} onChange={onSearchChange} placeholder="搜索备注 / 模型 / URL..." />
+
+            {filteredIndices.length === 0 ? (
+              <div className="rounded-[var(--radius)] border border-dashed border-[var(--border-subtle)] px-4 py-8 text-sm text-[var(--text-muted)] text-center">
+                当前没有匹配的图像节点。可以先新增节点，或清空搜索词再看。
+              </div>
+            ) : (
+              <div className={densityClass.contentGap}>
+                {filteredIndices.map((index) => {
+                  const node = nodes[index];
+                  const keyVisible = showKey.has(index);
+                  return (
+                    <div key={index} className={`rounded-[var(--radius)] border border-[var(--border-subtle)] ${densityClass.cardPadding}`} style={{ boxShadow: 'var(--shadow-card)', background: 'var(--surface-card)' }}>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs mono text-[var(--text-muted)]">#{index}</span>
+                        <span className="text-sm font-medium text-[var(--text-primary)]">{node.modelName || 'grok-imagine-image'}</span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-[rgba(0,188,212,0.14)] text-[var(--info)]">xAI 图像</span>
+                        {index === activeIndex ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--accent-purple)] text-white">活跃</span> : null}
+                        <div className="flex-1" />
+                        <button
+                          onClick={() => {
+                            const next = new Set(showKey);
+                            if (next.has(index)) next.delete(index);
+                            else next.add(index);
+                            setShowKey(next);
+                          }}
+                          className="px-2.5 py-1.5 text-[10px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+                        >
+                          {keyVisible ? '收起 Key' : '展开 Key'}
+                        </button>
+                      </div>
+
+                      <div className="mt-1 text-[11px] text-[var(--text-muted)]">{node.remark || '还没写备注'}</div>
+
+                      <div className="mt-4 grid gap-3 xl:grid-cols-2">
+                        <div>
+                          <label className="text-[10px] text-[var(--text-muted)] mb-1 block">备注</label>
+                          <input
+                            value={node.remark}
+                            onChange={(e) => onUpdate(index, 'remark', e.target.value)}
+                            className="w-full px-2.5 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
+                            placeholder="写一个你自己看得懂的备注"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-[var(--text-muted)] mb-1 block">图像模型</label>
+                          <input
+                            value={node.modelName}
+                            onChange={(e) => onUpdate(index, 'modelName', e.target.value)}
+                            className="w-full px-2.5 py-2 text-xs mono rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
+                            placeholder="grok-imagine-image"
+                          />
+                        </div>
+
+                        <div className="xl:col-span-2">
+                          <label className="text-[10px] text-[var(--text-muted)] mb-1 block">生图 URL</label>
+                          <div className="flex gap-2">
+                            <input
+                              value={node.generationUrl}
+                              onChange={(e) => onUpdate(index, 'generationUrl', e.target.value)}
+                              className="flex-1 px-2.5 py-2 text-xs mono rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
+                              placeholder="先填基础地址，需要时点右侧按钮补常见后缀"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => onApplyGenerationSuffix(index)}
+                              className="px-2.5 py-2 text-[11px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-purple)] cursor-pointer whitespace-nowrap"
+                            >
+                              补 /v1/images/generations
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="xl:col-span-2">
+                          <label className="text-[10px] text-[var(--text-muted)] mb-1 block">修图 URL</label>
+                          <div className="flex gap-2">
+                            <input
+                              value={node.editUrl}
+                              onChange={(e) => onUpdate(index, 'editUrl', e.target.value)}
+                              className="flex-1 px-2.5 py-2 text-xs mono rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
+                              placeholder="先填基础地址，需要时点右侧按钮补常见后缀"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => onApplyEditSuffix(index)}
+                              className="px-2.5 py-2 text-[11px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-purple)] cursor-pointer whitespace-nowrap"
+                            >
+                              补 /v1/images/edits
+                            </button>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] text-[var(--text-muted)] mb-1 block">默认宽高比</label>
+                          <select
+                            value={node.aspectRatio || ''}
+                            onChange={(e) => onUpdate(index, 'aspectRatio', e.target.value)}
+                            className="w-full px-2.5 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)] cursor-pointer"
+                          >
+                            <option value="">默认比例</option>
+                            <option value="auto">auto</option>
+                            <option value="1:1">1:1</option>
+                            <option value="16:9">16:9</option>
+                            <option value="9:16">9:16</option>
+                            <option value="4:3">4:3</option>
+                            <option value="3:4">3:4</option>
+                            <option value="3:2">3:2</option>
+                            <option value="2:3">2:3</option>
+                            <option value="2:1">2:1</option>
+                            <option value="1:2">1:2</option>
+                            <option value="19.5:9">19.5:9</option>
+                            <option value="9:19.5">9:19.5</option>
+                            <option value="20:9">20:9</option>
+                            <option value="9:20">9:20</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] text-[var(--text-muted)] mb-1 block">默认分辨率</label>
+                          <select
+                            value={node.resolution || ''}
+                            onChange={(e) => onUpdate(index, 'resolution', e.target.value)}
+                            className="w-full px-2.5 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)] cursor-pointer"
+                          >
+                            <option value="">默认清晰度</option>
+                            <option value="1k">1k</option>
+                            <option value="2k">2k</option>
+                          </select>
+                        </div>
+
+                        {keyVisible ? (
+                          <div className="xl:col-span-2">
+                            <label className="text-[10px] text-[var(--text-muted)] mb-1 block">API Key</label>
+                            <input
+                              value={node.apiKey}
+                              onChange={(e) => onUpdate(index, 'apiKey', e.target.value)}
+                              className="w-full px-2.5 py-2 text-xs mono rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
+                              placeholder="xai-..."
+                            />
+                          </div>
+                        ) : null}
+                      </div>
+
+                      <div className="mt-4 flex flex-wrap items-center gap-1.5">
+                        <button
+                          onClick={() => onClone(index)}
+                          className="px-2.5 py-1.5 text-[10px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                        >
+                          📋 克隆
+                        </button>
+                        {index !== activeIndex ? (
+                          <button
+                            onClick={() => onSetActive(index)}
+                            className="px-2.5 py-1.5 text-[10px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--success)] hover:bg-[rgba(0,230,118,0.1)] transition-colors cursor-pointer"
+                          >
+                            ⚡ 设为活跃
+                          </button>
+                        ) : null}
+                        <div className="flex-1" />
+                        <button
+                          onClick={() => {
+                            if (window.confirm(`确定删除图像节点 #${index}？`)) onRemove(index);
+                          }}
+                          className="px-2.5 py-1.5 text-[10px] rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--error)] hover:bg-[rgba(255,82,82,0.1)] transition-colors cursor-pointer"
+                        >
+                          🗑 移除
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </Panel>
+      </div>
     </div>
   );
 }
@@ -1079,7 +1529,7 @@ function WeightSlider({ label, value, onChange }: { label: string; value: number
 }
 
 const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, density, isActive, isDuplicate, isSelected, isExpanded, isPinging, pingResult, health, showKey,
-  onUpdate, onRemove, onClone, onInsert, onTest, onApplyDefaultUrlSuffix, onApplyXaiImageGenerationSuffix, onApplyXaiImageEditSuffix, onSetActive, onToggleSelect, onToggleKey, onToggleExpanded, cardRef,
+  onUpdate, onRemove, onClone, onInsert, onTest, onApplyDefaultUrlSuffix, onSetActive, onToggleSelect, onToggleKey, onToggleExpanded, cardRef,
 }: {
   id: number;
   node: ApiNode;
@@ -1099,8 +1549,6 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
   onInsert: (i: number) => void;
   onTest: (i: number) => void;
   onApplyDefaultUrlSuffix: (i: number) => void;
-  onApplyXaiImageGenerationSuffix: (i: number) => void;
-  onApplyXaiImageEditSuffix: (i: number) => void;
   onSetActive: (i: number) => void;
   onToggleSelect: (i: number) => void;
   onToggleKey: (i: number) => void;
@@ -1141,11 +1589,6 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--bg-elevated)]" style={{ color: node.aiType === 'openai' ? 'var(--success)' : node.aiType === 'responses' ? 'var(--accent-purple)' : node.aiType === 'gemini' ? 'var(--info)' : 'var(--accent-pink)' }}>
                 {formatAiTypeLabel(node.aiType)}
               </span>
-              {node.xaiImageEnabled ? (
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-[rgba(0,188,212,0.14)] text-[var(--info)]">
-                  xAI 图像
-                </span>
-              ) : null}
               {isActive && <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--accent-purple)] text-white">活跃</span>}
               {isDuplicate && <span className="text-[10px] px-1.5 py-0.5 rounded bg-[rgba(255,171,64,0.2)] text-[var(--warning)]">重复</span>}
             </div>
@@ -1257,123 +1700,6 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
                 </span>
               </span>
             </label>
-          </div>
-
-          <div className={`rounded-[var(--radius-sm)] border p-3 ${node.xaiImageEnabled ? 'border-[var(--border-subtle)] bg-[var(--bg-elevated)]' : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)]'}`}>
-            <label className="flex items-start gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={node.xaiImageEnabled === true}
-                onChange={(e) => onUpdate(index, 'xaiImageEnabled', e.target.checked)}
-                className="mt-0.5 accent-[var(--accent-purple)] cursor-pointer"
-              />
-              <span className="min-w-0">
-                <span className="block text-xs text-[var(--text-primary)]">启用 xAI 图像生成 / 编辑</span>
-                <span className="block mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">
-                  这组配置独立走 xAI 图像端点，不影响普通聊天接口。仍复用当前节点的 API Key，适合给同一个节点附加生图能力。GUI 暂不提供图像一键测活，避免直接消耗图像额度。
-                </span>
-              </span>
-            </label>
-
-            <div className="mt-3 grid gap-3 md:grid-cols-2">
-              <div>
-                <label className="text-[10px] text-[var(--text-muted)] mb-1 block">图像模型</label>
-                <input
-                  value={node.xaiImageModel || ''}
-                  disabled={!node.xaiImageEnabled}
-                  onChange={(e) => onUpdate(index, 'xaiImageModel', e.target.value)}
-                  className="w-full px-2.5 py-2 text-xs mono rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)] disabled:opacity-60"
-                  placeholder="留空则默认 grok-imagine-image"
-                />
-                <p className="mt-1 text-[10px] text-[var(--text-muted)]">xAI 官方常见模型名：`grok-imagine-image`。</p>
-              </div>
-
-              <div>
-                <label className="text-[10px] text-[var(--text-muted)] mb-1 block">默认宽高比</label>
-                <select
-                  value={node.xaiImageAspectRatio || ''}
-                  disabled={!node.xaiImageEnabled}
-                  onChange={(e) => onUpdate(index, 'xaiImageAspectRatio', e.target.value)}
-                  className="w-full px-2.5 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)] cursor-pointer disabled:opacity-60"
-                >
-                  <option value="">默认比例</option>
-                  <option value="auto">auto</option>
-                  <option value="1:1">1:1</option>
-                  <option value="16:9">16:9</option>
-                  <option value="9:16">9:16</option>
-                  <option value="4:3">4:3</option>
-                  <option value="3:4">3:4</option>
-                  <option value="3:2">3:2</option>
-                  <option value="2:3">2:3</option>
-                  <option value="2:1">2:1</option>
-                  <option value="1:2">1:2</option>
-                  <option value="19.5:9">19.5:9</option>
-                  <option value="9:19.5">9:19.5</option>
-                  <option value="20:9">20:9</option>
-                  <option value="9:20">9:20</option>
-                </select>
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="text-[10px] text-[var(--text-muted)] mb-1 block">生图 URL</label>
-                <div className="flex gap-2">
-                  <input
-                    value={node.xaiImageGenerationUrl || ''}
-                    disabled={!node.xaiImageEnabled}
-                    onChange={(e) => onUpdate(index, 'xaiImageGenerationUrl', e.target.value)}
-                    className="flex-1 px-2.5 py-2 text-xs mono rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)] disabled:opacity-60"
-                    placeholder="先填基础地址，需要时点右侧按钮补常见后缀"
-                  />
-                  <button
-                    type="button"
-                    disabled={!node.xaiImageEnabled}
-                    onClick={() => onApplyXaiImageGenerationSuffix(index)}
-                    className="px-2.5 py-2 text-[11px] rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-purple)] cursor-pointer whitespace-nowrap disabled:opacity-60"
-                    title="只会补图像生成接口的常见默认后缀，不会覆盖你自己写的自定义路径"
-                  >
-                    补 /v1/images/generations
-                  </button>
-                </div>
-                <p className="mt-1 text-[10px] text-[var(--text-muted)]">常见默认后缀：`/v1/images/generations`。URL 仍然完全由你决定，按钮只做辅助补全。</p>
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="text-[10px] text-[var(--text-muted)] mb-1 block">修图 URL</label>
-                <div className="flex gap-2">
-                  <input
-                    value={node.xaiImageEditUrl || ''}
-                    disabled={!node.xaiImageEnabled}
-                    onChange={(e) => onUpdate(index, 'xaiImageEditUrl', e.target.value)}
-                    className="flex-1 px-2.5 py-2 text-xs mono rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)] disabled:opacity-60"
-                    placeholder="先填基础地址，需要时点右侧按钮补常见后缀"
-                  />
-                  <button
-                    type="button"
-                    disabled={!node.xaiImageEnabled}
-                    onClick={() => onApplyXaiImageEditSuffix(index)}
-                    className="px-2.5 py-2 text-[11px] rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-purple)] cursor-pointer whitespace-nowrap disabled:opacity-60"
-                    title="只会补图像编辑接口的常见默认后缀，不会覆盖你自己写的自定义路径"
-                  >
-                    补 /v1/images/edits
-                  </button>
-                </div>
-                <p className="mt-1 text-[10px] text-[var(--text-muted)]">常见默认后缀：`/v1/images/edits`。支持附带图片或引用带图消息后发起修图。</p>
-              </div>
-
-              <div>
-                <label className="text-[10px] text-[var(--text-muted)] mb-1 block">默认分辨率</label>
-                <select
-                  value={node.xaiImageResolution || ''}
-                  disabled={!node.xaiImageEnabled}
-                  onChange={(e) => onUpdate(index, 'xaiImageResolution', e.target.value)}
-                  className="w-full px-2.5 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)] cursor-pointer disabled:opacity-60"
-                >
-                  <option value="">默认清晰度</option>
-                  <option value="1k">1k</option>
-                  <option value="2k">2k</option>
-                </select>
-              </div>
-            </div>
           </div>
 
           {isExpanded && (
