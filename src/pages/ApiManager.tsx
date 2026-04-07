@@ -76,6 +76,12 @@ function normalizeApiNode(input?: Partial<ApiNode>): ApiNode {
     remark: typeof input?.remark === 'string' ? input.remark : '',
     aiType: normalizeAiType(typeof input?.aiType === 'string' ? input.aiType : '', apiUrl),
     xaiWebSearchEnabled: input?.xaiWebSearchEnabled === true,
+    xaiImageEnabled: input?.xaiImageEnabled === true,
+    xaiImageGenerationUrl: typeof input?.xaiImageGenerationUrl === 'string' ? input.xaiImageGenerationUrl : '',
+    xaiImageEditUrl: typeof input?.xaiImageEditUrl === 'string' ? input.xaiImageEditUrl : '',
+    xaiImageModel: typeof input?.xaiImageModel === 'string' ? input.xaiImageModel : '',
+    xaiImageAspectRatio: typeof input?.xaiImageAspectRatio === 'string' ? input.xaiImageAspectRatio : '',
+    xaiImageResolution: typeof input?.xaiImageResolution === 'string' ? input.xaiImageResolution : '',
   };
 }
 
@@ -121,6 +127,22 @@ function appendDefaultSuffix(url: string, aiType: ApiNode['aiType'], modelName?:
   if (/[?#]/.test(current)) return current;
   const base = current.replace(/\/+$/, '');
   return `${base}${suffix}`;
+}
+
+function appendKnownSuffix(url: string, suffix: string, pattern: RegExp) {
+  const current = String(url || '').trim();
+  if (!current) return suffix;
+  if (pattern.test(current)) return current;
+  if (/[?#]/.test(current)) return current;
+  return `${current.replace(/\/+$/, '')}${suffix}`;
+}
+
+function appendXaiImageGenerationSuffix(url: string) {
+  return appendKnownSuffix(url, '/v1/images/generations', /\/v1\/images\/generations(?:[/?#]|$)/i);
+}
+
+function appendXaiImageEditSuffix(url: string) {
+  return appendKnownSuffix(url, '/v1/images/edits', /\/v1\/images\/edits(?:[/?#]|$)/i);
 }
 
 function getLevelMeta(level: NodeHealth['level'] | undefined) {
@@ -358,6 +380,32 @@ export function ApiManager() {
     addToast('success', '已追加常见默认后缀。这里只是辅助填充，不会锁死你的自定义 URL。');
   }
 
+  function applyXaiImageGenerationSuffix(index: number) {
+    const node = nodes[index];
+    if (!node) return;
+    const nextUrl = appendXaiImageGenerationSuffix(node.xaiImageGenerationUrl || '');
+    if (nextUrl === (node.xaiImageGenerationUrl || '')) {
+      if (/[?#]/.test(String(node.xaiImageGenerationUrl || ''))) addToast('warning', '当前 URL 含查询参数或锚点，图像生成后缀请手动补在路径位置。');
+      else addToast('warning', '当前 URL 已包含图像生成接口的常见默认后缀，没有重复追加。');
+      return;
+    }
+    updateNode(index, 'xaiImageGenerationUrl', nextUrl);
+    addToast('success', '已追加图像生成接口默认后缀。这里只是辅助填充，不会锁死你的自定义 URL。');
+  }
+
+  function applyXaiImageEditSuffix(index: number) {
+    const node = nodes[index];
+    if (!node) return;
+    const nextUrl = appendXaiImageEditSuffix(node.xaiImageEditUrl || '');
+    if (nextUrl === (node.xaiImageEditUrl || '')) {
+      if (/[?#]/.test(String(node.xaiImageEditUrl || ''))) addToast('warning', '当前 URL 含查询参数或锚点，图像编辑后缀请手动补在路径位置。');
+      else addToast('warning', '当前 URL 已包含图像编辑接口的常见默认后缀，没有重复追加。');
+      return;
+    }
+    updateNode(index, 'xaiImageEditUrl', nextUrl);
+    addToast('success', '已追加图像编辑接口默认后缀。这里只是辅助填充，不会锁死你的自定义 URL。');
+  }
+
   function removeNode(index: number) {
     const next = nodes.filter((_, i) => i !== index);
     set({ ...state, nodes: next, activeIndex: Math.min(activeIndex, Math.max(0, next.length - 1)) });
@@ -581,7 +629,9 @@ export function ApiManager() {
         n.modelName.toLowerCase().includes(q) ||
         n.remark.toLowerCase().includes(q) ||
         n.aiType.toLowerCase().includes(q) ||
-        formatAiTypeLabel(n.aiType).toLowerCase().includes(q)
+        formatAiTypeLabel(n.aiType).toLowerCase().includes(q) ||
+        String(n.xaiImageModel || '').toLowerCase().includes(q) ||
+        (n.xaiImageEnabled ? 'xai 图像 xai image 生图 修图' : '').includes(q)
       )
       .map(({ i }) => i);
   }, [nodes, search]);
@@ -976,6 +1026,8 @@ export function ApiManager() {
                       onInsert={insertAfter}
                       onTest={testNode}
                       onApplyDefaultUrlSuffix={applyDefaultUrlSuffix}
+                      onApplyXaiImageGenerationSuffix={applyXaiImageGenerationSuffix}
+                      onApplyXaiImageEditSuffix={applyXaiImageEditSuffix}
                       onSetActive={(idx) => set({ ...state, activeIndex: idx })}
                       onToggleSelect={(idx) => {
                         const next = new Set(selected);
@@ -1027,7 +1079,7 @@ function WeightSlider({ label, value, onChange }: { label: string; value: number
 }
 
 const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, density, isActive, isDuplicate, isSelected, isExpanded, isPinging, pingResult, health, showKey,
-  onUpdate, onRemove, onClone, onInsert, onTest, onApplyDefaultUrlSuffix, onSetActive, onToggleSelect, onToggleKey, onToggleExpanded, cardRef,
+  onUpdate, onRemove, onClone, onInsert, onTest, onApplyDefaultUrlSuffix, onApplyXaiImageGenerationSuffix, onApplyXaiImageEditSuffix, onSetActive, onToggleSelect, onToggleKey, onToggleExpanded, cardRef,
 }: {
   id: number;
   node: ApiNode;
@@ -1047,6 +1099,8 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
   onInsert: (i: number) => void;
   onTest: (i: number) => void;
   onApplyDefaultUrlSuffix: (i: number) => void;
+  onApplyXaiImageGenerationSuffix: (i: number) => void;
+  onApplyXaiImageEditSuffix: (i: number) => void;
   onSetActive: (i: number) => void;
   onToggleSelect: (i: number) => void;
   onToggleKey: (i: number) => void;
@@ -1087,6 +1141,11 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--bg-elevated)]" style={{ color: node.aiType === 'openai' ? 'var(--success)' : node.aiType === 'responses' ? 'var(--accent-purple)' : node.aiType === 'gemini' ? 'var(--info)' : 'var(--accent-pink)' }}>
                 {formatAiTypeLabel(node.aiType)}
               </span>
+              {node.xaiImageEnabled ? (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-[rgba(0,188,212,0.14)] text-[var(--info)]">
+                  xAI 图像
+                </span>
+              ) : null}
               {isActive && <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--accent-purple)] text-white">活跃</span>}
               {isDuplicate && <span className="text-[10px] px-1.5 py-0.5 rounded bg-[rgba(255,171,64,0.2)] text-[var(--warning)]">重复</span>}
             </div>
@@ -1198,6 +1257,123 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
                 </span>
               </span>
             </label>
+          </div>
+
+          <div className={`rounded-[var(--radius-sm)] border p-3 ${node.xaiImageEnabled ? 'border-[var(--border-subtle)] bg-[var(--bg-elevated)]' : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)]'}`}>
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={node.xaiImageEnabled === true}
+                onChange={(e) => onUpdate(index, 'xaiImageEnabled', e.target.checked)}
+                className="mt-0.5 accent-[var(--accent-purple)] cursor-pointer"
+              />
+              <span className="min-w-0">
+                <span className="block text-xs text-[var(--text-primary)]">启用 xAI 图像生成 / 编辑</span>
+                <span className="block mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">
+                  这组配置独立走 xAI 图像端点，不影响普通聊天接口。仍复用当前节点的 API Key，适合给同一个节点附加生图能力。GUI 暂不提供图像一键测活，避免直接消耗图像额度。
+                </span>
+              </span>
+            </label>
+
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              <div>
+                <label className="text-[10px] text-[var(--text-muted)] mb-1 block">图像模型</label>
+                <input
+                  value={node.xaiImageModel || ''}
+                  disabled={!node.xaiImageEnabled}
+                  onChange={(e) => onUpdate(index, 'xaiImageModel', e.target.value)}
+                  className="w-full px-2.5 py-2 text-xs mono rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)] disabled:opacity-60"
+                  placeholder="留空则默认 grok-imagine-image"
+                />
+                <p className="mt-1 text-[10px] text-[var(--text-muted)]">xAI 官方常见模型名：`grok-imagine-image`。</p>
+              </div>
+
+              <div>
+                <label className="text-[10px] text-[var(--text-muted)] mb-1 block">默认宽高比</label>
+                <select
+                  value={node.xaiImageAspectRatio || ''}
+                  disabled={!node.xaiImageEnabled}
+                  onChange={(e) => onUpdate(index, 'xaiImageAspectRatio', e.target.value)}
+                  className="w-full px-2.5 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)] cursor-pointer disabled:opacity-60"
+                >
+                  <option value="">默认比例</option>
+                  <option value="auto">auto</option>
+                  <option value="1:1">1:1</option>
+                  <option value="16:9">16:9</option>
+                  <option value="9:16">9:16</option>
+                  <option value="4:3">4:3</option>
+                  <option value="3:4">3:4</option>
+                  <option value="3:2">3:2</option>
+                  <option value="2:3">2:3</option>
+                  <option value="2:1">2:1</option>
+                  <option value="1:2">1:2</option>
+                  <option value="19.5:9">19.5:9</option>
+                  <option value="9:19.5">9:19.5</option>
+                  <option value="20:9">20:9</option>
+                  <option value="9:20">9:20</option>
+                </select>
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="text-[10px] text-[var(--text-muted)] mb-1 block">生图 URL</label>
+                <div className="flex gap-2">
+                  <input
+                    value={node.xaiImageGenerationUrl || ''}
+                    disabled={!node.xaiImageEnabled}
+                    onChange={(e) => onUpdate(index, 'xaiImageGenerationUrl', e.target.value)}
+                    className="flex-1 px-2.5 py-2 text-xs mono rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)] disabled:opacity-60"
+                    placeholder="先填基础地址，需要时点右侧按钮补常见后缀"
+                  />
+                  <button
+                    type="button"
+                    disabled={!node.xaiImageEnabled}
+                    onClick={() => onApplyXaiImageGenerationSuffix(index)}
+                    className="px-2.5 py-2 text-[11px] rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-purple)] cursor-pointer whitespace-nowrap disabled:opacity-60"
+                    title="只会补图像生成接口的常见默认后缀，不会覆盖你自己写的自定义路径"
+                  >
+                    补 /v1/images/generations
+                  </button>
+                </div>
+                <p className="mt-1 text-[10px] text-[var(--text-muted)]">常见默认后缀：`/v1/images/generations`。URL 仍然完全由你决定，按钮只做辅助补全。</p>
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="text-[10px] text-[var(--text-muted)] mb-1 block">修图 URL</label>
+                <div className="flex gap-2">
+                  <input
+                    value={node.xaiImageEditUrl || ''}
+                    disabled={!node.xaiImageEnabled}
+                    onChange={(e) => onUpdate(index, 'xaiImageEditUrl', e.target.value)}
+                    className="flex-1 px-2.5 py-2 text-xs mono rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)] disabled:opacity-60"
+                    placeholder="先填基础地址，需要时点右侧按钮补常见后缀"
+                  />
+                  <button
+                    type="button"
+                    disabled={!node.xaiImageEnabled}
+                    onClick={() => onApplyXaiImageEditSuffix(index)}
+                    className="px-2.5 py-2 text-[11px] rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-purple)] cursor-pointer whitespace-nowrap disabled:opacity-60"
+                    title="只会补图像编辑接口的常见默认后缀，不会覆盖你自己写的自定义路径"
+                  >
+                    补 /v1/images/edits
+                  </button>
+                </div>
+                <p className="mt-1 text-[10px] text-[var(--text-muted)]">常见默认后缀：`/v1/images/edits`。支持附带图片或引用带图消息后发起修图。</p>
+              </div>
+
+              <div>
+                <label className="text-[10px] text-[var(--text-muted)] mb-1 block">默认分辨率</label>
+                <select
+                  value={node.xaiImageResolution || ''}
+                  disabled={!node.xaiImageEnabled}
+                  onChange={(e) => onUpdate(index, 'xaiImageResolution', e.target.value)}
+                  className="w-full px-2.5 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)] cursor-pointer disabled:opacity-60"
+                >
+                  <option value="">默认清晰度</option>
+                  <option value="1k">1k</option>
+                  <option value="2k">2k</option>
+                </select>
+              </div>
+            </div>
           </div>
 
           {isExpanded && (

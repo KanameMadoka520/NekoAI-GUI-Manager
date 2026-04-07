@@ -6,6 +6,12 @@ export interface ApiNode {
   remark: string;
   aiType: 'openai' | 'responses' | 'anthropic' | 'gemini';
   xaiWebSearchEnabled?: boolean;
+  xaiImageEnabled?: boolean;
+  xaiImageGenerationUrl?: string;
+  xaiImageEditUrl?: string;
+  xaiImageModel?: string;
+  xaiImageAspectRatio?: string;
+  xaiImageResolution?: string;
 }
 
 // ===== Runtime Config =====
