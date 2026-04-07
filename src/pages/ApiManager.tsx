@@ -158,8 +158,8 @@ function appendXaiImageEditSuffix(url: string) {
 }
 
 const IMAGE_ASPECT_RATIO_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: '', label: '默认比例（沿用命令或节点）' },
-  { value: 'auto', label: 'auto（自动）' },
+  { value: '', label: '空白（本节点不主动传比例，交给命令参数或 xAI 自己决定）' },
+  { value: 'auto', label: 'auto（显式告诉 xAI 自动选比例）' },
   { value: '1:1', label: '1:1（正方形）' },
   { value: '16:9', label: '16:9（横屏）' },
   { value: '9:16', label: '9:16（竖屏）' },
@@ -176,9 +176,9 @@ const IMAGE_ASPECT_RATIO_OPTIONS: Array<{ value: string; label: string }> = [
 ];
 
 const IMAGE_RESOLUTION_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: '', label: '默认清晰度（沿用命令或节点）' },
-  { value: '1k', label: '1k（标准）' },
-  { value: '2k', label: '2k（高清）' },
+  { value: '', label: '空白（本节点不主动传清晰度，交给命令参数或 xAI 自己决定）' },
+  { value: '1k', label: '1k（标准清晰度）' },
+  { value: '2k', label: '2k（高清清晰度）' },
 ];
 
 function getLevelMeta(level: NodeHealth['level'] | undefined) {
@@ -201,6 +201,19 @@ function getLevelMeta(level: NodeHealth['level'] | undefined) {
     bg: 'rgba(255,82,82,0.15)',
     color: 'var(--error)',
   };
+}
+
+function getHealthSourceLabel(source: NodeHealth['source'] | undefined) {
+  if (source === 'live') return '实时';
+  if (source === 'history') return '历史';
+  if (source === 'mixed') return '混合';
+  return '无数据';
+}
+
+function formatHealthBadge(health: NodeHealth | undefined) {
+  if (!health || health.source === 'none') return '--';
+  const short = health.source === 'live' ? '实' : health.source === 'history' ? '历' : '混';
+  return `${short} ${health.score}`;
 }
 
 function getDensityClass(density: 'compact' | 'standard' | 'spacious') {
@@ -839,24 +852,29 @@ export function ApiManager() {
         const jitter = Math.max(0, history.jitter_ms ?? 0);
         jitterScore = clampScore(100 - Math.min(100, jitter / 20));
 
-        if ((history.timeout_rate ?? 0) >= 0.2) historyReason = '历史超时率较高';
+        if (history.total < 3) historyReason = '历史样本较少，分数仅供参考';
+        else if ((history.timeout_rate ?? 0) >= 0.2) historyReason = '历史超时率较高';
         else if (history.error_rate >= 0.35) historyReason = '历史错误率较高';
         else if (jitter >= 1200) historyReason = '历史响应抖动较高';
         else if (rt >= 2000) historyReason = '历史平均响应时间较高';
         else historyReason = '历史表现稳定';
       }
 
-      const weightedParts: number[] = [];
-      if (liveScore !== null && liveWeight > 0) weightedParts.push(liveScore * (liveWeight / 100));
-      if (historyScore !== null && nextHistoryWeight > 0) weightedParts.push(historyScore * (nextHistoryWeight / 100));
-      if (timeoutScore !== null && timeoutWeight > 0) weightedParts.push(timeoutScore * (timeoutWeight / 100));
-      if (jitterScore !== null && jitterWeight > 0) weightedParts.push(jitterScore * (jitterWeight / 100));
+      const availableParts: Array<{ score: number; weight: number }> = [];
+      if (liveScore !== null && liveWeight > 0) availableParts.push({ score: liveScore, weight: liveWeight });
+      if (historyScore !== null && nextHistoryWeight > 0) availableParts.push({ score: historyScore, weight: nextHistoryWeight });
+      if (timeoutScore !== null && timeoutWeight > 0) availableParts.push({ score: timeoutScore, weight: timeoutWeight });
+      if (jitterScore !== null && jitterWeight > 0) availableParts.push({ score: jitterScore, weight: jitterWeight });
 
       let score = 0;
       let source: NodeHealth['source'] = 'none';
       let reason = '无可用数据';
-      if (weightedParts.length > 0) {
-        score = clampScore(weightedParts.reduce((sum, item) => sum + item, 0));
+      if (availableParts.length > 0) {
+        const totalAvailableWeight = availableParts.reduce((sum, item) => sum + item.weight, 0);
+        const normalizedScore = totalAvailableWeight > 0
+          ? availableParts.reduce((sum, item) => sum + item.score * (item.weight / totalAvailableWeight), 0)
+          : 0;
+        score = clampScore(normalizedScore);
         if (liveScore !== null && (historyScore !== null || timeoutScore !== null || jitterScore !== null)) source = 'mixed';
         else if (liveScore !== null) source = 'live';
         else source = 'history';
@@ -1070,8 +1088,12 @@ export function ApiManager() {
                         <span className="block truncate text-xs text-[var(--text-primary)]">{n.modelName || '(空)'}</span>
                         <span className="block truncate text-[10px] text-[var(--text-muted)]">{n.remark || '还没写备注'}</span>
                       </span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: levelMeta.bg, color: levelMeta.color }}>
-                        {health?.score ?? 0}
+                      <span
+                        className="text-[10px] px-1.5 py-0.5 rounded"
+                        style={{ background: levelMeta.bg, color: levelMeta.color }}
+                        title={health ? `来源：${getHealthSourceLabel(health.source)}${health.reason ? `；${health.reason}` : ''}` : '无数据'}
+                      >
+                        {formatHealthBadge(health)}
                       </span>
                       {ping && (
                         <span
@@ -1487,7 +1509,8 @@ function ImageApiManagerPanel({
                             ))}
                           </select>
                           <p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">
-                            xAI 常用比例预设。命令里如果手动写 `--ratio 16:9`，冒号请使用英文冒号 `:`
+                            `空白` 不等于 `auto`。`空白` 表示这个图像节点不会主动传 `aspect_ratio`，如果命令里也没写 `--ratio`，就完全交给 xAI 自己决定。
+                            `auto` 表示会显式传 `aspect_ratio=auto` 给 xAI，让它自动挑一个合适比例。命令里如果手动写 `--ratio 16:9`，冒号请使用英文冒号 `:`
                           </p>
                         </div>
 
@@ -1505,7 +1528,8 @@ function ImageApiManagerPanel({
                             ))}
                           </select>
                           <p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">
-                            当前内置清晰度预设是 `1k（标准）` 和 `2k（高清）`。不填写时，命令会优先走这里保存的默认值。
+                            `空白` 表示这个图像节点不会主动传 `resolution`，如果命令里也没写 `--resolution`，就完全交给 xAI 自己决定。
+                            当前内置清晰度预设是 `1k（标准清晰度）` 和 `2k（高清清晰度）`。
                           </p>
                         </div>
 
@@ -1660,8 +1684,12 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
               {pingResult.pass ? `${pingResult.latency_ms}ms` : `失败 ${pingResult.status || ''}`}
             </span>
           )}
-          <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: levelMeta.bg, color: levelMeta.color }} title={`来源: ${health?.source ?? 'none'}`}>
-            {levelMeta.label} {health?.score ?? 0}
+          <span
+            className="text-[10px] px-1.5 py-0.5 rounded"
+            style={{ background: levelMeta.bg, color: levelMeta.color }}
+            title={`来源: ${getHealthSourceLabel(health?.source)}${health?.reason ? `；${health.reason}` : ''}`}
+          >
+            {levelMeta.label} {formatHealthBadge(health)}
           </span>
           <button
             onClick={() => onToggleExpanded(index)}
@@ -1777,9 +1805,9 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
           <div>
             <div className="flex items-center justify-between gap-2">
               <p className="text-xs font-medium text-[var(--text-primary)]">节点健康</p>
-              <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: levelMeta.bg, color: levelMeta.color }}>{health?.score ?? 0}</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: levelMeta.bg, color: levelMeta.color }} title={`来源: ${getHealthSourceLabel(health?.source)}${health?.reason ? `；${health.reason}` : ''}`}>{formatHealthBadge(health)}</span>
             </div>
-            <p className="text-[10px] text-[var(--text-muted)] mt-1">{health?.reason ?? '暂无评分解释'}</p>
+            <p className="text-[10px] text-[var(--text-muted)] mt-1">{health?.reason ?? '暂无评分解释'}{health?.source !== 'none' ? `（当前来源：${getHealthSourceLabel(health?.source)}）` : ''}</p>
           </div>
 
           <MetricBar label="实时" score={health?.liveScore} weight={health?.liveWeight ?? 0} color="var(--accent-purple)" hint={pingResult?.pass ? `最近测试 ${pingResult.latency_ms}ms` : pingResult?.error || undefined} />
