@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { StatCard } from '../components/common/StatCard';
 import { SearchBar } from '../components/common/SearchBar';
 import { ConfirmDialog } from '../components/common/ConfirmDialog';
@@ -7,9 +8,9 @@ import { Panel } from '../components/common/Panel';
 import { SummaryCard } from '../components/common/SummaryCard';
 import { TagList } from '../components/common/TagList';
 import { useUiStore } from '../stores/uiStore';
-import { getConfig, saveConfig } from '../lib/tauri-commands';
+import { getConfig, saveConfig, getHistoryFile, listHistoryFiles } from '../lib/tauri-commands';
 import { downloadJsonWithTimestamp, pickJsonAndParse } from '../lib/json-transfer';
-import type { RuntimeConfig, UsageData, ImageUsageData, ImageQuotaConfig, ImageQuotaUserLimit, ImageAccessConfig } from '../lib/types';
+import type { RuntimeConfig, UsageData, ImageUsageData, ImageQuotaConfig, ImageQuotaUserLimit, ImageAccessConfig, ChatAccessConfig, ChatQuotaConfig, HistoryEntry, HistoryFileMeta } from '../lib/types';
 
 function getCurrentPeriodId() {
   const now = new Date();
@@ -37,20 +38,29 @@ function normalizeUsage(data: UsageData | null | undefined): UsageData {
   return {
     periodId: typeof data?.periodId === 'string' && data.periodId.trim() ? data.periodId : getCurrentPeriodId(),
     counts: data?.counts && typeof data.counts === 'object' ? { ...data.counts } : {},
+    users: data?.users && typeof data.users === 'object' ? { ...data.users } : {},
   };
 }
 
 function sanitizeUsage(data: UsageData): UsageData {
   const counts: Record<string, number> = {};
+  const users: Record<string, number> = {};
   for (const [gid, raw] of Object.entries(data.counts ?? {})) {
     const groupId = gid.trim();
     const value = Math.max(0, Math.floor(Number(raw)));
     if (!groupId || !Number.isFinite(value) || value <= 0) continue;
     counts[groupId] = value;
   }
+  for (const [uid, raw] of Object.entries(data.users ?? {})) {
+    const userId = uid.trim();
+    const value = Math.max(0, Math.floor(Number(raw)));
+    if (!userId || !Number.isFinite(value) || value <= 0) continue;
+    users[userId] = value;
+  }
   return {
     periodId: data.periodId.trim() || getCurrentPeriodId(),
     counts,
+    users,
   };
 }
 
@@ -116,7 +126,35 @@ function normalizeImageAccess(input: ImageAccessConfig | null | undefined): Imag
   };
 }
 
+function normalizeChatAccess(input: ChatAccessConfig | null | undefined): ChatAccessConfig {
+  return {
+    mode: input?.mode === 'whitelist' ? 'whitelist' : 'blacklist',
+    whitelistUsers: Array.isArray(input?.whitelistUsers)
+      ? [...new Set(input.whitelistUsers.map((item) => String(item || '').trim()).filter(Boolean))]
+      : [],
+  };
+}
+
+function normalizeChatQuota(input: ChatQuotaConfig | null | undefined): ChatQuotaConfig {
+  const userLimits: Record<string, number> = {};
+  if (input?.userLimits && typeof input.userLimits === 'object') {
+    for (const [uid, raw] of Object.entries(input.userLimits)) {
+      if (!uid.trim()) continue;
+      userLimits[uid] = Number.isFinite(Number(raw)) ? Math.max(0, Math.floor(Number(raw))) : 0;
+    }
+  }
+  return {
+    enabled: input?.enabled === true,
+    defaultLimit: Number.isFinite(Number(input?.defaultLimit)) ? Math.max(0, Math.floor(Number(input?.defaultLimit))) : 0,
+    userLimits,
+  };
+}
+
 function getImageAccessModeLabel(mode: ImageAccessConfig['mode']) {
+  return mode === 'whitelist' ? '白名单模式' : '黑名单模式';
+}
+
+function getChatAccessModeLabel(mode: ChatAccessConfig['mode']) {
   return mode === 'whitelist' ? '白名单模式' : '黑名单模式';
 }
 
@@ -126,6 +164,45 @@ function formatQuota(limit: number | null | undefined, isMaster = false) {
   return `${limit}`;
 }
 
+function formatTimeBucketLabel(bucket: string, granularity: 'hour' | 'day' | 'week' | 'month') {
+  if (granularity === 'hour') return bucket;
+  return bucket;
+}
+
+function parseHistoryTime(value: string | undefined): Date | null {
+  if (!value) return null;
+  const direct = new Date(value);
+  if (!Number.isNaN(direct.getTime())) return direct;
+  const normalized = value.replace(/\//g, '-');
+  const parsed = new Date(normalized);
+  if (!Number.isNaN(parsed.getTime())) return parsed;
+  return null;
+}
+
+function getWeekBucket(date: Date) {
+  const normalized = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  normalized.setUTCDate(normalized.getUTCDate() + 4 - (normalized.getUTCDay() || 7));
+  const yearStart = new Date(Date.UTC(normalized.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((normalized.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  return `${normalized.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+}
+
+function bucketHistoryEntry(date: Date, granularity: 'hour' | 'day' | 'week' | 'month') {
+  if (granularity === 'hour') return `${String(date.getHours()).padStart(2, '0')}:00`;
+  if (granularity === 'day') return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  if (granularity === 'week') return getWeekBucket(date);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+const CHART_COLORS = [
+  'var(--chart-1)',
+  'var(--chart-2)',
+  'var(--chart-3)',
+  'var(--chart-4)',
+  'var(--chart-5)',
+  'var(--chart-6)',
+];
+
 type GroupUsageRow = {
   gid: string;
   used: number;
@@ -133,6 +210,19 @@ type GroupUsageRow = {
   remaining?: number;
   listened: boolean;
   hasStoredCount: boolean;
+};
+
+type ChatQuotaRow = {
+  uid: string;
+  isMaster: boolean;
+  hasOverride: boolean;
+  hasStoredUsage: boolean;
+  inGlobalBlacklist: boolean;
+  inChatWhitelist: boolean;
+  accessStatus: string;
+  limit: number | null;
+  used: number;
+  remaining: number | null;
 };
 
 type ImageQuotaRow = {
@@ -156,31 +246,47 @@ export function UsageManager() {
 
   const [groupUsage, setGroupUsage] = useState<UsageData>(() => normalizeUsage(null));
   const [imageUsage, setImageUsage] = useState<ImageUsageData>(() => normalizeImageUsage(null));
+  const [chatAccess, setChatAccess] = useState<ChatAccessConfig>(() => normalizeChatAccess(null));
+  const [chatQuota, setChatQuota] = useState<ChatQuotaConfig>(() => normalizeChatQuota(null));
   const [imageAccess, setImageAccess] = useState<ImageAccessConfig>(() => normalizeImageAccess(null));
   const [imageQuota, setImageQuota] = useState<ImageQuotaConfig>(() => normalizeImageQuota(null));
   const [runtime, setRuntime] = useState<RuntimeConfig | null>(null);
+  const [historyFiles, setHistoryFiles] = useState<HistoryFileMeta[]>([]);
+  const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   const [groupOriginal, setGroupOriginal] = useState('');
   const [imageOriginal, setImageOriginal] = useState('');
+  const [chatAccessOriginal, setChatAccessOriginal] = useState('');
+  const [chatQuotaOriginal, setChatQuotaOriginal] = useState('');
+  const [groupLimitsOriginal, setGroupLimitsOriginal] = useState('');
   const [accessOriginal, setAccessOriginal] = useState('');
   const [quotaOriginal, setQuotaOriginal] = useState('');
 
   const [loading, setLoading] = useState(true);
   const [groupSearch, setGroupSearch] = useState('');
   const [userSearch, setUserSearch] = useState('');
+  const [chatUserSearch, setChatUserSearch] = useState('');
   const [newGroupId, setNewGroupId] = useState('');
+  const [newChatUserId, setNewChatUserId] = useState('');
+  const [newChatWhitelistUserId, setNewChatWhitelistUserId] = useState('');
   const [newUserId, setNewUserId] = useState('');
   const [newWhitelistUserId, setNewWhitelistUserId] = useState('');
+  const [usageChartGranularity, setUsageChartGranularity] = useState<'hour' | 'day' | 'week' | 'month'>('hour');
 
   const [confirmResetGroup, setConfirmResetGroup] = useState(false);
   const [confirmDropUnknown, setConfirmDropUnknown] = useState(false);
   const [confirmResetImage, setConfirmResetImage] = useState(false);
 
   const groupDirty = useMemo(() => JSON.stringify(groupUsage) !== groupOriginal, [groupUsage, groupOriginal]);
+  const chatAccessDirty = useMemo(() => JSON.stringify(chatAccess) !== chatAccessOriginal, [chatAccess, chatAccessOriginal]);
+  const chatQuotaDirty = useMemo(() => JSON.stringify(chatQuota) !== chatQuotaOriginal, [chatQuota, chatQuotaOriginal]);
   const imageDirty = useMemo(() => JSON.stringify(imageUsage) !== imageOriginal, [imageUsage, imageOriginal]);
   const accessDirty = useMemo(() => JSON.stringify(imageAccess) !== accessOriginal, [imageAccess, accessOriginal]);
   const quotaDirty = useMemo(() => JSON.stringify(imageQuota) !== quotaOriginal, [imageQuota, quotaOriginal]);
+  const groupLimitDirty = useMemo(() => JSON.stringify(runtime?.groupLimits ?? {}) !== groupLimitsOriginal, [runtime?.groupLimits, groupLimitsOriginal]);
   const imageRuleDirty = accessDirty || quotaDirty;
+  const chatRuleDirty = chatAccessDirty || chatQuotaDirty || groupLimitDirty;
 
   useEffect(() => {
     void load();
@@ -196,21 +302,45 @@ export function UsageManager() {
       ]);
       const normalizedGroup = normalizeUsage(groupUsageData);
       const normalizedImage = normalizeImageUsage(imageUsageData);
+      const normalizedChatAccess = normalizeChatAccess(runtimeConfig?.chatAccess);
+      const normalizedChatQuota = normalizeChatQuota(runtimeConfig?.chatQuota);
       const normalizedAccess = normalizeImageAccess(runtimeConfig?.imageAccess);
       const normalizedQuota = normalizeImageQuota(runtimeConfig?.imageQuota);
       setGroupUsage(normalizedGroup);
       setImageUsage(normalizedImage);
+      setChatAccess(normalizedChatAccess);
+      setChatQuota(normalizedChatQuota);
       setImageAccess(normalizedAccess);
       setImageQuota(normalizedQuota);
       setGroupOriginal(JSON.stringify(normalizedGroup));
       setImageOriginal(JSON.stringify(normalizedImage));
+      setChatAccessOriginal(JSON.stringify(normalizedChatAccess));
+      setChatQuotaOriginal(JSON.stringify(normalizedChatQuota));
+      setGroupLimitsOriginal(JSON.stringify(runtimeConfig?.groupLimits ?? {}));
       setAccessOriginal(JSON.stringify(normalizedAccess));
       setQuotaOriginal(JSON.stringify(normalizedQuota));
       setRuntime(runtimeConfig ?? null);
+      void loadHistoryForCharts();
     } catch (e: any) {
       addToast('error', `加载用量/限额数据失败: ${e?.message ?? e}`);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadHistoryForCharts() {
+    setHistoryLoading(true);
+    try {
+      const files = await listHistoryFiles();
+      setHistoryFiles(files ?? []);
+      const payloads = await Promise.all((files ?? []).map((file) => getHistoryFile(file.filename).catch(() => [])));
+      const mergedEntries = payloads.flatMap((data) => Array.isArray(data) ? data as HistoryEntry[] : []);
+      setHistoryEntries(mergedEntries);
+    } catch (e: any) {
+      addToast('warning', `加载聊天历史图表数据失败: ${e?.message ?? e}`);
+      setHistoryEntries([]);
+    } finally {
+      setHistoryLoading(false);
     }
   }
 
@@ -242,6 +372,57 @@ export function UsageManager() {
     const q = groupSearch.trim().toLowerCase();
     return groupRows.filter((row) => row.gid.toLowerCase().includes(q));
   }, [groupRows, groupSearch]);
+
+  const chatRows = useMemo<ChatQuotaRow[]>(() => {
+    const blacklist = new Set((runtime?.userBlacklist ?? []).map((item) => String(item || '').trim()).filter(Boolean));
+    const whitelist = new Set((chatAccess.whitelistUsers ?? []).map((item) => String(item || '').trim()).filter(Boolean));
+    const ids = new Set<string>([
+      ...(runtime?.masterQQ ?? []),
+      ...(runtime?.userBlacklist ?? []),
+      ...(chatAccess.whitelistUsers ?? []),
+      ...Object.keys(groupUsage.users ?? {}),
+      ...Object.keys(chatQuota.userLimits ?? {}),
+    ]);
+
+    return [...ids]
+      .sort((a, b) => a.localeCompare(b, 'zh-CN'))
+      .map((uid) => {
+        const isMaster = (runtime?.masterQQ ?? []).includes(uid);
+        const hasOverride = Object.prototype.hasOwnProperty.call(chatQuota.userLimits ?? {}, uid);
+        const used = Math.max(0, Math.floor(Number(groupUsage.users?.[uid] ?? 0)));
+        const inGlobalBlacklist = blacklist.has(uid);
+        const inChatWhitelist = whitelist.has(uid);
+        const limit = isMaster
+          ? null
+          : hasOverride
+            ? Math.max(0, Math.floor(Number(chatQuota.userLimits?.[uid] ?? 0)))
+            : Math.max(0, Math.floor(Number(chatQuota.defaultLimit ?? 0)));
+        return {
+          uid,
+          isMaster,
+          hasOverride,
+          hasStoredUsage: Object.prototype.hasOwnProperty.call(groupUsage.users ?? {}, uid),
+          inGlobalBlacklist,
+          inChatWhitelist,
+          accessStatus: isMaster
+            ? '主人豁免'
+            : inGlobalBlacklist
+              ? '黑名单禁止'
+              : chatAccess.mode === 'whitelist'
+                ? (inChatWhitelist ? '白名单允许' : '未在白名单')
+                : '黑名单模式默认可用',
+          limit,
+          used,
+          remaining: limit && limit > 0 ? Math.max(limit - used, 0) : null,
+        };
+      });
+  }, [runtime?.masterQQ, runtime?.userBlacklist, groupUsage.users, chatQuota, chatAccess]);
+
+  const filteredChatRows = useMemo(() => {
+    if (!chatUserSearch.trim()) return chatRows;
+    const q = chatUserSearch.trim().toLowerCase();
+    return chatRows.filter((row) => row.uid.toLowerCase().includes(q));
+  }, [chatRows, chatUserSearch]);
 
   const imageRows = useMemo<ImageQuotaRow[]>(() => {
     const blacklist = new Set((runtime?.userBlacklist ?? []).map((item) => String(item || '').trim()).filter(Boolean));
@@ -316,6 +497,60 @@ export function UsageManager() {
     };
   }, [groupRows]);
 
+  const chatSummary = useMemo(() => {
+    const totalUsed = chatRows.reduce((sum, row) => sum + row.used, 0);
+    const overrideUsers = Object.keys(chatQuota.userLimits ?? {}).length;
+    const exhaustedUsers = chatRows.filter((row) => !row.isMaster && row.limit !== null && row.limit > 0 && row.used >= row.limit).length;
+    return {
+      trackedUsers: chatRows.length,
+      whitelistUsers: chatAccess.whitelistUsers.length,
+      overrideUsers,
+      totalUsed,
+      exhaustedUsers,
+    };
+  }, [chatRows, chatAccess.whitelistUsers.length, chatQuota.userLimits]);
+
+  const chatAccessConflictUsers = useMemo(() => {
+    const blacklist = new Set((runtime?.userBlacklist ?? []).map((item) => String(item || '').trim()).filter(Boolean));
+    return [...new Set((chatAccess.whitelistUsers ?? []).map((item) => String(item || '').trim()).filter((uid) => blacklist.has(uid)))]
+      .sort((a, b) => a.localeCompare(b, 'zh-CN'));
+  }, [runtime?.userBlacklist, chatAccess.whitelistUsers]);
+
+  const chatTopUsersChartData = useMemo(() => {
+    const counter = new Map<string, number>();
+    historyEntries.forEach((entry) => {
+      const key = String(entry.username || entry.userId || '').trim();
+      if (!key) return;
+      counter.set(key, (counter.get(key) ?? 0) + 1);
+    });
+    return Array.from(counter.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([name, count]) => ({ name, count }));
+  }, [historyEntries]);
+
+  const chatTimeDistributionData = useMemo(() => {
+    const counter = new Map<string, number>();
+    historyEntries.forEach((entry) => {
+      const date = parseHistoryTime(entry.timestamp);
+      if (!date) return;
+      const bucket = bucketHistoryEntry(date, usageChartGranularity);
+      counter.set(bucket, (counter.get(bucket) ?? 0) + 1);
+    });
+    return Array.from(counter.entries())
+      .sort((a, b) => a[0].localeCompare(b[0], 'zh-CN'))
+      .map(([bucket, count]) => ({
+        bucket,
+        label: formatTimeBucketLabel(bucket, usageChartGranularity),
+        count,
+      }));
+  }, [historyEntries, usageChartGranularity]);
+
+  const peakUsageBucket = useMemo(() => {
+    if (chatTimeDistributionData.length === 0) return null;
+    return chatTimeDistributionData.reduce((best, current) => (current.count > best.count ? current : best), chatTimeDistributionData[0]);
+  }, [chatTimeDistributionData]);
+
   const imageSummary = useMemo(() => {
     const totalGenerateUsed = imageRows.reduce((sum, row) => sum + row.generateUsed, 0);
     const totalEditUsed = imageRows.reduce((sum, row) => sum + row.editUsed, 0);
@@ -362,7 +597,100 @@ export function UsageManager() {
       return;
     }
     setGroupUsage({ ...groupUsage, counts: { ...groupUsage.counts, [gid]: 0 } });
+    if (runtime) {
+      setRuntime({
+        ...runtime,
+        groupLimits: {
+          ...runtime.groupLimits,
+          [gid]: runtime.groupLimits?.[gid] ?? 0,
+        },
+      });
+    }
     setNewGroupId('');
+  }
+
+  function updateGroupLimit(gid: string, raw: number) {
+    if (!runtime) return;
+    const value = Math.max(0, Math.floor(Number(raw)));
+    if (!Number.isFinite(value)) return;
+    const nextLimits = { ...(runtime.groupLimits ?? {}) };
+    if (value <= 0) delete nextLimits[gid];
+    else nextLimits[gid] = value;
+    setRuntime({ ...runtime, groupLimits: nextLimits });
+  }
+
+  function updateChatUsageCount(uid: string, raw: number) {
+    const value = Math.max(0, Math.floor(Number(raw)));
+    if (!Number.isFinite(value)) return;
+    const nextUsers = { ...(groupUsage.users ?? {}) };
+    nextUsers[uid] = value;
+    setGroupUsage({ ...groupUsage, users: nextUsers });
+  }
+
+  function removeChatUsageCount(uid: string) {
+    const nextUsers = { ...(groupUsage.users ?? {}) };
+    delete nextUsers[uid];
+    setGroupUsage({ ...groupUsage, users: nextUsers });
+  }
+
+  function addCustomChatUser() {
+    const uid = newChatUserId.trim();
+    if (!uid) return;
+    if (chatRows.some((row) => row.uid === uid)) {
+      addToast('warning', `QQ ${uid} 已存在`);
+      return;
+    }
+    setChatQuota({
+      ...chatQuota,
+      userLimits: {
+        ...chatQuota.userLimits,
+        [uid]: chatQuota.defaultLimit ?? 0,
+      },
+    });
+    setNewChatUserId('');
+  }
+
+  function addChatWhitelistUser() {
+    const uid = newChatWhitelistUserId.trim();
+    if (!uid) return;
+    if ((chatAccess.whitelistUsers ?? []).includes(uid)) {
+      addToast('warning', `QQ ${uid} 已在聊天白名单中`);
+      return;
+    }
+    setChatAccess({
+      ...chatAccess,
+      whitelistUsers: [...chatAccess.whitelistUsers, uid],
+    });
+    setNewChatWhitelistUserId('');
+  }
+
+  function addChatUserOverride(uid: string) {
+    if (!uid.trim()) return;
+    setChatQuota({
+      ...chatQuota,
+      userLimits: {
+        ...chatQuota.userLimits,
+        [uid]: chatQuota.defaultLimit ?? 0,
+      },
+    });
+  }
+
+  function updateChatUserOverride(uid: string, raw: number) {
+    const value = Math.max(0, Math.floor(Number(raw)));
+    if (!Number.isFinite(value)) return;
+    setChatQuota({
+      ...chatQuota,
+      userLimits: {
+        ...chatQuota.userLimits,
+        [uid]: value,
+      },
+    });
+  }
+
+  function removeChatUserOverride(uid: string) {
+    const next = { ...(chatQuota.userLimits ?? {}) };
+    delete next[uid];
+    setChatQuota({ ...chatQuota, userLimits: next });
   }
 
   function updateImageUsageCount(uid: string, field: 'generate' | 'edit', raw: number) {
@@ -460,9 +788,45 @@ export function UsageManager() {
       await saveConfig('usage', next);
       setGroupUsage(next);
       setGroupOriginal(JSON.stringify(next));
-      addToast('success', '群用量计数已保存');
+      addToast('success', '聊天/群用量计数已保存');
     } catch (e: any) {
       addToast('error', `保存群用量失败: ${e?.message ?? e}`);
+    }
+  }
+
+  async function saveChatRules() {
+    if (!runtime) {
+      addToast('error', '当前运行配置尚未加载完成，无法保存聊天权限与限额规则');
+      return;
+    }
+    try {
+      const normalizedAccess = normalizeChatAccess(chatAccess);
+      const normalizedQuota = normalizeChatQuota(chatQuota);
+      const normalizedGroupLimits = Object.fromEntries(
+        Object.entries(runtime.groupLimits ?? {})
+          .map(([gid, raw]) => [String(gid).trim(), Math.max(0, Math.floor(Number(raw) || 0))] as const)
+          .filter(([gid, value]) => gid && value > 0),
+      );
+      const nextRuntime = {
+        ...runtime,
+        chatAccess: normalizedAccess,
+        chatQuota: normalizedQuota,
+        groupLimits: normalizedGroupLimits,
+      };
+      await saveConfig('runtime', nextRuntime);
+      setRuntime(nextRuntime);
+      setChatAccess(normalizedAccess);
+      setChatQuota(normalizedQuota);
+      setChatAccessOriginal(JSON.stringify(normalizedAccess));
+      setChatQuotaOriginal(JSON.stringify(normalizedQuota));
+      setGroupLimitsOriginal(JSON.stringify(normalizedGroupLimits));
+      if (chatAccessConflictUsers.length > 0) {
+        addToast('warning', `聊天权限与限额规则已保存，但仍有 ${chatAccessConflictUsers.length} 个 QQ 同时出现在黑名单和聊天白名单中。实际运行时黑名单优先。`);
+      } else {
+        addToast('success', '聊天权限与限额规则已保存');
+      }
+    } catch (e: any) {
+      addToast('error', `保存聊天权限与限额规则失败: ${e?.message ?? e}`);
     }
   }
 
@@ -505,7 +869,7 @@ export function UsageManager() {
 
   function exportGroupUsage() {
     downloadJsonWithTimestamp(sanitizeUsage(groupUsage), 'group_usage_counts.json');
-    addToast('success', '已导出群用量计数');
+    addToast('success', '已导出聊天/群用量计数');
   }
 
   function exportImageUsage() {
@@ -523,7 +887,7 @@ export function UsageManager() {
       }
       const imported = normalizeUsage(picked.data as UsageData);
       setGroupUsage(imported);
-      addToast('success', '已导入群用量计数（请点击保存生效）');
+      addToast('success', '已导入聊天/群用量计数（请点击保存生效）');
     } catch (e: any) {
       addToast('error', `导入失败: ${e?.message ?? e}`);
     }
@@ -587,13 +951,91 @@ export function UsageManager() {
       <div className="grid grid-cols-2 xl:grid-cols-6 gap-4">
         <StatCard label="群条目数" value={groupSummary.totalGroups} icon="👥" color="var(--accent-purple)" />
         <StatCard label="群总已用" value={groupSummary.totalUsed} icon="⏱️" color="var(--accent-pink)" />
-        <StatCard label="图像统计用户" value={imageSummary.trackedUsers} icon="🖼️" color="var(--info)" />
-        <StatCard label="图像单独限额" value={imageSummary.overrideUsers} icon="🎯" color="var(--warning)" />
+        <StatCard label="聊天统计用户" value={chatSummary.trackedUsers} icon="💬" color="var(--info)" />
+        <StatCard label="图像统计用户" value={imageSummary.trackedUsers} icon="🖼️" color="var(--chart-4)" />
+        <StatCard label="聊天单独限额" value={chatSummary.overrideUsers} icon="🎯" color="var(--warning)" />
+        <StatCard label="图像单独限额" value={imageSummary.overrideUsers} icon="🖼" color="var(--chart-5)" />
         <SummaryCard label="群周期" value={groupUsage.periodId || '-'} hint="群聊 12 小时周期计数。" />
         <SummaryCard label="图像周期" value={imageUsage.periodId || '-'} hint="生图 / 修图 12 小时周期计数。" />
       </div>
 
-      <Panel title="群用量管理" subtitle="这里改的是群聊 12 小时周期计数，不是图像限额。原有 groupLimits 规则仍然从 runtime_config.json 读取。" icon="⏱️">
+      <Panel
+        title="聊天用量图表"
+        subtitle="图表基于 chat-history 历史文件统计普通聊天请求分布。顶部图看谁用得最多，底部图看哪个时间粒度的调用最集中。"
+        icon="📈"
+      >
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <SummaryCard label="历史文件" value={String(historyFiles.length)} hint="已纳入统计的聊天历史文件数量。" />
+            <SummaryCard label="历史记录" value={String(historyEntries.length)} hint="已纳入统计的聊天请求总数。" />
+            <SummaryCard label="高峰时段" value={peakUsageBucket ? peakUsageBucket.label : '-'} hint={peakUsageBucket ? `该时间桶累计 ${peakUsageBucket.count} 次请求。` : '当前还没有可用于统计的聊天历史。'} />
+            <div className="flex-1" />
+            <div className="flex items-center gap-2">
+              {(['hour', 'day', 'week', 'month'] as const).map((item) => (
+                <button
+                  key={item}
+                  onClick={() => setUsageChartGranularity(item)}
+                  className={`px-3 py-1.5 text-xs rounded-[var(--radius-sm)] border cursor-pointer transition-colors ${usageChartGranularity === item ? 'bg-[var(--accent-purple)] text-white border-transparent' : 'bg-[var(--bg-elevated)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+                >
+                  {{ hour: '时', day: '天', week: '周', month: '月' }[item]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3">
+              <p className="text-sm font-medium text-[var(--text-primary)] mb-1">聊天用量 Top 10 用户</p>
+              <p className="text-[11px] text-[var(--text-muted)] mb-3">按聊天历史记录统计，适合快速看谁最常触发普通聊天回复。</p>
+              <div className="h-[260px]">
+                {historyLoading ? (
+                  <div className="h-full flex items-center justify-center text-sm text-[var(--text-muted)]">正在读取聊天历史...</div>
+                ) : chatTopUsersChartData.length === 0 ? (
+                  <div className="h-full flex items-center justify-center text-sm text-[var(--text-muted)]">当前没有可用的聊天历史数据。</div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chatTopUsersChartData} margin={{ top: 12, right: 12, left: 0, bottom: 18 }}>
+                      <CartesianGrid stroke="var(--border-subtle)" strokeDasharray="3 3" />
+                      <XAxis dataKey="name" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={56} />
+                      <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} allowDecimals={false} />
+                      <Tooltip cursor={{ fill: 'rgba(255,255,255,0.03)' }} contentStyle={{ background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: 12, color: 'var(--text-primary)' }} />
+                      <Bar dataKey="count" radius={[8, 8, 0, 0]}>
+                        {chatTopUsersChartData.map((entry, index) => (
+                          <Cell key={`${entry.name}-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3">
+              <p className="text-sm font-medium text-[var(--text-primary)] mb-1">聊天时间分布</p>
+              <p className="text-[11px] text-[var(--text-muted)] mb-3">{usageChartGranularity === 'hour' ? '按小时看全天哪个时段最忙' : usageChartGranularity === 'day' ? '按天看哪天请求最多' : usageChartGranularity === 'week' ? '按周看哪个自然周最忙' : '按月看哪个月份最忙'}</p>
+              <div className="h-[260px]">
+                {historyLoading ? (
+                  <div className="h-full flex items-center justify-center text-sm text-[var(--text-muted)]">正在读取聊天历史...</div>
+                ) : chatTimeDistributionData.length === 0 ? (
+                  <div className="h-full flex items-center justify-center text-sm text-[var(--text-muted)]">当前没有可用的聊天历史数据。</div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chatTimeDistributionData} margin={{ top: 12, right: 12, left: 0, bottom: 18 }}>
+                      <CartesianGrid stroke="var(--border-subtle)" strokeDasharray="3 3" />
+                      <XAxis dataKey="label" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} interval="preserveStartEnd" minTickGap={18} />
+                      <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} allowDecimals={false} />
+                      <Tooltip cursor={{ fill: 'rgba(255,255,255,0.03)' }} contentStyle={{ background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: 12, color: 'var(--text-primary)' }} />
+                      <Bar dataKey="count" fill="var(--chart-3)" radius={[8, 8, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </Panel>
+
+      <Panel title="群用量管理" subtitle="这里管理群聊 12 小时周期计数，同时支持直接编辑群总额度。群总额度属于聊天规则，修改后需要点击“保存聊天权限与限额规则”才会写回 runtime_config.json。" icon="⏱️">
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-3">
             <div className="min-w-[260px] flex-1">
@@ -702,7 +1144,13 @@ export function UsageManager() {
                           {row.listened ? '监听中' : '未监听'}
                         </span>
                       </span>
-                      <span className="mono text-[var(--text-secondary)]">{row.limit ?? '-'}</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={row.limit ?? 0}
+                        onChange={(e) => updateGroupLimit(row.gid, Number(e.target.value))}
+                        className="w-24 px-2 py-1.5 text-sm rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] mono outline-none focus:border-[var(--accent-purple)]"
+                      />
                       <input
                         type="number"
                         min={0}
@@ -724,6 +1172,259 @@ export function UsageManager() {
                     </div>
                   );
                 })
+              )}
+            </div>
+          </div>
+        </div>
+      </Panel>
+
+      <Panel title="聊天权限与限额规则" subtitle="这里管理普通聊天回复谁能用、每个 QQ 在 12 小时周期里还能聊多少次，以及群总额度。用户黑名单始终优先，主人始终不限额。" icon="💬">
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 xl:grid-cols-6 gap-4">
+            <SummaryCard label="聊天权限模式" value={getChatAccessModeLabel(chatAccess.mode)} hint={chatAccess.mode === 'whitelist' ? '只有聊天白名单内的 QQ 能获得普通聊天回复。' : '沿用现有群聊/私聊规则，并额外允许做聊天个人限额。'} tone={chatAccess.mode === 'whitelist' ? 'warning' : 'neutral'} />
+            <SummaryCard label="聊天白名单" value={String(chatSummary.whitelistUsers)} hint="仅 whitelist 模式生效。黑名单与主人依然优先。" />
+            <SummaryCard label="聊天个人限额" value={chatQuota.enabled ? '已启用' : '未启用'} hint="关闭时，按 QQ 的聊天个人额度检查整体失效；群总额度仍独立生效。" tone={chatQuota.enabled ? 'success' : 'neutral'} />
+            <SummaryCard label="默认个人额度" value={formatQuota(chatQuota.defaultLimit)} hint="0 表示普通用户默认不限额。" />
+            <SummaryCard label="单独限额用户" value={String(chatSummary.overrideUsers)} hint="指定 QQ 的聊天额度会覆盖默认额度。" />
+            <SummaryCard label="已耗尽用户" value={String(chatSummary.exhaustedUsers)} hint="达到聊天个人额度上限的用户数量。" tone={chatSummary.exhaustedUsers > 0 ? 'warning' : 'neutral'} />
+          </div>
+
+          {chatAccessConflictUsers.length > 0 && (
+            <div className="rounded-[var(--radius-sm)] border border-[rgba(255,82,82,0.35)] bg-[rgba(255,82,82,0.08)] px-4 py-3">
+              <p className="text-sm font-medium text-[var(--error)]">检测到聊天权限冲突</p>
+              <p className="mt-1 text-xs text-[var(--text-secondary)] leading-relaxed">
+                以下 QQ 同时出现在用户黑名单和聊天白名单中：<span className="mono">{chatAccessConflictUsers.join(', ')}</span>。实际运行时黑名单优先，这些人仍然不会收到普通聊天回复。建议你清理其中一侧。
+              </p>
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="inline-flex items-center gap-2 text-sm text-[var(--text-primary)]">
+              <input
+                type="checkbox"
+                checked={chatQuota.enabled}
+                onChange={(e) => setChatQuota({ ...chatQuota, enabled: e.target.checked })}
+                className="accent-[var(--accent-purple)]"
+              />
+              启用聊天个人限额
+            </label>
+            <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
+              <span>主人 QQ：</span>
+              <span className="mono break-all">{(runtime?.masterQQ ?? []).join(', ') || '未配置'}</span>
+            </div>
+            <div className="flex-1" />
+            <button
+              onClick={() => void saveGroupUsage()}
+              disabled={!groupDirty}
+              className={`px-4 py-2 text-xs rounded-[var(--radius-sm)] font-medium transition-colors cursor-pointer ${groupDirty ? 'bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] hover:border-[var(--accent-purple)]' : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed border border-[var(--border-subtle)]'}`}
+            >
+              💾 保存聊天/群用量计数
+            </button>
+            <button
+              onClick={() => void saveChatRules()}
+              disabled={!chatRuleDirty}
+              className={`px-4 py-2 text-xs rounded-[var(--radius-sm)] font-medium transition-colors cursor-pointer ${chatRuleDirty ? 'bg-[var(--accent-purple)] text-white hover:opacity-90 pulse-dirty' : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed'}`}
+            >
+              💾 保存聊天权限与限额规则
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-[240px_minmax(0,1fr)] gap-4">
+            <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-3">
+              <p className="text-xs font-medium text-[var(--text-primary)]">聊天权限模式</p>
+              <label className="flex items-start gap-2 text-sm text-[var(--text-primary)]">
+                <input
+                  type="radio"
+                  name="chat-access-mode"
+                  checked={chatAccess.mode === 'blacklist'}
+                  onChange={() => setChatAccess({ ...chatAccess, mode: 'blacklist' })}
+                  className="mt-1 accent-[var(--accent-purple)]"
+                />
+                <span>
+                  黑名单模式
+                  <span className="block text-[11px] text-[var(--text-muted)] leading-relaxed">沿用现有群聊/私聊规则，并额外允许给单独 QQ 设置聊天个人额度。</span>
+                </span>
+              </label>
+              <label className="flex items-start gap-2 text-sm text-[var(--text-primary)]">
+                <input
+                  type="radio"
+                  name="chat-access-mode"
+                  checked={chatAccess.mode === 'whitelist'}
+                  onChange={() => setChatAccess({ ...chatAccess, mode: 'whitelist' })}
+                  className="mt-1 accent-[var(--accent-purple)]"
+                />
+                <span>
+                  白名单模式
+                  <span className="block text-[11px] text-[var(--text-muted)] leading-relaxed">只有聊天白名单里的 QQ 能获得普通聊天回复。黑名单用户依然会被优先拦截。</span>
+                </span>
+              </label>
+            </div>
+
+            <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-3">
+              <p className="text-xs font-medium text-[var(--text-primary)]">聊天白名单</p>
+              <TagList
+                tags={chatAccess.whitelistUsers}
+                onChange={(tags) => setChatAccess({ ...chatAccess, whitelistUsers: normalizeChatAccess({ ...chatAccess, whitelistUsers: tags }).whitelistUsers })}
+                placeholder="输入 QQ 号后回车加入聊天白名单"
+              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newChatWhitelistUserId}
+                  onChange={(e) => setNewChatWhitelistUserId(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') addChatWhitelistUser(); }}
+                  placeholder="再手动补一个 QQ 号"
+                  className="flex-1 px-3 py-2 text-sm rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
+                />
+                <button
+                  onClick={addChatWhitelistUser}
+                  className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-white hover:opacity-90 cursor-pointer"
+                >
+                  加入白名单
+                </button>
+              </div>
+              <p className="text-[11px] text-[var(--text-muted)]">聊天白名单只影响普通聊天回复，不影响生图 / 修图。用户黑名单始终优先。</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-[repeat(2,minmax(0,220px))_minmax(0,1fr)] gap-4">
+            <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-2">
+              <p className="text-xs font-medium text-[var(--text-primary)]">默认聊天个人额度</p>
+              <input
+                type="number"
+                min={0}
+                value={chatQuota.defaultLimit}
+                onChange={(e) => setChatQuota({ ...chatQuota, defaultLimit: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
+                className="w-full px-3 py-2 text-sm rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] mono outline-none focus:border-[var(--accent-purple)]"
+              />
+              <p className="text-[11px] text-[var(--text-muted)]">0 表示普通用户默认不限额。这里只统计普通聊天，不含生图 / 修图。</p>
+            </div>
+
+            <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-2">
+              <p className="text-xs font-medium text-[var(--text-primary)]">聊天群总额度数量</p>
+              <p className="text-[11px] text-[var(--text-muted)]">群总额度在上面的“群用量管理”表格里直接编辑。改完后仍需点击这里的“保存聊天权限与限额规则”才会写回。</p>
+            </div>
+
+            <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-3">
+              <p className="text-xs font-medium text-[var(--text-primary)]">手动补一个聊天单独限额用户</p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newChatUserId}
+                  onChange={(e) => setNewChatUserId(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') addCustomChatUser(); }}
+                  placeholder="输入 QQ 号"
+                  className="flex-1 px-3 py-2 text-sm rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
+                />
+                <button
+                  onClick={addCustomChatUser}
+                  className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-white hover:opacity-90 cursor-pointer"
+                >
+                  单独设置
+                </button>
+              </div>
+              <p className="text-[11px] text-[var(--text-muted)]">新增后会先继承当前默认聊天个人额度，你可以在下方表格继续改。</p>
+            </div>
+          </div>
+
+          <div className="min-w-[260px]">
+            <SearchBar value={chatUserSearch} onChange={setChatUserSearch} placeholder="搜索聊天用户 QQ..." />
+          </div>
+
+          <div className="overflow-hidden rounded-[var(--radius-sm)] border border-[var(--border-subtle)]">
+            <div className="grid grid-cols-[180px_120px_140px_140px_140px_180px_120px] gap-3 px-4 py-3 text-[11px] text-[var(--text-muted)] bg-[var(--bg-elevated)] border-b border-[var(--border-subtle)]">
+              <span>QQ</span>
+              <span>身份</span>
+              <span>聊天权限</span>
+              <span>聊天额度</span>
+              <span>聊天已用</span>
+              <span>来源</span>
+              <span className="text-right">操作</span>
+            </div>
+
+            <div className="max-h-[420px] overflow-y-auto divide-y divide-[var(--border-subtle)]">
+              {filteredChatRows.length === 0 ? (
+                <div className="px-6 py-10 text-sm text-[var(--text-muted)] text-center">没有找到符合条件的聊天用户。可以先搜索，或者手动补一个聊天单独限额用户。</div>
+              ) : (
+                filteredChatRows.map((row) => (
+                  <div key={row.uid} className="grid grid-cols-[180px_120px_140px_140px_140px_180px_120px] gap-3 px-4 py-3 text-sm items-center">
+                    <span className="mono text-[var(--text-primary)]">{row.uid}</span>
+                    <span className="text-xs">
+                      {row.isMaster ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(0,230,118,0.15)] text-[var(--success)]">主人</span>
+                      ) : row.hasOverride ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(255,171,64,0.18)] text-[var(--warning)]">单独限额</span>
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[var(--bg-elevated)] text-[var(--text-muted)]">全局默认</span>
+                      )}
+                    </span>
+                    <span className="text-xs">
+                      {row.isMaster ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(0,230,118,0.15)] text-[var(--success)]">主人豁免</span>
+                      ) : row.inGlobalBlacklist ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(255,82,82,0.15)] text-[var(--error)]">黑名单禁止</span>
+                      ) : chatAccess.mode === 'whitelist' ? (
+                        row.inChatWhitelist ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(255,171,64,0.18)] text-[var(--warning)]">白名单允许</span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[var(--bg-elevated)] text-[var(--text-muted)]">未在白名单</span>
+                        )
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(14,165,233,0.12)] text-[var(--info)]">黑名单模式默认可用</span>
+                      )}
+                    </span>
+                    {row.isMaster ? (
+                      <span className="text-[var(--success)]">主人无限制</span>
+                    ) : row.hasOverride ? (
+                      <input
+                        type="number"
+                        min={0}
+                        value={row.limit ?? 0}
+                        onChange={(e) => updateChatUserOverride(row.uid, Number(e.target.value))}
+                        className="w-28 px-2 py-1.5 text-sm rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] mono outline-none focus:border-[var(--accent-purple)]"
+                      />
+                    ) : (
+                      <span className="mono text-[var(--text-secondary)]">{formatQuota(row.limit)}</span>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min={0}
+                        value={row.used}
+                        onChange={(e) => updateChatUsageCount(row.uid, Number(e.target.value))}
+                        className="w-24 px-2 py-1.5 text-sm rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] mono outline-none focus:border-[var(--accent-purple)]"
+                      />
+                      <span className="text-[11px] text-[var(--text-muted)]">{row.isMaster ? '主人无限制' : row.remaining === null ? '不限额' : `剩余 ${row.remaining}`}</span>
+                    </div>
+                    <span className="text-[var(--text-muted)]">{row.isMaster ? '主人豁免' : row.hasOverride ? '单独规则' : row.accessStatus}</span>
+                    <div className="flex justify-end gap-2">
+                      {!row.isMaster && !row.hasOverride && (
+                        <button
+                          onClick={() => addChatUserOverride(row.uid)}
+                          className="text-xs text-[var(--text-muted)] hover:text-[var(--accent-purple)] cursor-pointer"
+                        >
+                          单独设置
+                        </button>
+                      )}
+                      {!row.isMaster && row.hasOverride && (
+                        <button
+                          onClick={() => removeChatUserOverride(row.uid)}
+                          className="text-xs text-[var(--text-muted)] hover:text-[var(--warning)] cursor-pointer"
+                        >
+                          取消单独
+                        </button>
+                      )}
+                      {row.hasStoredUsage && (
+                        <button
+                          onClick={() => removeChatUsageCount(row.uid)}
+                          className="text-xs text-[var(--text-muted)] hover:text-[var(--warning)] cursor-pointer"
+                        >
+                          清空计数
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))
               )}
             </div>
           </div>

@@ -610,6 +610,18 @@ pub fn run_startup_self_check(state: State<'_, AppState>) -> Result<SelfCheckRep
                         .collect()
                 })
                 .unwrap_or_default();
+            let chat_whitelist: Vec<String> = rt
+                .get("chatAccess")
+                .and_then(|v| v.get("whitelistUsers"))
+                .and_then(|v| v.as_array())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|item| item.as_str())
+                        .map(|s| s.trim().to_string())
+                        .filter(|s| !s.is_empty())
+                        .collect()
+                })
+                .unwrap_or_default();
             let image_whitelist: Vec<String> = rt
                 .get("imageAccess")
                 .and_then(|v| v.get("whitelistUsers"))
@@ -623,6 +635,24 @@ pub fn run_startup_self_check(state: State<'_, AppState>) -> Result<SelfCheckRep
                 })
                 .unwrap_or_default();
             let blacklist_set: std::collections::HashSet<String> = user_blacklist.into_iter().collect();
+            let chat_overlap: Vec<String> = chat_whitelist
+                .into_iter()
+                .filter(|uid| blacklist_set.contains(uid))
+                .collect::<std::collections::BTreeSet<_>>()
+                .into_iter()
+                .collect();
+            if !chat_overlap.is_empty() {
+                push_item(
+                    &mut items,
+                    "chatAccess.blacklistWhitelistOverlap",
+                    "warn",
+                    format!(
+                        "这些 QQ 同时出现在 userBlacklist 和 chatAccess.whitelistUsers 中: {}。实际运行时黑名单优先，这些人仍然不会收到普通聊天回复。",
+                        chat_overlap.join(", ")
+                    ),
+                    false,
+                );
+            }
             let overlap: Vec<String> = image_whitelist
                 .into_iter()
                 .filter(|uid| blacklist_set.contains(uid))

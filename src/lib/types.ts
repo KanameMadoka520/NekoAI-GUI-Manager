@@ -42,6 +42,12 @@ export interface RequestQueue {
   overflowText?: string;
 }
 
+export interface ChatQuotaConfig {
+  enabled: boolean;
+  defaultLimit: number;
+  userLimits: Record<string, number>;
+}
+
 export interface ImageQuotaUserLimit {
   generateLimit?: number;
   editLimit?: number;
@@ -55,6 +61,12 @@ export interface ImageQuotaConfig {
 }
 
 export type ImageAccessMode = 'blacklist' | 'whitelist';
+export type ChatAccessMode = 'blacklist' | 'whitelist';
+
+export interface ChatAccessConfig {
+  mode: ChatAccessMode;
+  whitelistUsers: string[];
+}
 
 export interface ImageAccessConfig {
   mode: ImageAccessMode;
@@ -108,6 +120,8 @@ export interface RuntimeConfig {
   groupMentionFocusMode?: boolean;
   contextAutoForgetMs?: number;
   uiStyle?: number;
+  chatAccess?: ChatAccessConfig;
+  chatQuota?: ChatQuotaConfig;
   imageAccess?: ImageAccessConfig;
   imageQuota?: ImageQuotaConfig;
   groupLimits: Record<string, number>;
@@ -129,6 +143,7 @@ export interface ApiHealthWeights {
 export interface UsageData {
   periodId: string;
   counts: Record<string, number>;
+  users?: Record<string, number>;
 }
 
 export interface ImageUsageUserData {

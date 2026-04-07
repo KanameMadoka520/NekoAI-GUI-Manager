@@ -23,7 +23,8 @@ interface Section {
 const sections: Section[] = [
   { id: 'core', label: '核心设置', icon: '⚙', summary: '昵称、主人账号、日志与基础身份。', mode: 'both' },
   { id: 'active', label: '活跃节点/人格', icon: '⚡', summary: '当前生效的 API 与人格索引。', mode: 'both' },
-  { id: 'groups', label: '群聊与用户', icon: '👥', summary: '监听群组、私聊白名单、黑名单、图像权限模式与群限流。', mode: 'both' },
+  { id: 'groups', label: '群聊与用户', icon: '👥', summary: '监听群组、私聊白名单、聊天/图像黑白名单与群总额度。', mode: 'both' },
+  { id: 'quota', label: '额度规则', icon: '📊', summary: '聊天与图像的默认额度和单独用户额度。', mode: 'both' },
   { id: 'messages', label: '消息行为', icon: '💬', summary: '上下文条数、等待时间、随机回复和打字节奏。', mode: 'both' },
   { id: 'feedback', label: '请求反馈', icon: '📣', summary: '控制处理中提示、失败回报和 API 超时。', mode: 'both' },
   { id: 'memory', label: '记忆与摘要', icon: '🧠', summary: '闲置自动清空、记忆压缩与摘要提示词。', mode: 'common' },
@@ -74,6 +75,15 @@ const defaults: Partial<RuntimeConfig> = {
   groupMentionWait: 0,
   groupMentionFocusMode: true,
   uiStyle: 1,
+  chatAccess: {
+    mode: 'blacklist',
+    whitelistUsers: [],
+  },
+  chatQuota: {
+    enabled: false,
+    defaultLimit: 0,
+    userLimits: {},
+  },
   imageAccess: {
     mode: 'blacklist',
     whitelistUsers: [],
@@ -168,6 +178,30 @@ function normalizeImageQuota(input: RuntimeConfig['imageQuota'] | undefined): No
   };
 }
 
+function normalizeChatQuota(input: RuntimeConfig['chatQuota'] | undefined): NonNullable<RuntimeConfig['chatQuota']> {
+  const userLimits: NonNullable<RuntimeConfig['chatQuota']>['userLimits'] = {};
+  if (input?.userLimits && typeof input.userLimits === 'object') {
+    for (const [uid, rawValue] of Object.entries(input.userLimits)) {
+      if (!uid.trim()) continue;
+      userLimits[uid] = Number.isFinite(Number(rawValue)) ? Math.max(0, Math.floor(Number(rawValue))) : 0;
+    }
+  }
+  return {
+    enabled: input?.enabled === true,
+    defaultLimit: Number.isFinite(Number(input?.defaultLimit)) ? Math.max(0, Math.floor(Number(input?.defaultLimit))) : 0,
+    userLimits,
+  };
+}
+
+function normalizeChatAccess(input: RuntimeConfig['chatAccess'] | undefined): NonNullable<RuntimeConfig['chatAccess']> {
+  return {
+    mode: input?.mode === 'whitelist' ? 'whitelist' : 'blacklist',
+    whitelistUsers: Array.isArray(input?.whitelistUsers)
+      ? [...new Set(input.whitelistUsers.map((item) => String(item || '').trim()).filter(Boolean))]
+      : [],
+  };
+}
+
 function normalizeImageAccess(input: RuntimeConfig['imageAccess'] | undefined): NonNullable<RuntimeConfig['imageAccess']> {
   return {
     mode: input?.mode === 'whitelist' ? 'whitelist' : 'blacklist',
@@ -239,6 +273,8 @@ function normalizeRuntimeConfig(input?: Partial<RuntimeConfig> | null): RuntimeC
     groupMentionFocusMode: merged.groupMentionFocusMode !== undefined ? !!merged.groupMentionFocusMode : true,
     contextAutoForgetMs: Number.isFinite(Number(merged.contextAutoForgetMs)) ? Number(merged.contextAutoForgetMs) : 600000,
     uiStyle: Number.isFinite(Number(merged.uiStyle)) ? Number(merged.uiStyle) : 1,
+    chatAccess: normalizeChatAccess(merged.chatAccess),
+    chatQuota: normalizeChatQuota(merged.chatQuota),
     imageAccess: normalizeImageAccess(merged.imageAccess),
     imageQuota: normalizeImageQuota(merged.imageQuota),
     groupLimits: merged.groupLimits && typeof merged.groupLimits === 'object' ? merged.groupLimits : {},
@@ -568,6 +604,13 @@ function getImageAccessConflictUsers(config: RuntimeConfig | null): string[] {
   return [...new Set(whitelist.filter((uid) => blacklist.has(uid)))].sort((a, b) => a.localeCompare(b, 'zh-CN'));
 }
 
+function getChatAccessConflictUsers(config: RuntimeConfig | null): string[] {
+  if (!config) return [];
+  const blacklist = new Set((config.userBlacklist ?? []).map((item) => String(item || '').trim()).filter(Boolean));
+  const whitelist = (config.chatAccess?.whitelistUsers ?? []).map((item) => String(item || '').trim()).filter(Boolean);
+  return [...new Set(whitelist.filter((uid) => blacklist.has(uid)))].sort((a, b) => a.localeCompare(b, 'zh-CN'));
+}
+
 export function ConfigEditor() {
   const addToast = useUiStore((s) => s.addToast);
   const settings = useUiStore((s) => s.settings);
@@ -623,6 +666,7 @@ export function ConfigEditor() {
   }, [original]);
   const changedFromDefaults = useMemo(() => getDiffPaths(config, defaultConfig, schema), [config, defaultConfig, schema]);
   const changedFromSaved = useMemo(() => getDiffPaths(config, savedConfig, schema), [config, savedConfig, schema]);
+  const chatAccessConflictUsers = useMemo(() => getChatAccessConflictUsers(config), [config]);
   const imageAccessConflictUsers = useMemo(() => getImageAccessConflictUsers(config), [config]);
 
   const summary = useMemo(() => {
@@ -1148,6 +1192,15 @@ export function ConfigEditor() {
             {renderSchemaField('groups')}
             {renderSchemaField('allowPrivateTalkingUsers')}
             {renderSchemaField('userBlacklist')}
+            {renderSchemaField('chatAccess.mode')}
+            {renderSchemaField('chatAccess.whitelistUsers')}
+            {chatAccessConflictUsers.length > 0 && (
+              <IssueCallout
+                label="聊天权限冲突"
+                text={`以下 QQ 同时出现在用户黑名单和聊天白名单里：${chatAccessConflictUsers.join(', ')}。实际运行时黑名单优先，这些人仍然不会收到普通聊天回复。`}
+                tone="error"
+              />
+            )}
             {renderSchemaField('imageAccess.mode')}
             {renderSchemaField('imageAccess.whitelistUsers')}
             {imageAccessConflictUsers.length > 0 && (
@@ -1157,8 +1210,18 @@ export function ConfigEditor() {
                 tone="error"
               />
             )}
-            <InlineNote>图像权限模式和图像白名单只影响生图 / 修图，不影响普通聊天。黑名单用户始终会被拦截，优先级高于图像白名单。</InlineNote>
+            <InlineNote>聊天白名单只影响普通聊天回复；图像白名单只影响生图 / 修图。用户黑名单始终优先，高于聊天白名单和图像白名单。</InlineNote>
             {renderSchemaField('groupLimits')}
+          </SectionCard>
+
+          <SectionCard id="quota" title={sectionMetaMap.get('quota')?.label ?? '额度规则'} icon="📊" summary={sectionMetaMap.get('quota')?.summary ?? '聊天与图像的默认额度和单独用户额度。'} refs={sectionRefs}>
+            {renderSchemaField('chatQuota.enabled')}
+            {renderSchemaField('chatQuota.defaultLimit')}
+            {renderSchemaField('chatQuota.userLimits')}
+            {renderSchemaField('imageQuota.enabled')}
+            {renderSchemaField('imageQuota.defaultGenerateLimit')}
+            {renderSchemaField('imageQuota.defaultEditLimit')}
+            <InlineNote>聊天个人额度和群总额度会同时生效。图像额度仍按生图/修图分别统计。</InlineNote>
           </SectionCard>
 
           <SectionCard id="messages" title={sectionMetaMap.get('messages')?.label ?? '消息行为'} icon="💬" summary={sectionMetaMap.get('messages')?.summary ?? '上下文长度、消息上限与随机回复节奏。'} refs={sectionRefs}>
