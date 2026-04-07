@@ -1,17 +1,14 @@
 # NekoAI GUI Manager
 
-**NekoAI 统一可视化管理面板** — 基于 Tauri 的原生桌面应用，集成 API管理、配置编辑、人格管理、长期记忆监控、聊天历史分析、命令管理于一体。
+**NekoAI 统一可视化管理面板** — 基于 Tauri 的原生桌面应用，集成聊天节点管理、图像节点管理、配置编辑、人格管理、长期记忆监控、聊天历史分析、用量管理与安全发布能力。
 
-> 完全替代旧版 `NekoAI-GUI-Manager/`（Node.js + Express + Vue 3 CDN 方案）和四个独立 HTML 工具（`api_manager.html`、`config_editor.html`、`dashboard.html`、`history_viewer.html`），以原生桌面应用的形式提供更快的性能、更丰富的功能和更一体化的体验。
-
-这四个独立HTML传到文件夹Legacy_html_tools和release里面了，感兴趣的可以自己翻出来用。
+> 当前推荐把它作为 `koishi-plugin-Enhanced-NekoAI` 的主管理器使用。插件目录内仍保留轻量 HTML 工具（`api_manager.html`、`image_api_manager.html`、`config_editor.html`、`dashboard.html`、`history_viewer.html`）作为补充；旧的独立 `NekoAI-GUI-Manager/`（Node.js + Express + Vue 3 CDN 方案）已经被本项目取代。
 
 ---
 
 本工具是为了服务koishi中的插件koishi-plugin-Enhanced-NekoAI而诞生的。
 
-【警告】当前仅为测试阶段,前端有待优化，后端功能完备性尚未完全测试！
-2026年3月3日凌晨0点完成测试版
+当前功能已经覆盖日常管理链路，但涉及 **Responses / xAI Web Search / 图像节点 / xAI 图像接口** 的新增能力时，仍建议先在你的真实网络环境做一轮回归。
 
 因为Enhanced-NekoAI插件配置比较复杂繁多，所以需要更人性化的图形工具来编辑其配置和查看状态。
 
@@ -50,6 +47,29 @@
 ---
 
 ## 本轮进展（2026-03）
+
+### 2026-04 增量更新
+
+- API 管理已升级为 **聊天节点列表 / 图像节点列表双模式**
+  - 聊天节点继续落在 `api_config.json`
+  - 图像节点独立落在 `image_api_config.json`
+  - 两套列表互不混用，避免生图配置污染聊天节点池
+- 聊天节点新增 **OpenAI Responses / xAI Web Search** 管理能力
+  - 接口类型下拉已明确区分 `openai (completions)` 与 `openai-response`
+  - 保持“URL 由用户自己填写完整路径”的旧兼容策略
+  - API URL 输入框右侧新增“补默认后缀”按钮，只做常见后缀辅助补全，不锁死自定义兼容站
+  - 新增 `xAI Web Search` 开关，并明确标注“仅支持 xAI 官方 API + Grok 模型 + openai-response”
+- 图像节点新增 **xAI 生图 / 修图** 独立管理能力
+  - 独立维护 `generationUrl` / `editUrl` / `apiKey` / `modelName` / `aspectRatio` / `resolution`
+  - 支持导入 / 导出 `image_api_config.json`
+  - 支持一键导出 xAI 图像节点模板
+  - 生成 / 修图 URL 右侧同样提供默认后缀补全按钮
+  - 默认不提供图像批量测活，避免直接消耗图像额度
+- Rust 后端与自检链路已同步支持图像节点
+  - `config.rs` 新增 `imageApi -> image_api_config.json` 映射
+  - `watcher.rs` / `ops.rs` 已纳入 `image_api_config.json`
+  - 启动前自检与自动修复已覆盖 `activeImageApiIndex`
+  - 配置文件健康检查已把 `image_api_config.json` 纳入检测范围
 
 ### 已完成
 
@@ -221,8 +241,8 @@
 | 模块 | 功能 |
 |------|------|
 | **概览仪表盘** | 核心状态总览（昵称/活跃节点/人格/路由/表情包）、API类型分布、记忆容量进度条、群组用户信息（限流/人格/API映射标签）、配置文件健康检查表 |
-| **API 管理** | 节点卡片编辑（5个字段）、**拖拽排序**、批量选择/删除、密钥遮蔽/显示、**单个+批量连通性测试**（显示延迟）、**撤销/重做**（50步历史）、重复节点检测、活跃节点切换、左侧导航按提供商分组、**健康分（MVP：实时测试+历史表现）与排序/筛选**、**JSON 导入/导出（覆盖确认）** |
-| **配置编辑** | 12个配置节全覆盖、侧边导航跟踪滚动、多种控件类型（开关/滑块/标签列表/键值编辑器/下拉框）、**schema 驱动字段说明与部分控件渲染**、恢复全部默认值（**二级确认**）、**runtime JSON 导入/导出（导入二级确认）**、**迁移提醒 + 差异概览 + 可修项自动修复** |
+| **API 管理** | **聊天节点 / 图像节点双模式**、聊天节点编辑（`openai (completions)` / `openai-response` / `Anthropic` / `Gemini`、xAI Web Search 开关、URL 默认后缀辅助、拖拽排序、批量测试、健康分、导入/导出）、图像节点编辑（独立 `image_api_config.json`、生成/修图 URL、默认比例/分辨率、xAI 模板导出、导入/导出、活跃图像节点切换） |
+| **配置编辑** | 12个配置节全覆盖、侧边导航跟踪滚动、多种控件类型（开关/滑块/标签列表/键值编辑器/下拉框）、**schema 驱动字段说明与部分控件渲染**、恢复全部默认值（**二级确认**）、**runtime JSON 导入/导出（导入二级确认）**、**迁移提醒 + 差异概览 + 可修项自动修复**，并覆盖 `activeImageApiIndex` 等新字段 |
 | **人格管理** | 群聊/私聊双栏并列、编辑弹窗（名称+大文本域+字符计数）、克隆/删除、一键切换活跃人格、搜索筛选、**群聊/私聊人格分文件导入/导出（导入二级确认）**、**人格 A/B 测试台（固定 API 节点、同输入双输出对比、测试记录回看 / 筛选 / 删除，用于快速试跑）** |
 | **人格评测实验室（新增）** | **独立页面**、多 API × 多人格 × 多用例 × 多轮次实验矩阵、单条输出多维人工打分（风格一致性 / 稳定性 / 任务完成度 / 拟人感）、实验记录回看 / 删除、按人格 / API / 组合的基础统计摘要 |
 | **长期记忆** | 群聊/私聊双列表、容量进度条（绿<50%/黄50-85%/红>85%）、**内联消息编辑**（点击直接改）、单条删除、搜索、清空、删除记忆文件、**当前会话导入/导出（导入二级确认）** |
@@ -388,8 +408,7 @@ git push -u origin main
 git clone https://github.com/KanameMadoka520/你的仓库名.git
 cd nekoai-gui
 npm install                                    # 恢复前端依赖 (~170MB)
-cargo install tauri-cli --version "^1.6"       # 安装 Tauri CLI（仅首次）
-cargo tauri build --debug                      # 构建桌面应用（自动下载 Rust 依赖）
+npx tauri build                                # 构建桌面应用（会先执行 npm run build）
 ```
 
 ---
@@ -411,13 +430,13 @@ cargo tauri build --debug                      # 构建桌面应用（自动下�
 > sudo apt install -y libwebkit2gtk-4.0-dev libgtk-3-dev libssl-dev pkg-config librsvg2-dev patchelf
 > ```
 >
-> **Windows 用户：** 安装好 Node.js 和 Rust 即可，不需要额外系统依赖。Rust 推荐通过 [rustup-init.exe](https://rustup.rs/) 安装，安装完成后**重启 PowerShell** 使 `cargo` 命令生效。
+> **Windows 用户：** 除 Node.js 和 Rust 外，还需要安装 **Visual Studio Build Tools / Visual C++（MSVC）工具链**。如果构建时报 `link.exe not found`，说明这一项没装好。Rust 推荐通过 [rustup-init.exe](https://rustup.rs/) 安装，安装完成后请**重启 PowerShell** 使 `cargo` 命令生效。
 >
 > **macOS 用户：** 安装好 Node.js 和 Rust 即可，不需要额外系统依赖。
 
 ### 安装 & 构建
 
-> **重要：** `cargo tauri` 不是 Rust 自带的命令，需要单独安装 **Tauri CLI**。这是一个一次性操作，安装后永久可用。
+> **重要：** 本仓库已经在 `package.json` 中声明了 `@tauri-apps/cli`，因此优先直接使用 `npx tauri dev` / `npx tauri build`。只有你明确想走全局 `cargo tauri` 工作流时，才需要额外安装 Rust 版 Tauri CLI。
 
 #### Windows (PowerShell)
 
@@ -434,13 +453,9 @@ cd nekoai-gui
 #    Remove-Item -Recurse -Force node_modules
 npm install
 
-# 4. 安装 Tauri CLI（首次执行，约 2-5 分钟编译，之后不需要重复）
-#    版本必须是 1.x，不要安装 2.x
-cargo install tauri-cli --version "^1.6"
-
-# 5. 构建桌面应用（前端 + Rust 后端 + 打包）
+# 4. 构建桌面应用（前端 + Rust 后端 + 打包）
 #    首次构建约 3-5 分钟（下载并编译 Rust 依赖），之后增量构建约 30 秒
-cargo tauri build --debug
+npx tauri build
 ```
 
 #### Linux / macOS (Bash)
@@ -456,12 +471,8 @@ cd nekoai-gui
 # 3. 安装前端依赖
 npm install
 
-# 4. 安装 Tauri CLI（首次执行，约 2-5 分钟编译，之后不需要重复）
-#    版本必须是 1.x，不要安装 2.x
-cargo install tauri-cli --version "^1.6"
-
-# 5. 构建桌面应用
-cargo tauri build --debug
+# 4. 构建桌面应用
+npx tauri build
 ```
 
 构建完成后，可执行文件位于：
@@ -477,12 +488,12 @@ src-tauri/target/debug/bundle/       # 安装包（.deb / .msi / .dmg）
 如果你想修改代码并实时预览：
 
 ```bash
-cargo tauri dev
+npx tauri dev
 ```
 
 这会同时启动 Vite 开发服务器（前端热重载）和 Tauri 窗口（Rust 后端），修改前端代码后页面自动刷新，修改 Rust 代码后自动重编译。
 
-> **注意：** `cargo tauri dev` 需要图形环境（Windows Desktop / macOS / X11 / Wayland）。在纯命令行的 Linux 服务器环境中只能验证编译通过，无法启动 GUI。
+> **注意：** `npx tauri dev` 需要图形环境（Windows Desktop / macOS / X11 / Wayland）。在纯命令行的 Linux 服务器环境中只能验证编译通过，无法启动 GUI。
 
 ### 仅构建前端（不需要 Rust）
 
@@ -526,23 +537,25 @@ npx vite
 - **顶部 4 个统计卡片** — API节点总数、当前活跃节点编号、记忆会话数、记忆消息总数
 - **核心状态** — 当前昵称、活跃 API（编号+模型名+类型标签）、活跃人格、智能路由/记忆压缩/表情包的开关状态
 - **群组与用户** — 监听群组列表（每个群号旁会显示限流⏱、人格🎭、API🔌映射图标）、主人QQ、白名单/黑名单人数
-- **API 类型分布** — OpenAI/Gemini/Anthropic 三类节点的数量和占比
+- **API 类型分布** — 当前按 OpenAI / Gemini / Anthropic 主类汇总展示节点数量和占比
 - **记忆概览** — 群聊和私聊记忆的容量进度条，绿色(<50%)/黄色(50-85%)/红色(>85%)
-- **配置文件健康** — 6个配置文件的存在状态、文件大小、最后修改时间
+- **配置文件健康** — 8 个配置文件（含 `runtime_schema.json`、`image_api_config.json`）的存在状态、文件大小、最后修改时间
 
 ### API 管理
 
 这是功能最丰富的页面：
 
-- **左侧导航面板** — 搜索框 + 按提供商分组的节点列表，点击跳转到对应卡片，绿/红圆点显示连通状态
-- **节点卡片** — 每张卡片包含：接口类型(下拉)、备注、API URL、API Key(带显示/隐藏切换)、模型名称
-- **拖拽排序** — 按住卡片左上角的 `⠿` 图标即可拖拽调整顺序
-- **连通测试** — 点击单个卡片的“测试”按钮测试单个节点，或点击工具栏的“对全部API可用性测试”批量测试
-- **撤销/重做** — 支持最多 50 步操作历史，`Ctrl+Z` 撤销 / `Ctrl+Y` 重做
-- **批量操作** — 勾选多个节点后可批量删除
-- **重复检测** — URL + 模型名相同的节点会显示黄色"重复"徽章
-- **活跃节点** — 工具栏可直接输入活跃节点编号，或点击卡片上的"启用"按钮
-- **导入/导出** — 支持 `api_config.json` 的 JSON 导入/导出；导入会先弹覆盖确认，导入后按当前页面流程保存生效
+- **双模式切换** — 顶部可在“聊天节点列表”和“图像节点列表”之间切换，两种节点分别对应 `api_config.json` 与 `image_api_config.json`
+- **聊天节点卡片** — 包含接口类型、备注、API URL、模型名称、API Key、xAI Web Search 开关、健康分解释等信息
+- **接口类型** — 下拉明确区分 `openai (completions)`、`openai-response`、`Anthropic`、`Gemini`
+- **URL 后缀辅助** — API URL 输入框右侧会根据当前类型显示 `补 /v1/chat/completions`、`补 /v1/responses`、`补 /v1/messages`、`补 /v1beta/models/...:generateContent` 等按钮；URL 最终仍然完全由你自己控制
+- **xAI Web Search 开关** — 仅在 `openai-response` 节点可勾选，并明确提示“只支持 xAI 官方 API + Grok 模型”
+- **拖拽排序 / 连通测试 / 健康分** — 聊天节点支持拖拽排序、单个/批量测试、健康分排序/筛选、评分解释面板
+- **图像节点卡片** — 独立维护 `generationUrl`、`editUrl`、`apiKey`、`modelName`、`aspectRatio`、`resolution`
+- **图像 URL 后缀辅助** — 生成 URL 可一键补 `/v1/images/generations`，修图 URL 可一键补 `/v1/images/edits`
+- **图像模板导出** — 图像节点工具栏支持导出 xAI 模板，便于快速落地 `image_api_config.json`
+- **图像节点保护策略** — 默认不提供图像测活，避免误耗图像额度；图像节点的活跃索引会保存到 `runtime_config.json` 的 `activeImageApiIndex`
+- **撤销/重做 / 导入导出** — 聊天节点和图像节点都支持独立的撤销、重做、导入、导出与保存流程
 
 ### 配置编辑
 
@@ -551,7 +564,7 @@ npx vite
 | 配置节 | 包含的设置 |
 |--------|-----------|
 | 核心设置 | 昵称、主人QQ列表、私聊拒绝消息、日志级别 |
-| 活跃节点/人格 | 活跃 API 索引、群聊/私聊人格索引 |
+| 活跃节点/人格 | 活跃聊天 API 索引、活跃图像 API 索引、群聊/私聊人格索引 |
 | 群聊与用户 | 监听群组、私聊白名单、用户黑名单、群限流配置(群号→秒) |
 | 消息行为 | 群聊最大消息数、单次最大消息、随机回复概率(滑块)、上下文条数 |
 | 记忆与摘要 | 启用开关、压缩阈值、摘要模型、最大摘要长度 |
@@ -622,7 +635,7 @@ npx vite
 | **安全性** | API 密钥通过 HTTP 传输，可被抓包 | 数据不离开进程，无网络暴露 |
 | **依赖** | 需要端口监听 + 浏览器 | 自包含可执行文件 |
 | **前端技术** | Vue 3 CDN（单文件 HTML） | React 19 + TypeScript + Tailwind |
-| **功能完整度** | ~80%（多处缺失） | 100%（全功能覆盖 + 新增特性） |
+| **功能完整度** | ~80%（多处缺失） | 当前主线能力已覆盖聊天节点、图像节点、配置、人格、记忆、历史、用量与安全发布 |
 
 ### 整体架构
 
@@ -635,11 +648,12 @@ npx vite
 │  │   ┌────────┬────────┬────────┬────────┬────────────┐  │  │
 │  │   │ 概览   │ API    │ 配置   │ 人格   │ 记忆/历史  │  │  │
 │  │   └────────┴────────┴────────┴────────┴────────────┘  │  │
+│  │        另含 用量管理 / 评测实验室 / 安全发布中心       │  │
 │  │          Zustand 状态管理 + React.lazy 懒加载          │  │
 │  └──────────────────┬────────────────────────────────────┘  │
 │             Tauri IPC (invoke)                                │
 │  ┌──────────────────▼────────────────────────────────────┐  │
-│  │               Rust 后端 (15 个 IPC 命令)               │  │
+│  │               Rust 后端 (40+ IPC 命令)                 │  │
 │  │  ┌──────────┐ ┌─────────┐ ┌────────┐ ┌────────────┐  │  │
 │  │  │config.rs │ │memory.rs│ │history │ │api_test.rs │  │  │
 │  │  │配置读写  │ │记忆CRUD │ │.rs     │ │连通测试    │  │  │
@@ -655,10 +669,12 @@ npx vite
            │           │           │             │
 ┌──────────▼───────────▼───────────▼─────────────▼─────────────┐
 │                     插件根目录 (磁盘文件)                       │
-│  runtime_config.json   api_config.json   *_personality.json  │
-│  commands.json         group_usage_counts.json               │
+│  runtime_config.json   runtime_schema.json                   │
+│  api_config.json       image_api_config.json                 │
+│  *_personality.json    commands.json                         │
+│  group_usage_counts.json                                     │
 │  memory/group/*.json   memory/private/*.json                 │
-│  chat-history/*        .backups/ (自动创建)                    │
+│  chat-history/*        .backups/ (自动创建)                  │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -735,21 +751,24 @@ nekoai-gui/
 │   ├── App.tsx                        #   主布局：Setup 引导 → 侧边栏+头部+页面路由
 │   ├── index.css                      #   全局样式：CSS 变量 + Tailwind + 动画
 │   │
-│   ├── pages/                         #   8 个功能页面 + 1 个设置页
+│   ├── pages/                         #   10 个功能页面 + 1 个设置页
 │   │   ├── Dashboard.tsx              #     概览仪表盘（只读）
-│   │   ├── ApiManager.tsx             #     API 节点管理（最复杂）
-│   │   ├── ConfigEditor.tsx           #     运行时配置编辑（11节）
+│   │   ├── ApiManager.tsx             #     聊天节点 / 图像节点双模式管理
+│   │   ├── ConfigEditor.tsx           #     运行时配置编辑（12节）
 │   │   ├── PersonalityManager.tsx     #     人格管理（群聊/私聊双栏）
+│   │   ├── EvaluationLab.tsx          #     人格评测实验室
 │   │   ├── MemoryViewer.tsx           #     长期记忆查看+编辑
 │   │   ├── HistoryViewer.tsx          #     历史记录分析（4种视图）
+│   │   ├── UsageManager.tsx           #     群聊用量 / 限流计数管理
 │   │   ├── CommandManager.tsx         #     命令回避列表管理
 │   │   ├── OpsCenter.tsx              #     安全发布中心（快照/模板/自检/审计）
 │   │   └── Setup.tsx                  #     首次运行设置引导
 │   │
 │   ├── components/
 │   │   ├── layout/
-│   │   │   ├── Sidebar.tsx            #     侧边导航栏（8页+时钟）
-│   │   │   └── Header.tsx             #     顶部栏（标题+操作按钮）
+│   │   │   ├── Sidebar.tsx            #     侧边导航栏
+│   │   │   ├── Header.tsx             #     顶部栏（标题+操作按钮）
+│   │   │   └── CustomTitlebar.tsx     #     主题化窗口标题栏
 │   │   ├── common/                    #   公共 UI 组件（Panel / SummaryCard / Dialog 等）
 │   │   └── personality/
 │   │       └── PersonalityAbWorkbench.tsx #   人格 A/B 快速试跑工具（固定 API、记录回看/筛选/删除）
@@ -763,8 +782,10 @@ nekoai-gui/
 │   │   └── uiStore.ts                 #     Zustand Toast 通知状态
 │   │
 │   ├── lib/
-│   │   ├── types.ts                   #     所有 TypeScript 接口定义（含人格 A/B 测试类型）
-│   │   └── tauri-commands.ts          #     Tauri IPC 调用包装（含人格 A/B 测试命令）
+│   │   ├── types.ts                   #     所有 TypeScript 接口定义（含图像节点 / 人格评测类型）
+│   │   ├── tauri-commands.ts          #     Tauri IPC 调用包装
+│   │   ├── human-issues.ts            #     技术项 -> 人话解释映射
+│   │   └── json-transfer.ts           #     统一 JSON 导入/导出
 │   │
 │   └── theme/
 │       └── neko-theme.ts              #     Neko 主题色彩常量
@@ -776,12 +797,14 @@ nekoai-gui/
         ├── main.rs                    #     入口，注册 IPC 命令
         ├── state.rs                   #     AppState（插件目录路径管理）
         ├── data_root.rs               #     EXE 同级数据根目录管理（NekoAI-GUI-Data）
+        ├── gui_prefs.rs               #     GUI 本地偏好（如 API 健康评分权重）
         ├── ops.rs                     #     安全发布中心后端能力（快照/模板/自检/审计）
         ├── config.rs                  #     配置文件 CRUD + 自动备份 + 自动快照
         ├── memory.rs                  #     记忆文件 CRUD
         ├── history.rs                 #     历史记录读取 + 搜索 + 导出
         ├── api_test.rs                #     API 连通性测试（reqwest HTTP）
         ├── personality_ab.rs          #     人格 A/B 快速试跑后端（执行 / 记录 / 删除）
+        ├── personality_eval.rs        #     人格评测实验室后端
         └── watcher.rs                 #     文件变更监听（notify crate）
 ```
 
@@ -794,7 +817,10 @@ NekoAI-GUI-Data/
 ├── env-templates/        # dev/test/prod 环境模板
 ├── diagnostics/          # 启动自检报告
 ├── audit/                # GUI 操作审计日志（jsonl）
-└── personality-ab-tests/ # 人格 A/B 快速试跑记录
+├── preferences/          # GUI 本地偏好（如 API 健康评分权重）
+├── personality-ab-tests/ # 人格 A/B 快速试跑记录
+└── personality-eval-lab/ # 人格评测实验室数据目录
+    └── experiments/      # 实验记录
 ```
 
 应用启动后会读写用户指定的 NekoAI 插件目录下的文件：
@@ -802,7 +828,9 @@ NekoAI-GUI-Data/
 ```
 (用户选择的插件根目录)/
 ├── runtime_config.json      ← 运行时配置
+├── runtime_schema.json      ← 运行时配置契约
 ├── api_config.json          ← API 节点列表（可能多达 56+ 个节点）
+├── image_api_config.json    ← 独立图像节点列表
 ├── group_personality.json   ← 群聊人格列表
 ├── private_personality.json ← 私聊人格列表
 ├── commands.json            ← 命令回避列表（可能 243+ 条）
@@ -824,9 +852,9 @@ NekoAI-GUI-Data/
 
 | 命令 | 参数 | 返回值 | 说明 |
 |------|------|--------|------|
-| `get_config` | `key` | JSON 数据 | 读取配置。key: `runtime` / `runtimeSchema` / `api` / `groupPersonality` / `privatePersonality` / `commands` / `usage` |
+| `get_config` | `key` | JSON 数据 | 读取配置。key: `runtime` / `runtimeSchema` / `api` / `imageApi` / `groupPersonality` / `privatePersonality` / `commands` / `usage` |
 | `save_config` | `key`, `data` | - | 写入配置，**写入前自动备份**到 `.backups/` |
-| `get_system_info` | - | 系统信息 | 插件目录路径 + 6 个文件的健康状态 |
+| `get_system_info` | - | 系统信息 | 插件目录路径 + 8 个配置文件的健康状态 |
 | `set_plugin_dir` | `dir` | - | 设置插件目录，验证存在且包含配置文件 |
 | `get_api_health_weights` | - | 本地偏好 | 读取 GUI 本地保存的 API 健康评分权重（支持从旧 runtime 迁移） |
 | `save_api_health_weights` | `weights` | - | 保存 GUI 本地健康评分权重，不写回插件运行配置 |
@@ -854,7 +882,7 @@ NekoAI-GUI-Data/
 
 | 命令 | 参数 | 返回值 | 说明 |
 |------|------|--------|------|
-| `ping_api` | `url`, `key`, `model`, `aiType` | 测试结果 | 单个节点测试（15秒超时，支持 OpenAI/Anthropic/Gemini 三种鉴权） |
+| `ping_api` | `url`, `key`, `model`, `aiType` | 测试结果 | 单个聊天节点测试（15秒超时，支持 OpenAI / OpenAI Responses / Anthropic / Gemini 鉴权分支） |
 | `batch_ping_apis` | `nodes` | 结果数组 | 批量顺序测试 |
 | `batch_ping_apis_stream` | `session_id`, `nodes` | - | 批量流式测试，逐条回传进度事件 |
 | `get_api_history_metrics` | - | 指标列表 | 聚合历史记录中的 API 维度指标（调用数/错误率/平均响应时间），供节点评分使用 |
@@ -917,16 +945,17 @@ NekoAI-GUI-Data/
 
 | 旧工具 | 新版对应 | 改进 |
 |--------|---------|------|
-| `api_manager.html` | API 管理页 | 新增拖拽排序、撤销重做、重复检测、对全部API可用性测试 |
-| `config_editor.html` | 配置编辑页 | 从 9 节扩展到 11 节，新增智能路由/请求队列/转发设置等 |
+| `api_manager.html` | API 管理页（聊天节点模式） | 新增拖拽排序、撤销重做、重复检测、对全部 API 可用性测试、Responses / xAI Web Search 管理 |
+| `image_api_manager.html` | API 管理页（图像节点模式） | 新增独立图像节点列表、xAI 模板导出、生成 / 修图 URL 默认后缀辅助 |
+| `config_editor.html` | 配置编辑页 | 从旧版基础配置扩展到 12 节，并接入 `runtime_schema.json` 的说明、迁移提醒与差异概览 |
 | `dashboard.html` | 概览仪表盘 | 新增群组映射标签、API类型分布进度条、配置健康表 |
 | `history_viewer.html` | 历史记录页 | 新增 Recharts 统计图表、4种视图模式、全局搜索 |
-| `NekoAI-GUI-Manager/` | **完全替代** | 从 Node.js 网页变为原生桌面应用，零网络暴露，功能 100% 覆盖 |
+| `NekoAI-GUI-Manager/` | **完全替代** | 从 Node.js 网页变为原生桌面应用，零网络暴露，并覆盖当前主线运维能力 |
 | *(无)* | 人格管理页 | **全新** — 旧版没有独立的人格管理界面 |
 | *(无)* | 命令管理页 | **全新** — 旧版完全没有命令列表管理功能 |
 | *(无)* | 记忆编辑 | **全新** — 旧版只能查看记忆，新版支持内联编辑单条消息 |
 
-旧版的 HTML 文件和 `NekoAI-GUI-Manager/` 目录可以安全删除。
+旧的独立 Node.js 版 `NekoAI-GUI-Manager/` 可以安全删除；插件目录内自带的轻量 HTML 工具则仍然保留，适合作为 Tauri GUI 之外的补充方案。
 
 ---
 
@@ -1041,7 +1070,7 @@ Found 7 errors.
 Error beforeBuildCommand `npm run build` failed with exit code 2
 ```
 
-**原因：** `cargo tauri build` 会执行 `npm run build`（即 `tsc -b && vite build`），其中 `tsc -b` 是 TypeScript 严格类型检查。如果你只用 `npx vite build` 测试过前端，可能没发现这些类型错误（Vite 构建时只做转译不做类型检查）。
+**原因：** `npx tauri build` 会执行 `npm run build`（即 `tsc -b && vite build`），其中 `tsc -b` 是 TypeScript 严格类型检查。如果你只用 `npx vite build` 测试过前端，可能没发现这些类型错误（Vite 构建时只做转译不做类型检查）。
 
 **常见的 TypeScript 错误类型：**
 
@@ -1086,29 +1115,36 @@ src-tauri\target\debug\app.exe
 开发模式不会尝试打包：
 
 ```powershell
-cargo tauri dev
+npx tauri dev
 ```
 
 **方案 C：手动安装 WiX（如果确实需要 .msi 安装包）**
 
 1. 用浏览器下载：https://github.com/wixtoolset/wix3/releases/download/wix3141rtm/wix314-binaries.zip
 2. 解压到 `%LOCALAPPDATA%\tauri\WixTools\` 目录（如果不存在就手动创建）
-3. 重新执行 `cargo tauri build --debug`
+3. 重新执行 `npx tauri build`
 
 ---
 
-### 错误 6：Rust 编译警告 `function start_file_watcher is never used`
+### 错误 6：`link.exe not found`
 
 **完整报错：**
 
 ```
-warning: function `start_file_watcher` is never used
- --> src\watcher.rs:6:8
+error: linker `link.exe` not found
+note: the msvc targets depend on the msvc linker but `link.exe` was not found
 ```
 
-**原因：** 这只是一个 **警告（warning）**，不是错误，不影响编译。`start_file_watcher` 函数已经写好但尚未在 `main.rs` 的启动流程中调用（计划在文件监听集成时接入）。
+**原因：** Windows 上缺少 **MSVC 链接器**。通常是没有安装 Visual Studio Build Tools，或者安装后没有重新打开终端，导致 `link.exe` 不在当前 PATH 中。
 
-**解决方案：** 可以忽略。这不影响应用运行。
+**解决方案：**
+
+1. 安装 **Visual Studio Build Tools 2019/2022** 或完整 Visual Studio
+2. 勾选 **使用 C++ 的桌面开发** / **MSVC v143/v142 工具集** / Windows SDK
+3. 安装完成后重新打开 PowerShell 或 CMD
+4. 重新执行 `npx tauri build`
+
+如果你已经安装过 VS Build Tools，但普通终端仍然找不到 `link.exe`，可以先用 “x64 Native Tools Command Prompt for VS” 测一次，确认是否为环境变量问题。
 
 ---
 
@@ -1127,8 +1163,7 @@ warning: function `start_file_watcher` is never used
 
 ```powershell
 npm install                                    # 安装前端依赖
-cargo install tauri-cli --version "^1.6"       # 安装 Tauri CLI（仅首次）
-cargo tauri build --debug                      # 构建
+npx tauri build                                # 构建
 ```
 
 **快速验证 TypeScript 是否有错误：**
@@ -1153,7 +1188,7 @@ npx vite build
 A: 不需要重启 Koishi。保存后在群里发送 `neko.重载配置` 指令即可热加载。
 
 **Q: 和旧版的 NekoAI-GUI-Manager 有什么区别？**
-A: 旧版是 Node.js 网页应用（需要启动服务 + 浏览器访问），新版是原生桌面应用（双击直接打开）。新版功能更完整（100% vs ~80%），性能更好（Rust 文件 I/O），更安全（API 密钥不经过网络）。
+A: 旧版是 Node.js 网页应用（需要启动服务 + 浏览器访问），新版是原生桌面应用（双击直接打开）。新版已经覆盖当前主线运维能力，并额外支持聊天节点 / 图像节点双模式、Responses / xAI Web Search、独立图像节点配置、自检与安全发布等能力。
 
 **Q: 可以远程访问吗？**
 A: 新版是桌面应用，不暴露网络端口，不支持也不需要远程访问。如果你需要远程管理，可以使用 SSH + X11 转发，或者继续使用旧版 `NekoAI-GUI-Manager`。

@@ -10,7 +10,7 @@
 
 - 本仓库中的 **NekoAI GUI Manager** 是桌面可视化管理工具（Tauri + React）。
 - 它用于编辑和查看 NekoAI 插件相关配置与数据。
-- 本仓库里还有 `koishi-plugin-TCY-nekoAI`，但 GUI 开发一般只改 `NekoAI GUI Manager/`。
+- 关联插件仓库为 `koishi-plugin-Enhanced-NekoAI`，但 GUI 开发一般只改 `NekoAI GUI Manager/`。
 
 > 开发前请先确认：本次需求是改 GUI 还是改插件。
 
@@ -41,7 +41,7 @@ NekoAI GUI Manager/
 ├─ src/
 │  ├─ App.tsx                     # 页面容器、全局弹窗、刷新逻辑、主题/漂浮层挂载
 │  ├─ pages/
-│  │  ├─ ApiManager.tsx           # API 管理（拖拽、测试、保存）
+│  │  ├─ ApiManager.tsx           # API 管理（聊天节点 / 图像节点双模式，含 Responses / xAI Web Search / xAI 图像节点）
 │  │  ├─ ConfigEditor.tsx         # 运行时配置编辑
 │  │  ├─ PersonalityManager.tsx   # 人格管理（含 A/B 快速试跑入口）
 │  │  ├─ EvaluationLab.tsx        # 人格评测实验室（多 API / 多轮次 / 人工打分 / 统计）
@@ -75,13 +75,13 @@ NekoAI GUI Manager/
 │  ├─ src/data_root.rs            # EXE 同级数据目录工具
 │  ├─ src/ops.rs                  # 安全发布中心后端能力
 │  ├─ src/gui_prefs.rs            # GUI 本地偏好（如 API 健康评分权重）
-│  ├─ src/config.rs               # 配置读写（保存时自动快照+审计）
+│  ├─ src/config.rs               # 配置读写（含 imageApi 映射，保存时自动快照+审计）
 │  ├─ src/memory.rs               # 记忆读写
 │  ├─ src/history.rs              # 历史读写与导出/导入
 │  ├─ src/api_test.rs             # API 连通测试
 │  ├─ src/personality_ab.rs       # 人格 A/B 快速试跑后端
 │  ├─ src/personality_eval.rs     # 人格评测实验室后端（实验执行 / 评分 / 删除）
-│  └─ src/watcher.rs              # 文件变更监听
+│  └─ src/watcher.rs              # 文件变更监听（已纳入 image_api_config.json）
 └─ README.md
 ```
 
@@ -223,6 +223,17 @@ npm install
   - `src/pages/ConfigEditor.tsx` 中的 `defaults` 与 `normalizeRuntimeConfig()`
   - 确认对应 schema 字段已经在页面章节里被实际渲染，而不是只存在于类型和默认值中
 
+- 如果你改的是 **聊天节点 / 图像节点数据结构**，至少同步检查这几处：
+  - `src/lib/types.ts` 中的 `ApiNode` / `ImageApiNode`
+  - `src/pages/ApiManager.tsx` 的 normalize、导入导出、activeIndex 保存与 URL 辅助逻辑
+  - `src-tauri/src/config.rs` 的配置 key 映射（如 `imageApi -> image_api_config.json`）
+  - `src-tauri/src/watcher.rs` 的监听文件白名单
+  - `src-tauri/src/ops.rs` 的启动前自检 / 自动修复 / 配置文件清单
+
+例如这次新增的图像节点链路：
+
+- 前端不只是多一个 `ImageApiNode` 类型，还要同时照顾 `image_api_config.json` 的导入导出、`activeImageApiIndex` 的读写、图像节点列表模式、以及启动前自检里的索引越界修复。
+
 例如这次新增的 `groupMentionFocusMode`：
 
 - 插件在 `runtime_schema.json` 中声明字段后，GUI 侧除了类型和默认值，还要把它挂进 ConfigEditor 的“转发设置”章节，否则用户虽然能导入/识别该字段，却无法直接在 GUI 中切换开关。
@@ -245,11 +256,12 @@ npm install
 
 以下区域影响面大，改动时请额外谨慎并加强验证：
 
-- `src/pages/ApiManager.tsx`：拖拽排序、activeIndex 映射、批量状态映射
+- `src/pages/ApiManager.tsx`：聊天节点 / 图像节点双模式、拖拽排序、activeIndex / activeImageApiIndex 映射、批量状态映射、URL 默认后缀辅助、xAI Web Search 开关
 - `src/pages/ConfigEditor.tsx`：schema 驱动字段渲染、导入校验、迁移修复与差异概览
 - `src/hooks/useFileWatcher.ts` + `src/App.tsx`：外部变更提示与刷新逻辑
 - `src-tauri/src/api_test.rs`：连通性测试实现
-- `src-tauri/src/ops.rs`：启动前自检 / 已废弃字段提示 / 快照契约
+- `src-tauri/src/config.rs` + `src-tauri/src/watcher.rs`：配置文件映射、监听文件集合、保存后联动
+- `src-tauri/src/ops.rs`：启动前自检 / 已废弃字段提示 / 快照契约 / 图像节点索引修复
 
 ### 当前项目约定（务必遵守）
 
@@ -263,15 +275,21 @@ npm install
 
 1. **Setup**：首次目录选择可用，错误路径有提示
 2. **API 管理**：
-   - 新增/编辑/保存
-   - 拖拽后出现“需保存”提示
-   - 展开/收起单个与全部 API key栏，显示/隐藏全部 Key
-   - 导入/导出可用（导入二级确认）
+   - 聊天节点模式与图像节点模式都能正常切换
+   - 聊天节点：新增/编辑/保存、拖拽后出现“需保存”提示
+   - 聊天节点：展开/收起单个与全部 API key 栏、显示/隐藏全部 Key
+   - 聊天节点：`openai (completions)` / `openai-response` / `Anthropic` / `Gemini` 类型切换正常
+   - 聊天节点：URL 右侧“补默认后缀”按钮行为正确，不会覆盖已写好的自定义路径
+   - 聊天节点：`xaiWebSearchEnabled` 仅在 `openai-response` 下可用，保存后不丢
+   - 图像节点：`image_api_config.json` 的导入/导出可用（导入二级确认）
+   - 图像节点：xAI 模板导出可用，生成 / 修图 URL 的默认后缀按钮行为正确
+   - 图像节点：`activeImageApiIndex` 保存后与当前启用节点一致
 3. **配置编辑**：
    - 空配置可加载
    - 修改后可保存
    - `runtime_schema.json` 能被识别并显示版本 / 字段数
    - 新增 schema 字段（例如 `groupMentionFocusMode`）能在对应章节真实渲染，并可在 GUI 中切换
+   - `activeImageApiIndex` 能在“活跃节点/人格”章节正确显示、修改并保存
    - 队列相关字段（如 `requestQueue.maxConcurrent` / `requestQueue.maxPending` / `requestQueue.overflowText`）能在“请求队列”章节真实渲染并保存
    - runtime 导入/导出可用（导入二级确认）
    - 导入时未知字段 / 已废弃字段 / 旧枚举值 / 越界值提示正常
@@ -301,7 +319,7 @@ npm install
    - `group_usage_counts.json` 可加载、修改、保存
    - 当前周期重置 / 清理非监听群 / 导入导出可用
 8. **外部修改监听**：
-   - 修改配置文件后出现提示
+   - 修改 `api_config.json` / `image_api_config.json` / `runtime_config.json` 后出现提示
    - “刷新页面”可生效
 9. **安全发布中心（Ops）**：
    - 快照创建/列表/回滚/差异可用
@@ -363,6 +381,22 @@ npm install
 ---
 
 ## 15. 当前开发状态（2026-03）
+
+### 2026-04 增量更新（在 2026-03 主线之上）
+
+- ApiManager 已拆成 **聊天节点列表 / 图像节点列表双模式**
+- 聊天节点新增：
+  - `openai-response` 类型展示
+  - `xAI Web Search` 开关
+  - URL 默认后缀辅助按钮（保持用户自己掌控完整 URL）
+- 图像节点新增：
+  - 独立 `image_api_config.json`
+  - xAI 生图 / 修图节点字段（`generationUrl` / `editUrl` / `aspectRatio` / `resolution`）
+  - xAI 模板导出
+- Rust 侧已同步：
+  - `config.rs` 的 `imageApi` 映射
+  - `watcher.rs` 对 `image_api_config.json` 的监听
+  - `ops.rs` 对 `activeImageApiIndex` 的自检与自动修复
 
 ### 已实现（本轮）
 
