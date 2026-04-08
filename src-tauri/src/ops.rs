@@ -1,6 +1,6 @@
 use crate::data_root::{ensure_subdir, now_id, read_json_file};
 use crate::state::AppState;
-use chrono::{Local, Utc};
+use chrono::{DateTime, Duration, Local, Utc};
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs::{self, OpenOptions};
@@ -17,6 +17,13 @@ const SNAPSHOT_KEYS: [&str; 7] = [
     "private_personality.json",
     "commands.json",
 ];
+const USAGE_EVENT_RETENTION_LIMIT: usize = 10000;
+const USAGE_EVENT_RETENTION_WARN_THRESHOLD: usize = 9500;
+const USAGE_EVENT_RECENT_WINDOW_HOURS: i64 = 24;
+const USAGE_EVENT_DENIED_WARN_MIN_TOTAL: usize = 20;
+const USAGE_EVENT_DENIED_WARN_MIN_COUNT: usize = 8;
+const USAGE_EVENT_DENIED_WARN_RATIO_PERCENT: usize = 35;
+const USAGE_EVENT_REQUEST_FAILED_WARN_COUNT: usize = 5;
 
 fn plugin_file(path_root: &Path, filename: &str) -> PathBuf {
     path_root.join(filename)
@@ -405,6 +412,205 @@ fn push_item(items: &mut Vec<SelfCheckItem>, code: &str, level: &str, message: S
     });
 }
 
+fn extract_usage_event_array<'a>(value: &'a Value) -> Option<&'a Vec<Value>> {
+    if let Some(arr) = value.as_array() {
+        return Some(arr);
+    }
+    value.get("events").and_then(|v| v.as_array())
+}
+
+fn parse_usage_event_timestamp(raw: &str) -> Option<DateTime<Utc>> {
+    chrono::DateTime::parse_from_rfc3339(raw)
+        .map(|dt| dt.with_timezone(&Utc))
+        .ok()
+}
+
+fn summarize_top_counters(counter: &BTreeMap<String, usize>, limit: usize) -> String {
+    let mut rows: Vec<(String, usize)> = counter
+        .iter()
+        .map(|(key, value)| (key.clone(), *value))
+        .collect();
+    rows.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+
+    rows.into_iter()
+        .take(limit)
+        .map(|(key, value)| format!("{}({})", key, value))
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+fn analyze_usage_event_log(items: &mut Vec<SelfCheckItem>, raw: &Value) {
+    let Some(events) = extract_usage_event_array(raw) else {
+        push_item(
+            items,
+            "usageEvents.structure.invalid",
+            "error",
+            "usage_events.json 不是数组，也没有合法的 events 数组字段，统一用量事件日志当前无法被 GUI 正确读取。".to_string(),
+            false,
+        );
+        return;
+    };
+
+    if events.is_empty() {
+        return;
+    }
+
+    let now = Utc::now();
+    let recent_cutoff = now - Duration::hours(USAGE_EVENT_RECENT_WINDOW_HOURS);
+    let future_cutoff = now + Duration::minutes(10);
+    let mut valid_count = 0usize;
+    let mut invalid_count = 0usize;
+    let mut future_count = 0usize;
+    let mut recent_total = 0usize;
+    let mut recent_denied = 0usize;
+    let mut recent_request_failed = 0usize;
+    let mut denied_reason_counter: BTreeMap<String, usize> = BTreeMap::new();
+
+    for event in events {
+        let Some(obj) = event.as_object() else {
+            invalid_count += 1;
+            continue;
+        };
+
+        let Some(_user_id) = obj
+            .get("userId")
+            .and_then(|v| v.as_str())
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty())
+        else {
+            invalid_count += 1;
+            continue;
+        };
+
+        let Some(timestamp_raw) = obj
+            .get("timestamp")
+            .and_then(|v| v.as_str())
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty())
+        else {
+            invalid_count += 1;
+            continue;
+        };
+
+        let Some(timestamp) = parse_usage_event_timestamp(timestamp_raw) else {
+            invalid_count += 1;
+            continue;
+        };
+
+        valid_count += 1;
+
+        if timestamp > future_cutoff {
+            future_count += 1;
+        }
+
+        if timestamp >= recent_cutoff {
+            recent_total += 1;
+            let allowed = obj.get("allowed").and_then(|v| v.as_bool()).unwrap_or(true);
+            if !allowed {
+                recent_denied += 1;
+                let reason = obj
+                    .get("reason")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.trim())
+                    .filter(|s| !s.is_empty())
+                    .unwrap_or("unknown");
+                *denied_reason_counter.entry(reason.to_string()).or_insert(0) += 1;
+                if reason == "request-failed" {
+                    recent_request_failed += 1;
+                }
+            }
+        }
+    }
+
+    if valid_count == 0 {
+        push_item(
+            items,
+            "usageEvents.all-invalid",
+            "error",
+            format!(
+                "usage_events.json 里共有 {} 条事件，但全部缺少关键字段或时间格式不合法，当前无法可靠统计统一用量事件。",
+                events.len()
+            ),
+            false,
+        );
+        return;
+    }
+
+    if invalid_count > 0 {
+        push_item(
+            items,
+            "usageEvents.invalid-events",
+            "warn",
+            format!(
+                "usage_events.json 中有 {} 条事件缺少关键字段或时间格式不合法，当前仅统计了 {} 条有效事件。",
+                invalid_count, valid_count
+            ),
+            false,
+        );
+    }
+
+    if events.len() >= USAGE_EVENT_RETENTION_WARN_THRESHOLD {
+        push_item(
+            items,
+            "usageEvents.near-retention-limit",
+            "warn",
+            format!(
+                "usage_events.json 当前保留 {} 条事件，已接近最近 {} 条保留上限。旧记录可能很快被自动裁剪，建议先备份。",
+                events.len(),
+                USAGE_EVENT_RETENTION_LIMIT
+            ),
+            false,
+        );
+    }
+
+    if future_count > 0 {
+        push_item(
+            items,
+            "usageEvents.future-timestamp",
+            "warn",
+            format!(
+                "usage_events.json 中有 {} 条事件时间晚于当前系统时间 10 分钟以上，可能是系统时钟或日志时间异常。",
+                future_count
+            ),
+            false,
+        );
+    }
+
+    if recent_total >= USAGE_EVENT_DENIED_WARN_MIN_TOTAL
+        && recent_denied >= USAGE_EVENT_DENIED_WARN_MIN_COUNT
+        && recent_denied * 100 >= recent_total * USAGE_EVENT_DENIED_WARN_RATIO_PERCENT
+    {
+        let top_reasons = summarize_top_counters(&denied_reason_counter, 3);
+        push_item(
+            items,
+            "usageEvents.denied-spike",
+            "warn",
+            format!(
+                "最近 {} 小时统一用量事件里有 {}/{} 条被拒绝。常见原因：{}。",
+                USAGE_EVENT_RECENT_WINDOW_HOURS,
+                recent_denied,
+                recent_total,
+                if top_reasons.is_empty() { "unknown".to_string() } else { top_reasons }
+            ),
+            false,
+        );
+    }
+
+    if recent_request_failed >= USAGE_EVENT_REQUEST_FAILED_WARN_COUNT {
+        push_item(
+            items,
+            "usageEvents.request-failed-spike",
+            "warn",
+            format!(
+                "最近 {} 小时内记录到 {} 次 request-failed。若最近群友反馈聊天、生图或修图经常失败，建议优先排查节点健康度和下游 API 稳定性。",
+                USAGE_EVENT_RECENT_WINDOW_HOURS,
+                recent_request_failed
+            ),
+            false,
+        );
+    }
+}
+
 fn collect_unknown_runtime_paths(runtime: &Value, schema: &Value) -> Vec<String> {
     let mut unknown = BTreeSet::new();
 
@@ -709,6 +915,30 @@ pub fn run_startup_self_check(state: State<'_, AppState>) -> Result<SelfCheckRep
         }
     }
 
+    let usage_events_path = plugin_file(&plugin_dir, "usage_events.json");
+    if !usage_events_path.exists() {
+        push_item(
+            &mut items,
+            "usageEvents.file.missing",
+            "warn",
+            "缺失文件: usage_events.json".to_string(),
+            true,
+        );
+    } else {
+        match read_json_file(&usage_events_path) {
+            Ok(raw) => analyze_usage_event_log(&mut items, &raw),
+            Err(e) => {
+                push_item(
+                    &mut items,
+                    "json.invalid",
+                    "error",
+                    format!("JSON 解析失败 usage_events.json: {}", e),
+                    false,
+                );
+            }
+        }
+    }
+
     let ok = !items.iter().any(|x| x.level == "error");
 
     let diagnostics_dir = ensure_subdir("diagnostics")?;
@@ -758,6 +988,15 @@ pub fn apply_self_check_fixes(state: State<'_, AppState>) -> Result<Vec<String>,
             write_json(&path, &default_content)?;
             changed.push(format!("创建缺失文件: {}", filename));
         }
+    }
+
+    let usage_events_path = plugin_file(&plugin_dir, "usage_events.json");
+    if !usage_events_path.exists() {
+        write_json(&usage_events_path, &json!({
+            "schemaVersion": 1,
+            "events": []
+        }))?;
+        changed.push("创建缺失文件: usage_events.json".to_string());
     }
 
     let mut rt = read_json_file(&runtime_path)?;
