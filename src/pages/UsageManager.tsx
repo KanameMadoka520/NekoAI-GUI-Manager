@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from 'recharts';
 import { StatCard } from '../components/common/StatCard';
 import { SearchBar } from '../components/common/SearchBar';
 import { ConfirmDialog } from '../components/common/ConfirmDialog';
@@ -8,9 +8,9 @@ import { Panel } from '../components/common/Panel';
 import { SummaryCard } from '../components/common/SummaryCard';
 import { TagList } from '../components/common/TagList';
 import { useUiStore } from '../stores/uiStore';
-import { getConfig, saveConfig, getHistoryFile, listHistoryFiles } from '../lib/tauri-commands';
+import { getConfig, saveConfig } from '../lib/tauri-commands';
 import { downloadJsonWithTimestamp, pickJsonAndParse } from '../lib/json-transfer';
-import type { RuntimeConfig, UsageData, ImageUsageData, ImageQuotaConfig, ImageQuotaUserLimit, ImageAccessConfig, ChatAccessConfig, ChatQuotaConfig, HistoryEntry, HistoryFileMeta } from '../lib/types';
+import type { RuntimeConfig, UsageData, ImageUsageData, ImageQuotaConfig, ImageQuotaUserLimit, ImageAccessConfig, ChatAccessConfig, ChatQuotaConfig, UsageEvent, UsageEventLog } from '../lib/types';
 
 function getCurrentPeriodId() {
   const now = new Date();
@@ -150,6 +150,39 @@ function normalizeChatQuota(input: ChatQuotaConfig | null | undefined): ChatQuot
   };
 }
 
+function normalizeUsageEvents(input: UsageEventLog | UsageEvent[] | null | undefined): UsageEventLog {
+  const rawEvents = Array.isArray(input)
+    ? input
+    : (Array.isArray(input?.events) ? input.events : []);
+  const events = rawEvents
+    .filter((item) => item && typeof item === 'object' && !Array.isArray(item))
+    .map((item) => {
+      const event = item as Partial<UsageEvent>;
+      return {
+        id: String(event.id || ''),
+        timestamp: String(event.timestamp || ''),
+        periodId: String(event.periodId || ''),
+        category: event.category === 'image' ? 'image' : 'chat',
+        action: String(event.action || 'chat'),
+        allowed: event.allowed !== false,
+        amount: Number.isFinite(Number(event.amount)) ? Math.max(1, Math.floor(Number(event.amount))) : 1,
+        userId: String(event.userId || '').trim(),
+        channelId: event.channelId == null ? null : String(event.channelId),
+        scope: event.scope === 'private' ? 'private' : 'group',
+        reason: String(event.reason || 'ok'),
+        isMasterUser: event.isMasterUser === true,
+        modelName: typeof event.modelName === 'string' ? event.modelName : undefined,
+        nodeRemark: typeof event.nodeRemark === 'string' ? event.nodeRemark : undefined,
+        detail: event.detail && typeof event.detail === 'object' && !Array.isArray(event.detail) ? event.detail : undefined,
+      };
+    })
+    .filter((event) => event.id && event.timestamp && event.userId);
+  return {
+    schemaVersion: !Array.isArray(input) && Number.isFinite(Number(input?.schemaVersion)) ? Number(input?.schemaVersion) : 1,
+    events,
+  };
+}
+
 function getImageAccessModeLabel(mode: ImageAccessConfig['mode']) {
   return mode === 'whitelist' ? '白名单模式' : '黑名单模式';
 }
@@ -251,9 +284,8 @@ export function UsageManager() {
   const [imageAccess, setImageAccess] = useState<ImageAccessConfig>(() => normalizeImageAccess(null));
   const [imageQuota, setImageQuota] = useState<ImageQuotaConfig>(() => normalizeImageQuota(null));
   const [runtime, setRuntime] = useState<RuntimeConfig | null>(null);
-  const [historyFiles, setHistoryFiles] = useState<HistoryFileMeta[]>([]);
-  const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(false);
+  const [usageEvents, setUsageEvents] = useState<UsageEventLog>(() => normalizeUsageEvents(null));
+  const [usageEventsLoading, setUsageEventsLoading] = useState(false);
 
   const [groupOriginal, setGroupOriginal] = useState('');
   const [imageOriginal, setImageOriginal] = useState('');
@@ -320,7 +352,7 @@ export function UsageManager() {
       setAccessOriginal(JSON.stringify(normalizedAccess));
       setQuotaOriginal(JSON.stringify(normalizedQuota));
       setRuntime(runtimeConfig ?? null);
-      void loadHistoryForCharts();
+      void loadUsageEvents();
     } catch (e: any) {
       addToast('error', `加载用量/限额数据失败: ${e?.message ?? e}`);
     } finally {
@@ -328,19 +360,16 @@ export function UsageManager() {
     }
   }
 
-  async function loadHistoryForCharts() {
-    setHistoryLoading(true);
+  async function loadUsageEvents() {
+    setUsageEventsLoading(true);
     try {
-      const files = await listHistoryFiles();
-      setHistoryFiles(files ?? []);
-      const payloads = await Promise.all((files ?? []).map((file) => getHistoryFile(file.filename).catch(() => [])));
-      const mergedEntries = payloads.flatMap((data) => Array.isArray(data) ? data as HistoryEntry[] : []);
-      setHistoryEntries(mergedEntries);
+      const raw = await getConfig<UsageEventLog | UsageEvent[]>('usageEvents');
+      setUsageEvents(normalizeUsageEvents(raw));
     } catch (e: any) {
-      addToast('warning', `加载聊天历史图表数据失败: ${e?.message ?? e}`);
-      setHistoryEntries([]);
+      addToast('warning', `加载用量事件日志失败: ${e?.message ?? e}`);
+      setUsageEvents(normalizeUsageEvents(null));
     } finally {
-      setHistoryLoading(false);
+      setUsageEventsLoading(false);
     }
   }
 
@@ -516,26 +545,36 @@ export function UsageManager() {
       .sort((a, b) => a.localeCompare(b, 'zh-CN'));
   }, [runtime?.userBlacklist, chatAccess.whitelistUsers]);
 
+  const allowedChatUsageEvents = useMemo(
+    () => usageEvents.events.filter((event) => event.category === 'chat' && event.allowed),
+    [usageEvents.events],
+  );
+
+  const allowedImageUsageEvents = useMemo(
+    () => usageEvents.events.filter((event) => event.category === 'image' && event.allowed),
+    [usageEvents.events],
+  );
+
   const chatTopUsersChartData = useMemo(() => {
     const counter = new Map<string, number>();
-    historyEntries.forEach((entry) => {
-      const key = String(entry.username || entry.userId || '').trim();
+    allowedChatUsageEvents.forEach((event) => {
+      const key = String(event.userId || '').trim();
       if (!key) return;
-      counter.set(key, (counter.get(key) ?? 0) + 1);
+      counter.set(key, (counter.get(key) ?? 0) + Math.max(1, event.amount || 1));
     });
     return Array.from(counter.entries())
       .sort((a, b) => b[1] - a[1])
       .slice(0, 10)
       .map(([name, count]) => ({ name, count }));
-  }, [historyEntries]);
+  }, [allowedChatUsageEvents]);
 
   const chatTimeDistributionData = useMemo(() => {
     const counter = new Map<string, number>();
-    historyEntries.forEach((entry) => {
-      const date = parseHistoryTime(entry.timestamp);
+    allowedChatUsageEvents.forEach((event) => {
+      const date = parseHistoryTime(event.timestamp);
       if (!date) return;
       const bucket = bucketHistoryEntry(date, usageChartGranularity);
-      counter.set(bucket, (counter.get(bucket) ?? 0) + 1);
+      counter.set(bucket, (counter.get(bucket) ?? 0) + Math.max(1, event.amount || 1));
     });
     return Array.from(counter.entries())
       .sort((a, b) => a[0].localeCompare(b[0], 'zh-CN'))
@@ -544,12 +583,47 @@ export function UsageManager() {
         label: formatTimeBucketLabel(bucket, usageChartGranularity),
         count,
       }));
-  }, [historyEntries, usageChartGranularity]);
+  }, [allowedChatUsageEvents, usageChartGranularity]);
+
+  const imageTopUsersChartData = useMemo(() => {
+    const counter = new Map<string, number>();
+    allowedImageUsageEvents.forEach((event) => {
+      const key = String(event.userId || '').trim();
+      if (!key) return;
+      counter.set(key, (counter.get(key) ?? 0) + Math.max(1, event.amount || 1));
+    });
+    return Array.from(counter.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([name, count]) => ({ name, count }));
+  }, [allowedImageUsageEvents]);
+
+  const imageTimeDistributionData = useMemo(() => {
+    const counter = new Map<string, number>();
+    allowedImageUsageEvents.forEach((event) => {
+      const date = parseHistoryTime(event.timestamp);
+      if (!date) return;
+      const bucket = bucketHistoryEntry(date, usageChartGranularity);
+      counter.set(bucket, (counter.get(bucket) ?? 0) + Math.max(1, event.amount || 1));
+    });
+    return Array.from(counter.entries())
+      .sort((a, b) => a[0].localeCompare(b[0], 'zh-CN'))
+      .map(([bucket, count]) => ({
+        bucket,
+        label: formatTimeBucketLabel(bucket, usageChartGranularity),
+        count,
+      }));
+  }, [allowedImageUsageEvents, usageChartGranularity]);
 
   const peakUsageBucket = useMemo(() => {
     if (chatTimeDistributionData.length === 0) return null;
     return chatTimeDistributionData.reduce((best, current) => (current.count > best.count ? current : best), chatTimeDistributionData[0]);
   }, [chatTimeDistributionData]);
+
+  const peakImageUsageBucket = useMemo(() => {
+    if (imageTimeDistributionData.length === 0) return null;
+    return imageTimeDistributionData.reduce((best, current) => (current.count > best.count ? current : best), imageTimeDistributionData[0]);
+  }, [imageTimeDistributionData]);
 
   const imageSummary = useMemo(() => {
     const totalGenerateUsed = imageRows.reduce((sum, row) => sum + row.generateUsed, 0);
@@ -960,15 +1034,17 @@ export function UsageManager() {
       </div>
 
       <Panel
-        title="聊天用量图表"
-        subtitle="图表基于 chat-history 历史文件统计普通聊天请求分布。顶部图看谁用得最多，底部图看哪个时间粒度的调用最集中。"
+        title="统一用量事件图表"
+        subtitle="图表统一基于 usage_events.json 统计。聊天和图像都只使用真正记录下来的用量事件，不再从聊天历史反推。"
         icon="📈"
       >
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-3">
-            <SummaryCard label="历史文件" value={String(historyFiles.length)} hint="已纳入统计的聊天历史文件数量。" />
-            <SummaryCard label="历史记录" value={String(historyEntries.length)} hint="已纳入统计的聊天请求总数。" />
-            <SummaryCard label="高峰时段" value={peakUsageBucket ? peakUsageBucket.label : '-'} hint={peakUsageBucket ? `该时间桶累计 ${peakUsageBucket.count} 次请求。` : '当前还没有可用于统计的聊天历史。'} />
+            <SummaryCard label="事件总数" value={String(usageEvents.events.length)} hint="统一用量事件日志中的总事件数，包含聊天和图像。" />
+            <SummaryCard label="聊天用量事件" value={String(allowedChatUsageEvents.length)} hint="已允许并记入用量的聊天事件数量。" />
+            <SummaryCard label="图像用量事件" value={String(allowedImageUsageEvents.length)} hint="已允许并记入用量的图像事件数量。" />
+            <SummaryCard label="聊天高峰时段" value={peakUsageBucket ? peakUsageBucket.label : '-'} hint={peakUsageBucket ? `该时间桶累计 ${peakUsageBucket.count} 次聊天用量。` : '当前还没有可用于统计的聊天用量事件。'} />
+            <SummaryCard label="图像高峰时段" value={peakImageUsageBucket ? peakImageUsageBucket.label : '-'} hint={peakImageUsageBucket ? `该时间桶累计 ${peakImageUsageBucket.count} 次图像用量。` : '当前还没有可用于统计的图像用量事件。'} />
             <div className="flex-1" />
             <div className="flex items-center gap-2">
               {(['hour', 'day', 'week', 'month'] as const).map((item) => (
@@ -986,12 +1062,12 @@ export function UsageManager() {
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3">
               <p className="text-sm font-medium text-[var(--text-primary)] mb-1">聊天用量 Top 10 用户</p>
-              <p className="text-[11px] text-[var(--text-muted)] mb-3">按聊天历史记录统计，适合快速看谁最常触发普通聊天回复。</p>
+              <p className="text-[11px] text-[var(--text-muted)] mb-3">基于 usage event 的允许事件聚合，按实际聊天用量统计。</p>
               <div className="h-[260px]">
-                {historyLoading ? (
-                  <div className="h-full flex items-center justify-center text-sm text-[var(--text-muted)]">正在读取聊天历史...</div>
+                {usageEventsLoading ? (
+                  <div className="h-full flex items-center justify-center text-sm text-[var(--text-muted)]">正在读取统一用量事件日志...</div>
                 ) : chatTopUsersChartData.length === 0 ? (
-                  <div className="h-full flex items-center justify-center text-sm text-[var(--text-muted)]">当前没有可用的聊天历史数据。</div>
+                  <div className="h-full flex items-center justify-center text-sm text-[var(--text-muted)]">当前没有可用的聊天用量事件。</div>
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chatTopUsersChartData} margin={{ top: 12, right: 12, left: 0, bottom: 18 }}>
@@ -1014,10 +1090,10 @@ export function UsageManager() {
               <p className="text-sm font-medium text-[var(--text-primary)] mb-1">聊天时间分布</p>
               <p className="text-[11px] text-[var(--text-muted)] mb-3">{usageChartGranularity === 'hour' ? '按小时看全天哪个时段最忙' : usageChartGranularity === 'day' ? '按天看哪天请求最多' : usageChartGranularity === 'week' ? '按周看哪个自然周最忙' : '按月看哪个月份最忙'}</p>
               <div className="h-[260px]">
-                {historyLoading ? (
-                  <div className="h-full flex items-center justify-center text-sm text-[var(--text-muted)]">正在读取聊天历史...</div>
+                {usageEventsLoading ? (
+                  <div className="h-full flex items-center justify-center text-sm text-[var(--text-muted)]">正在读取统一用量事件日志...</div>
                 ) : chatTimeDistributionData.length === 0 ? (
-                  <div className="h-full flex items-center justify-center text-sm text-[var(--text-muted)]">当前没有可用的聊天历史数据。</div>
+                  <div className="h-full flex items-center justify-center text-sm text-[var(--text-muted)]">当前没有可用的聊天用量事件。</div>
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chatTimeDistributionData} margin={{ top: 12, right: 12, left: 0, bottom: 18 }}>
@@ -1026,6 +1102,56 @@ export function UsageManager() {
                       <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} allowDecimals={false} />
                       <Tooltip cursor={{ fill: 'rgba(255,255,255,0.03)' }} contentStyle={{ background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: 12, color: 'var(--text-primary)' }} />
                       <Bar dataKey="count" fill="var(--chart-3)" radius={[8, 8, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3">
+              <p className="text-sm font-medium text-[var(--text-primary)] mb-1">图像用量 Top 10 用户</p>
+              <p className="text-[11px] text-[var(--text-muted)] mb-3">按生图和修图实际扣减的额度数量统计，同样来自 usage event。</p>
+              <div className="h-[260px]">
+                {usageEventsLoading ? (
+                  <div className="h-full flex items-center justify-center text-sm text-[var(--text-muted)]">正在读取统一用量事件日志...</div>
+                ) : imageTopUsersChartData.length === 0 ? (
+                  <div className="h-full flex items-center justify-center text-sm text-[var(--text-muted)]">当前没有可用的图像用量事件。</div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={imageTopUsersChartData} margin={{ top: 12, right: 12, left: 0, bottom: 18 }}>
+                      <CartesianGrid stroke="var(--border-subtle)" strokeDasharray="3 3" />
+                      <XAxis dataKey="name" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={56} />
+                      <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} allowDecimals={false} />
+                      <Tooltip cursor={{ fill: 'rgba(255,255,255,0.03)' }} contentStyle={{ background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: 12, color: 'var(--text-primary)' }} />
+                      <Bar dataKey="count" radius={[8, 8, 0, 0]}>
+                        {imageTopUsersChartData.map((entry, index) => (
+                          <Cell key={`${entry.name}-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3">
+              <p className="text-sm font-medium text-[var(--text-primary)] mb-1">图像时间分布</p>
+              <p className="text-[11px] text-[var(--text-muted)] mb-3">{usageChartGranularity === 'hour' ? '按小时看哪个时段图像调用最密集' : usageChartGranularity === 'day' ? '按天看哪天图像调用最多' : usageChartGranularity === 'week' ? '按周看哪个自然周图像调用最多' : '按月看哪个月份图像调用最多'}</p>
+              <div className="h-[260px]">
+                {usageEventsLoading ? (
+                  <div className="h-full flex items-center justify-center text-sm text-[var(--text-muted)]">正在读取统一用量事件日志...</div>
+                ) : imageTimeDistributionData.length === 0 ? (
+                  <div className="h-full flex items-center justify-center text-sm text-[var(--text-muted)]">当前没有可用的图像用量事件。</div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={imageTimeDistributionData} margin={{ top: 12, right: 12, left: 0, bottom: 18 }}>
+                      <CartesianGrid stroke="var(--border-subtle)" strokeDasharray="3 3" />
+                      <XAxis dataKey="label" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} interval="preserveStartEnd" minTickGap={18} />
+                      <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} allowDecimals={false} />
+                      <Tooltip cursor={{ fill: 'rgba(255,255,255,0.03)' }} contentStyle={{ background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: 12, color: 'var(--text-primary)' }} />
+                      <Bar dataKey="count" fill="var(--chart-5)" radius={[8, 8, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 )}

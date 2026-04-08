@@ -156,6 +156,29 @@ export interface ImageUsageData {
   users: Record<string, ImageUsageUserData>;
 }
 
+export interface UsageEvent {
+  id: string;
+  timestamp: string;
+  periodId: string;
+  category: 'chat' | 'image';
+  action: string;
+  allowed: boolean;
+  amount: number;
+  userId: string;
+  channelId?: string | null;
+  scope: 'group' | 'private';
+  reason: string;
+  isMasterUser?: boolean;
+  modelName?: string;
+  nodeRemark?: string;
+  detail?: Record<string, unknown>;
+}
+
+export interface UsageEventLog {
+  schemaVersion: number;
+  events: UsageEvent[];
+}
+
 export interface RuntimeSchemaSection {
   id: string;
   title: string;

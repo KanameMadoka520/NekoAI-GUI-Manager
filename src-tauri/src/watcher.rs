@@ -26,6 +26,7 @@ pub fn start_file_watcher(app: &AppHandle, plugin_dir: PathBuf) -> Result<Recomm
         "commands.json",
         "group_usage_counts.json",
         "image_usage_counts.json",
+        "usage_events.json",
     ];
 
     for f in &config_files {
