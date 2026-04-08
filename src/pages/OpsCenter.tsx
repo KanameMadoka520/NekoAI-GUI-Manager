@@ -38,6 +38,7 @@ export function OpsCenter() {
   const [busy, setBusy] = useState<string | null>(null);
   const [showSnapshotTools, setShowSnapshotTools] = useState(true);
   const [showEnvTools, setShowEnvTools] = useState(true);
+  const [selfCheckFilter, setSelfCheckFilter] = useState<'all' | 'error' | 'warn' | 'fixable' | 'usage-events'>('all');
 
   useEffect(() => {
     loadAll();
@@ -66,10 +67,28 @@ export function OpsCenter() {
   const latestSnapshot = snapshots[0]?.snapshot_id ?? '-';
 
   const checkStats = useMemo(() => {
-    if (!selfCheck) return { errors: 0, warns: 0, total: 0 };
+    if (!selfCheck) return { errors: 0, warns: 0, infos: 0, fixable: 0, usageEvents: 0, total: 0 };
     const errors = selfCheck.items.filter((x) => x.level === 'error').length;
     const warns = selfCheck.items.filter((x) => x.level === 'warn').length;
-    return { errors, warns, total: selfCheck.items.length };
+    const infos = selfCheck.items.filter((x) => x.level === 'info').length;
+    const fixable = selfCheck.items.filter((x) => x.fixable).length;
+    const usageEvents = selfCheck.items.filter((x) => x.code.startsWith('usageEvents.')).length;
+    return { errors, warns, infos, fixable, usageEvents, total: selfCheck.items.length };
+  }, [selfCheck]);
+
+  const filteredSelfCheckItems = useMemo(() => {
+    if (!selfCheck) return [];
+    return selfCheck.items.filter((item) => {
+      if (selfCheckFilter === 'all') return true;
+      if (selfCheckFilter === 'fixable') return item.fixable;
+      if (selfCheckFilter === 'usage-events') return item.code.startsWith('usageEvents.');
+      return item.level === selfCheckFilter;
+    });
+  }, [selfCheck, selfCheckFilter]);
+
+  const usageEventCheckHighlights = useMemo(() => {
+    if (!selfCheck) return [];
+    return selfCheck.items.filter((item) => item.code.startsWith('usageEvents.')).slice(0, 3);
   }, [selfCheck]);
 
   async function doCreateSnapshot() {
@@ -323,17 +342,51 @@ export function OpsCenter() {
 
           {selfCheck ? (
             <div className="mt-4 space-y-3 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3">
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 xl:grid-cols-5 gap-2">
                 <MiniInfo label="状态" value={selfCheck.ok ? '通过' : '需要处理'} tone={selfCheck.ok ? 'success' : 'warning'} />
                 <MiniInfo label="错误" value={String(checkStats.errors)} tone="warning" />
                 <MiniInfo label="警告" value={String(checkStats.warns)} tone="info" />
+                <MiniInfo label="可修项" value={String(checkStats.fixable)} tone={checkStats.fixable > 0 ? 'warning' : 'neutral'} />
+                <MiniInfo label="用量日志项" value={String(checkStats.usageEvents)} tone={checkStats.usageEvents > 0 ? 'warning' : 'neutral'} />
               </div>
+              {usageEventCheckHighlights.length > 0 && (
+                <div className="rounded-[var(--radius-sm)] border border-[rgba(255,171,64,0.35)] bg-[rgba(255,171,64,0.08)] px-4 py-3">
+                  <p className="text-sm font-medium text-[var(--warning)]">统一用量事件日志存在关注项</p>
+                  <div className="mt-2 space-y-1">
+                    {usageEventCheckHighlights.map((item, index) => {
+                      const explained = explainSelfCheckItem(item);
+                      return (
+                        <p key={`${item.code}-${index}`} className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                          {explained.techLabel}：{explained.humanText}
+                        </p>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               <p className="text-xs text-[var(--text-muted)] mono break-all">报告文件：{selfCheck.report_path}</p>
+              <div className="flex flex-wrap items-center gap-2">
+                {[
+                  { key: 'all' as const, label: `全部 ${checkStats.total}` },
+                  { key: 'error' as const, label: `错误 ${checkStats.errors}` },
+                  { key: 'warn' as const, label: `警告 ${checkStats.warns}` },
+                  { key: 'fixable' as const, label: `可修 ${checkStats.fixable}` },
+                  { key: 'usage-events' as const, label: `用量日志 ${checkStats.usageEvents}` },
+                ].map((item) => (
+                  <button
+                    key={item.key}
+                    onClick={() => setSelfCheckFilter(item.key)}
+                    className={`px-2.5 py-1 text-[11px] rounded-[var(--radius-sm)] border transition-colors cursor-pointer ${selfCheckFilter === item.key ? 'bg-[var(--nav-active-bg)] text-[var(--accent-purple)] border-[var(--accent-purple)]' : 'bg-[var(--surface-card)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:text-[var(--text-primary)]'}`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
               <div className="max-h-44 overflow-y-auto border border-[var(--border-subtle)] rounded-[var(--radius-sm)] p-2 bg-[var(--surface-card)]">
-                {selfCheck.items.length === 0 ? (
-                  <p className="text-xs text-[var(--text-muted)]">无异常项</p>
+                {filteredSelfCheckItems.length === 0 ? (
+                  <p className="text-xs text-[var(--text-muted)]">{selfCheck.items.length === 0 ? '无异常项' : '当前筛选条件下没有命中的自检项'}</p>
                 ) : (
-                  selfCheck.items.map((it, i) => {
+                  filteredSelfCheckItems.map((it, i) => {
                     const explained = explainSelfCheckItem(it);
                     return (
                       <div key={`${it.code}-${i}`} className="text-xs text-[var(--text-secondary)] leading-relaxed rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2">
@@ -341,6 +394,16 @@ export function OpsCenter() {
                           <span className={`inline-flex items-center px-2 py-0.5 rounded border mono text-[10px] ${it.level === 'error' ? 'border-[rgba(255,82,82,0.35)] text-[var(--error)]' : it.level === 'warn' ? 'border-[rgba(255,171,64,0.35)] text-[var(--warning)]' : 'border-[var(--border-subtle)] text-[var(--text-muted)]'}`}>
                             {explained.techLabel}
                           </span>
+                          {it.fixable && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded border border-[rgba(0,230,118,0.35)] text-[var(--success)] text-[10px]">
+                              可自动修复
+                            </span>
+                          )}
+                          {it.code.startsWith('usageEvents.') && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded border border-[rgba(255,171,64,0.35)] text-[var(--warning)] text-[10px]">
+                              用量日志
+                            </span>
+                          )}
                           <span className="flex-1 min-w-[240px]">：{explained.humanText}</span>
                         </div>
                       </div>

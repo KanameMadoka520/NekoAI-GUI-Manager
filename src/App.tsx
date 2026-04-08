@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, lazy, Suspense, useRef } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense, useRef, useMemo } from 'react';
 import { Sidebar } from './components/layout/Sidebar';
 import type { PageId } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
@@ -104,6 +104,17 @@ function App() {
   const addToast = useUiStore((s) => s.addToast);
   const scale = settings.uiScale;
   const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
+  const startupCheckStats = useMemo(() => {
+    if (!startupCheck) {
+      return { errors: 0, warns: 0, fixable: 0, usageEvents: 0 };
+    }
+    return {
+      errors: startupCheck.items.filter((x) => x.level === 'error').length,
+      warns: startupCheck.items.filter((x) => x.level === 'warn').length,
+      fixable: startupCheck.items.filter((x) => x.fixable).length,
+      usageEvents: startupCheck.items.filter((x) => x.code.startsWith('usageEvents.')).length,
+    };
+  }, [startupCheck]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', settings.theme);
@@ -363,9 +374,15 @@ function App() {
             <div className="space-y-3">
               <p className="text-sm text-[var(--text-secondary)]">
                 {startupCheck
-                  ? `检测到 ${startupCheck.items.length} 项（错误 ${startupCheck.items.filter((x) => x.level === 'error').length} / 警告 ${startupCheck.items.filter((x) => x.level === 'warn').length}）`
+                  ? `检测到 ${startupCheck.items.length} 项（错误 ${startupCheckStats.errors} / 警告 ${startupCheckStats.warns}）`
                   : '暂无自检结果'}
               </p>
+              {startupCheck && (
+                <div className="flex flex-wrap items-center gap-2 text-[11px] text-[var(--text-secondary)]">
+                  <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">可自动修复 {startupCheckStats.fixable} 项</span>
+                  <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">用量日志相关 {startupCheckStats.usageEvents} 项</span>
+                </div>
+              )}
               {startupCheck?.report_path && (
                 <p className="text-xs text-[var(--text-muted)] mono break-all">报告文件：{startupCheck.report_path}</p>
               )}
@@ -381,6 +398,16 @@ function App() {
                           <span className={`inline-flex items-center px-2 py-0.5 rounded border mono text-[10px] ${item.level === 'error' ? 'border-[rgba(255,82,82,0.35)] text-[var(--error)]' : item.level === 'warn' ? 'border-[rgba(255,171,64,0.35)] text-[var(--warning)]' : 'border-[var(--border-subtle)] text-[var(--text-muted)]'}`}>
                             {explained.techLabel}
                           </span>
+                          {item.fixable && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded border border-[rgba(0,230,118,0.35)] text-[var(--success)] text-[10px]">
+                              可自动修复
+                            </span>
+                          )}
+                          {item.code.startsWith('usageEvents.') && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded border border-[rgba(255,171,64,0.35)] text-[var(--warning)] text-[10px]">
+                              用量日志
+                            </span>
+                          )}
                           <span className="flex-1 min-w-[240px]">：{explained.humanText}</span>
                         </div>
                       </div>
