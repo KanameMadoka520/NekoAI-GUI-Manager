@@ -212,6 +212,18 @@ function parseHistoryTime(value: string | undefined): Date | null {
   return null;
 }
 
+function formatUsageEventTime(value: string | undefined) {
+  const date = parseHistoryTime(value);
+  if (!date) return '-';
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  const hh = String(date.getHours()).padStart(2, '0');
+  const mm = String(date.getMinutes()).padStart(2, '0');
+  const ss = String(date.getSeconds()).padStart(2, '0');
+  return `${y}-${m}-${d} ${hh}:${mm}:${ss}`;
+}
+
 function getWeekBucket(date: Date) {
   const normalized = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
   normalized.setUTCDate(normalized.getUTCDate() + 4 - (normalized.getUTCDay() || 7));
@@ -235,6 +247,8 @@ const CHART_COLORS = [
   'var(--chart-5)',
   'var(--chart-6)',
 ];
+
+const USAGE_EVENT_RETENTION_LIMIT = 10000;
 
 type GroupUsageRow = {
   gid: string;
@@ -554,6 +568,37 @@ export function UsageManager() {
     () => usageEvents.events.filter((event) => event.category === 'image' && event.allowed),
     [usageEvents.events],
   );
+
+  const deniedUsageEventCount = useMemo(
+    () => usageEvents.events.filter((event) => !event.allowed).length,
+    [usageEvents.events],
+  );
+
+  const usageEventTimeRange = useMemo(() => {
+    let earliestRaw = '';
+    let latestRaw = '';
+    let earliestTime = Number.POSITIVE_INFINITY;
+    let latestTime = Number.NEGATIVE_INFINITY;
+
+    usageEvents.events.forEach((event) => {
+      const date = parseHistoryTime(event.timestamp);
+      if (!date) return;
+      const time = date.getTime();
+      if (time < earliestTime) {
+        earliestTime = time;
+        earliestRaw = event.timestamp;
+      }
+      if (time > latestTime) {
+        latestTime = time;
+        latestRaw = event.timestamp;
+      }
+    });
+
+    return {
+      earliestLabel: formatUsageEventTime(earliestRaw),
+      latestLabel: formatUsageEventTime(latestRaw),
+    };
+  }, [usageEvents.events]);
 
   const chatTopUsersChartData = useMemo(() => {
     const counter = new Map<string, number>();
@@ -1035,7 +1080,7 @@ export function UsageManager() {
 
       <Panel
         title="统一用量事件图表"
-        subtitle="图表统一基于 usage_events.json 统计。聊天和图像都只使用真正记录下来的用量事件，不再从聊天历史反推。"
+        subtitle="图表统一基于 usage_events.json 统计。聊天和图像都只使用真正记录下来的用量事件，不再从聊天历史反推；插件最多保留最近 10000 条事件。"
         icon="📈"
       >
         <div className="space-y-4">
@@ -1043,6 +1088,10 @@ export function UsageManager() {
             <SummaryCard label="事件总数" value={String(usageEvents.events.length)} hint="统一用量事件日志中的总事件数，包含聊天和图像。" />
             <SummaryCard label="聊天用量事件" value={String(allowedChatUsageEvents.length)} hint="已允许并记入用量的聊天事件数量。" />
             <SummaryCard label="图像用量事件" value={String(allowedImageUsageEvents.length)} hint="已允许并记入用量的图像事件数量。" />
+            <SummaryCard label="拒绝事件数" value={String(deniedUsageEventCount)} hint="被黑白名单、额度或其他规则拒绝的事件条数。" />
+            <SummaryCard label="保留上限" value={String(USAGE_EVENT_RETENTION_LIMIT)} hint="插件最多保留最近这么多条 usage event，超出后会自动裁剪更早记录。" />
+            <SummaryCard label="最早事件" value={usageEventTimeRange.earliestLabel} hint="当前保留区间内最早的一条 usage event 时间。" />
+            <SummaryCard label="最新事件" value={usageEventTimeRange.latestLabel} hint="当前保留区间内最新的一条 usage event 时间。" />
             <SummaryCard label="聊天高峰时段" value={peakUsageBucket ? peakUsageBucket.label : '-'} hint={peakUsageBucket ? `该时间桶累计 ${peakUsageBucket.count} 次聊天用量。` : '当前还没有可用于统计的聊天用量事件。'} />
             <SummaryCard label="图像高峰时段" value={peakImageUsageBucket ? peakImageUsageBucket.label : '-'} hint={peakImageUsageBucket ? `该时间桶累计 ${peakImageUsageBucket.count} 次图像用量。` : '当前还没有可用于统计的图像用量事件。'} />
             <div className="flex-1" />
@@ -1057,6 +1106,11 @@ export function UsageManager() {
                 </button>
               ))}
             </div>
+          </div>
+
+          <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-4 py-3 text-xs text-[var(--text-secondary)]">
+            <p>usage_events.json 是聊天和图像共用的长期事件日志。超过 {USAGE_EVENT_RETENTION_LIMIT} 条后，插件会自动删除更早的旧记录，只保留最近的一段。</p>
+            <p className="mt-1 text-[11px] text-[var(--text-muted)]">当前保留范围：{usageEventTimeRange.earliestLabel} 至 {usageEventTimeRange.latestLabel}。如果你要做更长期的统计，建议定期备份这个文件。</p>
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
