@@ -249,6 +249,88 @@ const CHART_COLORS = [
 ];
 
 const USAGE_EVENT_RETENTION_LIMIT = 10000;
+const USAGE_EVENT_PAGE_SIZES = [50, 100, 200] as const;
+
+function getUsageEventCategoryLabel(category: UsageEvent['category']) {
+  return category === 'image' ? '图像' : '聊天';
+}
+
+function getUsageEventActionLabel(action: string, category?: UsageEvent['category']) {
+  const normalized = String(action || '').trim();
+  if (normalized === 'generate') return '生图';
+  if (normalized === 'edit') return '修图';
+  if (normalized === 'chat') return category === 'image' ? '图像' : '聊天';
+  return normalized || '-';
+}
+
+function getUsageEventReasonLabel(reason: string) {
+  const normalized = String(reason || '').trim();
+  return ({
+    ok: '正常记账',
+    master: '主人豁免',
+    blacklist: '黑名单',
+    'whitelist-required': '需要白名单',
+    'whitelist-allowed': '白名单放行',
+    'blacklist-mode': '黑名单模式放行',
+    'blacklist-mode-group': '群聊默认放行',
+    'blacklist-mode-group-friend': '群友默认放行',
+    'group-friend-required': '需要群友身份',
+    'private-mode-master': '私聊仅主人',
+    'private-mode-friends-only': '私聊仅群友',
+    'group-limit': '群总额度耗尽',
+    'user-limit': '个人额度耗尽',
+    'quota-denied': '图像额度不足',
+    'permission-denied': '权限不足',
+    'no-node': '未找到节点',
+    'no-source-image': '未检测到图片',
+    'request-failed': '请求失败',
+  } as Record<string, string>)[normalized] || normalized || '-';
+}
+
+function buildUsageEventSceneLabel(event: UsageEvent) {
+  if (event.scope === 'private') return '私聊';
+  return event.channelId ? `群:${event.channelId}` : '群聊';
+}
+
+function buildUsageEventDetailSummary(detail: UsageEvent['detail']) {
+  if (!detail || typeof detail !== 'object') return '-';
+  const entries = Object.entries(detail);
+  if (entries.length === 0) return '-';
+  return entries
+    .slice(0, 4)
+    .map(([key, value]) => {
+      if (value == null) return `${key}=null`;
+      if (typeof value === 'object') return `${key}=${JSON.stringify(value)}`;
+      return `${key}=${String(value)}`;
+    })
+    .join(' | ');
+}
+
+function matchesUsageEventBucket(event: UsageEvent, bucket: string, granularity: 'hour' | 'day' | 'week' | 'month') {
+  if (!bucket) return true;
+  const date = parseHistoryTime(event.timestamp);
+  if (!date) return false;
+  return bucketHistoryEntry(date, granularity) === bucket;
+}
+
+function buildUsageEventSearchIndex(event: UsageEvent) {
+  const detailText = event.detail ? JSON.stringify(event.detail) : '';
+  return [
+    event.id,
+    event.timestamp,
+    event.userId,
+    event.channelId ?? '',
+    event.scope,
+    event.category,
+    event.action,
+    event.reason,
+    event.modelName ?? '',
+    event.nodeRemark ?? '',
+    buildUsageEventSceneLabel(event),
+    buildUsageEventDetailSummary(event.detail),
+    detailText,
+  ].join(' ').toLowerCase();
+}
 
 type GroupUsageRow = {
   gid: string;
@@ -319,6 +401,16 @@ export function UsageManager() {
   const [newUserId, setNewUserId] = useState('');
   const [newWhitelistUserId, setNewWhitelistUserId] = useState('');
   const [usageChartGranularity, setUsageChartGranularity] = useState<'hour' | 'day' | 'week' | 'month'>('hour');
+  const [usageEventSearch, setUsageEventSearch] = useState('');
+  const [usageEventCategoryFilter, setUsageEventCategoryFilter] = useState<'all' | 'chat' | 'image'>('all');
+  const [usageEventAllowedFilter, setUsageEventAllowedFilter] = useState<'all' | 'allowed' | 'denied'>('all');
+  const [usageEventScopeFilter, setUsageEventScopeFilter] = useState<'all' | 'group' | 'private'>('all');
+  const [usageEventActionFilter, setUsageEventActionFilter] = useState('all');
+  const [usageEventReasonFilter, setUsageEventReasonFilter] = useState('all');
+  const [usageEventUserFilter, setUsageEventUserFilter] = useState('');
+  const [usageEventBucketFilter, setUsageEventBucketFilter] = useState('');
+  const [usageEventPage, setUsageEventPage] = useState(0);
+  const [usageEventPageSize, setUsageEventPageSize] = useState<(typeof USAGE_EVENT_PAGE_SIZES)[number]>(100);
 
   const [confirmResetGroup, setConfirmResetGroup] = useState(false);
   const [confirmDropUnknown, setConfirmDropUnknown] = useState(false);
@@ -337,6 +429,24 @@ export function UsageManager() {
   useEffect(() => {
     void load();
   }, []);
+
+  useEffect(() => {
+    setUsageEventBucketFilter('');
+  }, [usageChartGranularity]);
+
+  useEffect(() => {
+    setUsageEventPage(0);
+  }, [
+    usageEventSearch,
+    usageEventCategoryFilter,
+    usageEventAllowedFilter,
+    usageEventScopeFilter,
+    usageEventActionFilter,
+    usageEventReasonFilter,
+    usageEventUserFilter,
+    usageEventBucketFilter,
+    usageEventPageSize,
+  ]);
 
   async function load() {
     setLoading(true);
@@ -599,6 +709,100 @@ export function UsageManager() {
       latestLabel: formatUsageEventTime(latestRaw),
     };
   }, [usageEvents.events]);
+
+  const usageEventActionOptions = useMemo(
+    () => [...new Set(usageEvents.events.map((event) => String(event.action || '').trim()).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b, 'zh-CN')),
+    [usageEvents.events],
+  );
+
+  const usageEventReasonOptions = useMemo(
+    () => [...new Set(usageEvents.events.map((event) => String(event.reason || '').trim()).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b, 'zh-CN')),
+    [usageEvents.events],
+  );
+
+  const sortedUsageEvents = useMemo(
+    () => [...usageEvents.events].sort((a, b) => {
+      const left = parseHistoryTime(a.timestamp)?.getTime() ?? 0;
+      const right = parseHistoryTime(b.timestamp)?.getTime() ?? 0;
+      return right - left;
+    }),
+    [usageEvents.events],
+  );
+
+  const filteredUsageEvents = useMemo(() => {
+    const q = usageEventSearch.trim().toLowerCase();
+    return sortedUsageEvents.filter((event) => {
+      if (usageEventCategoryFilter !== 'all' && event.category !== usageEventCategoryFilter) return false;
+      if (usageEventAllowedFilter === 'allowed' && !event.allowed) return false;
+      if (usageEventAllowedFilter === 'denied' && event.allowed) return false;
+      if (usageEventScopeFilter !== 'all' && event.scope !== usageEventScopeFilter) return false;
+      if (usageEventActionFilter !== 'all' && event.action !== usageEventActionFilter) return false;
+      if (usageEventReasonFilter !== 'all' && event.reason !== usageEventReasonFilter) return false;
+      if (usageEventUserFilter && event.userId !== usageEventUserFilter) return false;
+      if (!matchesUsageEventBucket(event, usageEventBucketFilter, usageChartGranularity)) return false;
+      if (q && !buildUsageEventSearchIndex(event).includes(q)) return false;
+      return true;
+    });
+  }, [
+    sortedUsageEvents,
+    usageEventSearch,
+    usageEventCategoryFilter,
+    usageEventAllowedFilter,
+    usageEventScopeFilter,
+    usageEventActionFilter,
+    usageEventReasonFilter,
+    usageEventUserFilter,
+    usageEventBucketFilter,
+    usageChartGranularity,
+  ]);
+
+  const filteredUsageEventSummary = useMemo(() => ({
+    total: filteredUsageEvents.length,
+    allowed: filteredUsageEvents.filter((event) => event.allowed).length,
+    denied: filteredUsageEvents.filter((event) => !event.allowed).length,
+  }), [filteredUsageEvents]);
+
+  const usageEventTotalPages = useMemo(
+    () => Math.max(1, Math.ceil(filteredUsageEvents.length / usageEventPageSize)),
+    [filteredUsageEvents.length, usageEventPageSize],
+  );
+
+  const pagedUsageEvents = useMemo(() => {
+    const safePage = Math.min(usageEventPage, Math.max(usageEventTotalPages - 1, 0));
+    const start = safePage * usageEventPageSize;
+    return filteredUsageEvents.slice(start, start + usageEventPageSize);
+  }, [filteredUsageEvents, usageEventPage, usageEventPageSize, usageEventTotalPages]);
+
+  useEffect(() => {
+    if (usageEventPage >= usageEventTotalPages) {
+      setUsageEventPage(Math.max(usageEventTotalPages - 1, 0));
+    }
+  }, [usageEventPage, usageEventTotalPages]);
+
+  const usageEventActiveFilterSummary = useMemo(() => {
+    const items: string[] = [];
+    if (usageEventCategoryFilter !== 'all') items.push(`分类：${usageEventCategoryFilter === 'chat' ? '聊天' : '图像'}`);
+    if (usageEventAllowedFilter !== 'all') items.push(`结果：${usageEventAllowedFilter === 'allowed' ? '仅允许' : '仅拒绝'}`);
+    if (usageEventScopeFilter !== 'all') items.push(`场景：${usageEventScopeFilter === 'group' ? '群聊' : '私聊'}`);
+    if (usageEventActionFilter !== 'all') items.push(`动作：${getUsageEventActionLabel(usageEventActionFilter, usageEventCategoryFilter === 'all' ? undefined : usageEventCategoryFilter)}`);
+    if (usageEventReasonFilter !== 'all') items.push(`原因：${getUsageEventReasonLabel(usageEventReasonFilter)}`);
+    if (usageEventUserFilter) items.push(`QQ：${usageEventUserFilter}`);
+    if (usageEventBucketFilter) items.push(`时间桶：${formatTimeBucketLabel(usageEventBucketFilter, usageChartGranularity)}`);
+    if (usageEventSearch.trim()) items.push(`搜索：${usageEventSearch.trim()}`);
+    return items;
+  }, [
+    usageEventCategoryFilter,
+    usageEventAllowedFilter,
+    usageEventScopeFilter,
+    usageEventActionFilter,
+    usageEventReasonFilter,
+    usageEventUserFilter,
+    usageEventBucketFilter,
+    usageChartGranularity,
+    usageEventSearch,
+  ]);
 
   const chatTopUsersChartData = useMemo(() => {
     const counter = new Map<string, number>();
@@ -1028,6 +1232,43 @@ export function UsageManager() {
     }
   }
 
+  function resetUsageEventFilters() {
+    setUsageEventSearch('');
+    setUsageEventCategoryFilter('all');
+    setUsageEventAllowedFilter('all');
+    setUsageEventScopeFilter('all');
+    setUsageEventActionFilter('all');
+    setUsageEventReasonFilter('all');
+    setUsageEventUserFilter('');
+    setUsageEventBucketFilter('');
+    setUsageEventPage(0);
+  }
+
+  function drillDownUsageEventsByUser(category: 'chat' | 'image', userId: string) {
+    if (!userId) return;
+    setUsageEventCategoryFilter(category);
+    setUsageEventUserFilter(userId);
+    setUsageEventBucketFilter('');
+    setUsageEventPage(0);
+  }
+
+  function drillDownUsageEventsByBucket(category: 'chat' | 'image', bucket: string) {
+    if (!bucket) return;
+    setUsageEventCategoryFilter(category);
+    setUsageEventUserFilter('');
+    setUsageEventBucketFilter(bucket);
+    setUsageEventPage(0);
+  }
+
+  function exportUsageEvents(filteredOnly = false) {
+    const payload = {
+      schemaVersion: usageEvents.schemaVersion,
+      events: filteredOnly ? filteredUsageEvents : usageEvents.events,
+    };
+    downloadJsonWithTimestamp(payload, filteredOnly ? 'usage_events.filtered.json' : 'usage_events.json');
+    addToast('success', filteredOnly ? '已导出当前筛选结果' : '已导出全部统一用量事件');
+  }
+
   function resetGroupPeriod() {
     setGroupUsage({
       periodId: getCurrentPeriodId(),
@@ -1116,7 +1357,7 @@ export function UsageManager() {
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3">
               <p className="text-sm font-medium text-[var(--text-primary)] mb-1">聊天用量 Top 10 用户</p>
-              <p className="text-[11px] text-[var(--text-muted)] mb-3">基于 usage event 的允许事件聚合，按实际聊天用量统计。</p>
+              <p className="text-[11px] text-[var(--text-muted)] mb-3">基于 usage event 的允许事件聚合，按实际聊天用量统计。点击柱子可联动下方事件明细。</p>
               <div className="h-[260px]">
                 {usageEventsLoading ? (
                   <div className="h-full flex items-center justify-center text-sm text-[var(--text-muted)]">正在读取统一用量事件日志...</div>
@@ -1129,7 +1370,7 @@ export function UsageManager() {
                       <XAxis dataKey="name" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={56} />
                       <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} allowDecimals={false} />
                       <Tooltip cursor={{ fill: 'rgba(255,255,255,0.03)' }} contentStyle={{ background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: 12, color: 'var(--text-primary)' }} />
-                      <Bar dataKey="count" radius={[8, 8, 0, 0]}>
+                      <Bar dataKey="count" radius={[8, 8, 0, 0]} cursor="pointer" onClick={(data) => drillDownUsageEventsByUser('chat', String(data?.name || ''))}>
                         {chatTopUsersChartData.map((entry, index) => (
                           <Cell key={`${entry.name}-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                         ))}
@@ -1142,7 +1383,7 @@ export function UsageManager() {
 
             <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3">
               <p className="text-sm font-medium text-[var(--text-primary)] mb-1">聊天时间分布</p>
-              <p className="text-[11px] text-[var(--text-muted)] mb-3">{usageChartGranularity === 'hour' ? '按小时看全天哪个时段最忙' : usageChartGranularity === 'day' ? '按天看哪天请求最多' : usageChartGranularity === 'week' ? '按周看哪个自然周最忙' : '按月看哪个月份最忙'}</p>
+              <p className="text-[11px] text-[var(--text-muted)] mb-3">{usageChartGranularity === 'hour' ? '按小时看全天哪个时段最忙' : usageChartGranularity === 'day' ? '按天看哪天请求最多' : usageChartGranularity === 'week' ? '按周看哪个自然周最忙' : '按月看哪个月份最忙'}。点击柱子可联动下方事件明细。</p>
               <div className="h-[260px]">
                 {usageEventsLoading ? (
                   <div className="h-full flex items-center justify-center text-sm text-[var(--text-muted)]">正在读取统一用量事件日志...</div>
@@ -1155,7 +1396,7 @@ export function UsageManager() {
                       <XAxis dataKey="label" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} interval="preserveStartEnd" minTickGap={18} />
                       <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} allowDecimals={false} />
                       <Tooltip cursor={{ fill: 'rgba(255,255,255,0.03)' }} contentStyle={{ background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: 12, color: 'var(--text-primary)' }} />
-                      <Bar dataKey="count" fill="var(--chart-3)" radius={[8, 8, 0, 0]} />
+                      <Bar dataKey="count" fill="var(--chart-3)" radius={[8, 8, 0, 0]} cursor="pointer" onClick={(data) => drillDownUsageEventsByBucket('chat', String(data?.bucket || ''))} />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
@@ -1166,7 +1407,7 @@ export function UsageManager() {
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3">
               <p className="text-sm font-medium text-[var(--text-primary)] mb-1">图像用量 Top 10 用户</p>
-              <p className="text-[11px] text-[var(--text-muted)] mb-3">按生图和修图实际扣减的额度数量统计，同样来自 usage event。</p>
+              <p className="text-[11px] text-[var(--text-muted)] mb-3">按生图和修图实际扣减的额度数量统计，同样来自 usage event。点击柱子可联动下方事件明细。</p>
               <div className="h-[260px]">
                 {usageEventsLoading ? (
                   <div className="h-full flex items-center justify-center text-sm text-[var(--text-muted)]">正在读取统一用量事件日志...</div>
@@ -1179,7 +1420,7 @@ export function UsageManager() {
                       <XAxis dataKey="name" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={56} />
                       <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} allowDecimals={false} />
                       <Tooltip cursor={{ fill: 'rgba(255,255,255,0.03)' }} contentStyle={{ background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: 12, color: 'var(--text-primary)' }} />
-                      <Bar dataKey="count" radius={[8, 8, 0, 0]}>
+                      <Bar dataKey="count" radius={[8, 8, 0, 0]} cursor="pointer" onClick={(data) => drillDownUsageEventsByUser('image', String(data?.name || ''))}>
                         {imageTopUsersChartData.map((entry, index) => (
                           <Cell key={`${entry.name}-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                         ))}
@@ -1192,7 +1433,7 @@ export function UsageManager() {
 
             <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3">
               <p className="text-sm font-medium text-[var(--text-primary)] mb-1">图像时间分布</p>
-              <p className="text-[11px] text-[var(--text-muted)] mb-3">{usageChartGranularity === 'hour' ? '按小时看哪个时段图像调用最密集' : usageChartGranularity === 'day' ? '按天看哪天图像调用最多' : usageChartGranularity === 'week' ? '按周看哪个自然周图像调用最多' : '按月看哪个月份图像调用最多'}</p>
+              <p className="text-[11px] text-[var(--text-muted)] mb-3">{usageChartGranularity === 'hour' ? '按小时看哪个时段图像调用最密集' : usageChartGranularity === 'day' ? '按天看哪天图像调用最多' : usageChartGranularity === 'week' ? '按周看哪个自然周图像调用最多' : '按月看哪个月份图像调用最多'}。点击柱子可联动下方事件明细。</p>
               <div className="h-[260px]">
                 {usageEventsLoading ? (
                   <div className="h-full flex items-center justify-center text-sm text-[var(--text-muted)]">正在读取统一用量事件日志...</div>
@@ -1205,10 +1446,236 @@ export function UsageManager() {
                       <XAxis dataKey="label" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} interval="preserveStartEnd" minTickGap={18} />
                       <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} allowDecimals={false} />
                       <Tooltip cursor={{ fill: 'rgba(255,255,255,0.03)' }} contentStyle={{ background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: 12, color: 'var(--text-primary)' }} />
-                      <Bar dataKey="count" fill="var(--chart-5)" radius={[8, 8, 0, 0]} />
+                      <Bar dataKey="count" fill="var(--chart-5)" radius={[8, 8, 0, 0]} cursor="pointer" onClick={(data) => drillDownUsageEventsByBucket('image', String(data?.bucket || ''))} />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="min-w-[280px] flex-1">
+                <SearchBar
+                  value={usageEventSearch}
+                  onChange={setUsageEventSearch}
+                  placeholder="搜索 QQ / 群号 / 模型 / 节点 / 原因 / detail..."
+                />
+              </div>
+              <button
+                onClick={() => exportUsageEvents(true)}
+                disabled={filteredUsageEvents.length === 0}
+                className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-40 cursor-pointer"
+              >
+                导出筛选结果
+              </button>
+              <button
+                onClick={() => exportUsageEvents(false)}
+                disabled={usageEvents.events.length === 0}
+                className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-40 cursor-pointer"
+              >
+                导出全部事件
+              </button>
+              <button
+                onClick={resetUsageEventFilters}
+                disabled={usageEventActiveFilterSummary.length === 0}
+                className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] border transition-colors cursor-pointer ${usageEventActiveFilterSummary.length > 0 ? 'bg-[var(--surface-card)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]' : 'bg-[var(--bg-elevated)] border-[var(--border-subtle)] text-[var(--text-muted)] cursor-not-allowed'}`}
+              >
+                清空筛选
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3">
+              <label className="text-xs text-[var(--text-muted)]">
+                分类
+                <select
+                  value={usageEventCategoryFilter}
+                  onChange={(e) => setUsageEventCategoryFilter(e.target.value as 'all' | 'chat' | 'image')}
+                  className="mt-1 w-full px-2 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none cursor-pointer"
+                >
+                  <option value="all">全部分类</option>
+                  <option value="chat">聊天</option>
+                  <option value="image">图像</option>
+                </select>
+              </label>
+              <label className="text-xs text-[var(--text-muted)]">
+                结果
+                <select
+                  value={usageEventAllowedFilter}
+                  onChange={(e) => setUsageEventAllowedFilter(e.target.value as 'all' | 'allowed' | 'denied')}
+                  className="mt-1 w-full px-2 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none cursor-pointer"
+                >
+                  <option value="all">全部结果</option>
+                  <option value="allowed">仅允许</option>
+                  <option value="denied">仅拒绝</option>
+                </select>
+              </label>
+              <label className="text-xs text-[var(--text-muted)]">
+                场景
+                <select
+                  value={usageEventScopeFilter}
+                  onChange={(e) => setUsageEventScopeFilter(e.target.value as 'all' | 'group' | 'private')}
+                  className="mt-1 w-full px-2 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none cursor-pointer"
+                >
+                  <option value="all">全部场景</option>
+                  <option value="group">群聊</option>
+                  <option value="private">私聊</option>
+                </select>
+              </label>
+              <label className="text-xs text-[var(--text-muted)]">
+                动作
+                <select
+                  value={usageEventActionFilter}
+                  onChange={(e) => setUsageEventActionFilter(e.target.value)}
+                  className="mt-1 w-full px-2 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none cursor-pointer"
+                >
+                  <option value="all">全部动作</option>
+                  {usageEventActionOptions.map((action) => (
+                    <option key={action} value={action}>{getUsageEventActionLabel(action, usageEventCategoryFilter === 'all' ? undefined : usageEventCategoryFilter)}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-xs text-[var(--text-muted)]">
+                原因
+                <select
+                  value={usageEventReasonFilter}
+                  onChange={(e) => setUsageEventReasonFilter(e.target.value)}
+                  className="mt-1 w-full px-2 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none cursor-pointer"
+                >
+                  <option value="all">全部原因</option>
+                  {usageEventReasonOptions.map((reason) => (
+                    <option key={reason} value={reason}>{getUsageEventReasonLabel(reason)}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+              <SummaryCard label="筛选命中" value={String(filteredUsageEventSummary.total)} hint="当前筛选条件下命中的 usage event 总数。" />
+              <SummaryCard label="允许事件" value={String(filteredUsageEventSummary.allowed)} hint="筛选结果中 allowed=true 的事件数量。" />
+              <SummaryCard label="拒绝事件" value={String(filteredUsageEventSummary.denied)} hint="筛选结果中 allowed=false 的事件数量。" />
+              <SummaryCard label="锁定 QQ" value={usageEventUserFilter || '-'} hint="点击图表柱子或明细表里的 QQ，可快速锁定单个用户。" />
+            </div>
+
+            <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] px-4 py-3">
+              <div className="flex flex-wrap items-center gap-2">
+                {usageEventActiveFilterSummary.length > 0 ? usageEventActiveFilterSummary.map((item) => (
+                  <span key={item} className="px-2 py-1 text-[10px] rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)]">
+                    {item}
+                  </span>
+                )) : (
+                  <span className="text-xs text-[var(--text-muted)]">当前没有额外筛选。你可以点上面的图表柱子、输入关键词，或按分类/原因缩小范围。</span>
+                )}
+              </div>
+              <p className="mt-2 text-[11px] text-[var(--text-muted)]">明细按时间倒序显示。点击表格里的 QQ 会锁定该用户，方便继续排查单人用量。</p>
+            </div>
+
+            <div className="overflow-hidden rounded-[var(--radius-sm)] border border-[var(--border-subtle)]">
+              <div className="overflow-x-auto">
+                <div className="min-w-[1320px]">
+                  <div className="grid grid-cols-[160px_72px_88px_88px_130px_130px_160px_240px_minmax(280px,1fr)] gap-3 px-4 py-3 text-[11px] text-[var(--text-muted)] bg-[var(--bg-elevated)] border-b border-[var(--border-subtle)]">
+                    <span>时间</span>
+                    <span>分类</span>
+                    <span>结果</span>
+                    <span>动作</span>
+                    <span>QQ</span>
+                    <span>场景</span>
+                    <span>原因</span>
+                    <span>节点 / 模型</span>
+                    <span>明细</span>
+                  </div>
+
+                  <div className="max-h-[420px] overflow-y-auto divide-y divide-[var(--border-subtle)]">
+                    {pagedUsageEvents.length === 0 ? (
+                      <div className="px-6 py-10 text-sm text-[var(--text-muted)] text-center">当前筛选条件下没有命中任何 usage event。可以清空筛选或换个关键词。</div>
+                    ) : (
+                      pagedUsageEvents.map((event) => (
+                        <div key={event.id} className="grid grid-cols-[160px_72px_88px_88px_130px_130px_160px_240px_minmax(280px,1fr)] gap-3 px-4 py-3 text-xs items-start">
+                          <span className="mono text-[var(--text-secondary)]">{formatUsageEventTime(event.timestamp)}</span>
+                          <span>
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full ${event.category === 'image' ? 'bg-[rgba(251,191,36,0.15)] text-[var(--warning)]' : 'bg-[rgba(14,165,233,0.15)] text-[var(--info)]'}`}>
+                              {getUsageEventCategoryLabel(event.category)}
+                            </span>
+                          </span>
+                          <span>
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full ${event.allowed ? 'bg-[rgba(0,230,118,0.15)] text-[var(--success)]' : 'bg-[rgba(255,82,82,0.15)] text-[var(--error)]'}`}>
+                              {event.allowed ? '允许' : '拒绝'}
+                            </span>
+                          </span>
+                          <span className="text-[var(--text-primary)]">{getUsageEventActionLabel(event.action, event.category)}</span>
+                          <div className="space-y-1">
+                            <button
+                              onClick={() => drillDownUsageEventsByUser(event.category, event.userId)}
+                              className="mono text-left text-[var(--accent-purple)] hover:underline cursor-pointer"
+                            >
+                              {event.userId}
+                            </button>
+                            {event.isMasterUser && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(168,85,247,0.15)] text-[var(--accent-purple)]">主人</span>
+                            )}
+                          </div>
+                          <span className="mono text-[var(--text-secondary)]">{buildUsageEventSceneLabel(event)}</span>
+                          <span className="text-[var(--text-secondary)] break-all">{getUsageEventReasonLabel(event.reason)}</span>
+                          <div className="space-y-1">
+                            <div className="text-[var(--text-primary)] break-all">{event.nodeRemark || '-'}</div>
+                            <div className="mono text-[10px] text-[var(--text-muted)] break-all">{event.modelName || '-'}</div>
+                          </div>
+                          <span className="text-[var(--text-secondary)] break-all">{buildUsageEventDetailSummary(event.detail)}</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border-subtle)] bg-[var(--bg-elevated)]">
+                <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
+                  <span>每页</span>
+                  <select
+                    value={usageEventPageSize}
+                    onChange={(e) => setUsageEventPageSize(Number(e.target.value) as (typeof USAGE_EVENT_PAGE_SIZES)[number])}
+                    className="px-1.5 py-0.5 bg-[var(--surface-card)] border border-[var(--border-subtle)] rounded text-[var(--text-secondary)] outline-none cursor-pointer"
+                  >
+                    {USAGE_EVENT_PAGE_SIZES.map((size) => (
+                      <option key={size} value={size}>{size}</option>
+                    ))}
+                  </select>
+                  <span>共 {filteredUsageEventSummary.total} 条</span>
+                  <span>当前页 {pagedUsageEvents.length} 条</span>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setUsageEventPage(0)}
+                    disabled={usageEventPage === 0}
+                    className="px-2 py-1 text-xs rounded bg-[var(--surface-card)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-30 cursor-pointer"
+                  >
+                    ◀◀
+                  </button>
+                  <button
+                    onClick={() => setUsageEventPage(Math.max(0, usageEventPage - 1))}
+                    disabled={usageEventPage === 0}
+                    className="px-2 py-1 text-xs rounded bg-[var(--surface-card)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-30 cursor-pointer"
+                  >
+                    ◀
+                  </button>
+                  <span className="text-xs text-[var(--text-muted)] mono">{Math.min(usageEventPage + 1, usageEventTotalPages)}/{usageEventTotalPages}</span>
+                  <button
+                    onClick={() => setUsageEventPage(Math.min(usageEventTotalPages - 1, usageEventPage + 1))}
+                    disabled={usageEventPage >= usageEventTotalPages - 1}
+                    className="px-2 py-1 text-xs rounded bg-[var(--surface-card)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-30 cursor-pointer"
+                  >
+                    ▶
+                  </button>
+                  <button
+                    onClick={() => setUsageEventPage(Math.max(usageEventTotalPages - 1, 0))}
+                    disabled={usageEventPage >= usageEventTotalPages - 1}
+                    className="px-2 py-1 text-xs rounded bg-[var(--surface-card)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-30 cursor-pointer"
+                  >
+                    ▶▶
+                  </button>
+                </div>
               </div>
             </div>
           </div>
