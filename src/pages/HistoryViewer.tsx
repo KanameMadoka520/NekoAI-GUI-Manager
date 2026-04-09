@@ -93,6 +93,42 @@ function isDayTime(iso: string) {
   return h >= 6 && h < 18;
 }
 
+function normalizeHistoryEntries(input: unknown): HistoryEntry[] {
+  const pickArray = (value: unknown) => {
+    if (Array.isArray(value)) return value;
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      const obj = value as Record<string, unknown>;
+      if (Array.isArray(obj.entries)) return obj.entries;
+      if (Array.isArray(obj.items)) return obj.items;
+      if (Array.isArray(obj.data)) return obj.data;
+    }
+    return [];
+  };
+
+  return pickArray(input)
+    .filter((item) => item && typeof item === 'object' && !Array.isArray(item))
+    .map((item) => {
+      const row = item as Partial<HistoryEntry>;
+      return {
+        timestamp: String(row.timestamp || ''),
+        type: row.type === 'private' ? 'private' : 'group',
+        channelId: row.channelId == null ? undefined : String(row.channelId),
+        userId: row.userId == null ? undefined : String(row.userId),
+        username: row.username == null ? undefined : String(row.username),
+        prompt: typeof row.prompt === 'string' ? row.prompt : '',
+        reply: typeof row.reply === 'string' ? row.reply : '',
+        isError: row.isError === true,
+        promptLength: Number.isFinite(Number(row.promptLength)) ? Number(row.promptLength) : undefined,
+        replyLength: Number.isFinite(Number(row.replyLength)) ? Number(row.replyLength) : undefined,
+        contextLength: Number.isFinite(Number(row.contextLength)) ? Number(row.contextLength) : undefined,
+        responseTime: Number.isFinite(Number(row.responseTime)) ? Number(row.responseTime) : undefined,
+        modelName: typeof row.modelName === 'string' ? row.modelName : undefined,
+        apiRemark: typeof row.apiRemark === 'string' ? row.apiRemark : undefined,
+      } satisfies HistoryEntry;
+    })
+    .filter((row) => row.timestamp || row.prompt || row.reply);
+}
+
 export function HistoryViewer() {
   const addToast = useUiStore((s) => s.addToast);
   const historyFilterPresets = useUiStore((s) => s.settings.historyFilterPresets);
@@ -205,15 +241,19 @@ export function HistoryViewer() {
     setActiveFile(filename);
     setPage(0);
     setErrorsOnly(false);
+    setTargetEntryIndex(null);
+    setViewMode('standard');
     try {
       const data = await getHistoryFile(filename);
-      if (Array.isArray(data)) {
-        setEntries(data);
+      const normalized = normalizeHistoryEntries(data);
+      if (normalized.length > 0) {
+        setEntries(normalized);
       } else if (data?.raw) {
         setEntries([]);
         addToast('warning', '该文件非 JSON 格式，无法解析');
       } else {
         setEntries([]);
+        addToast('warning', '该历史文件没有解析出可展示的记录，可能是旧结构、空文件，或内容已损坏。');
       }
     } catch (e: any) {
       addToast('error', `加载文件失败: ${e?.message ?? e}`);
