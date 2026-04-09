@@ -304,7 +304,7 @@ fn stop_web_console_runtime(state: &AppState) -> Result<(), String> {
     Ok(())
 }
 
-async fn start_web_console_runtime(app: &AppHandle, port: u16) -> Result<(), String> {
+async fn start_web_console_runtime(app: AppHandle, port: u16) -> Result<(), String> {
     let current_port = {
         let state = app.state::<AppState>();
         state.get_web_console_port()?
@@ -314,7 +314,7 @@ async fn start_web_console_runtime(app: &AppHandle, port: u16) -> Result<(), Str
         return Ok(());
     }
 
-    let frontend_dir = resolve_frontend_dir(app)?;
+    let frontend_dir = resolve_frontend_dir(&app)?;
     let listener = TcpListener::bind((WEB_CONSOLE_HOST, port))
         .await
         .map_err(|e| format!("本地 Web 控制台启动失败，端口 {} 可能已被占用：{}", port, e))?;
@@ -358,18 +358,18 @@ fn current_status_from_app(app: &AppHandle, settings: &WebConsoleSettings) -> Re
     current_status(state.inner(), settings)
 }
 
-async fn apply_web_console_settings(app: &AppHandle, settings: WebConsoleSettings) -> Result<WebConsoleStatus, String> {
+async fn apply_web_console_settings(app: AppHandle, settings: WebConsoleSettings) -> Result<WebConsoleStatus, String> {
     let normalized = normalize_settings(settings);
 
     if normalized.enabled {
-        start_web_console_runtime(app, normalized.port).await?;
+        start_web_console_runtime(app.clone(), normalized.port).await?;
     } else {
         let state = app.state::<AppState>();
         stop_web_console_runtime(state.inner())?;
     }
 
     write_web_console_settings(&normalized)?;
-    current_status_from_app(app, &normalized)
+    current_status_from_app(&app, &normalized)
 }
 
 type HttpResponse = Result<Json<Value>, (StatusCode, Json<Value>)>;
@@ -616,7 +616,7 @@ async fn handle_invoke(
         "save_web_console_settings" => {
             let p: SaveWebConsoleSettingsParams = parse_params(params)?;
             http_ok(
-                apply_web_console_settings(&ctx.app, p.settings)
+                apply_web_console_settings(ctx.app.clone(), p.settings)
                     .await
                     .map_err(|e| http_err(StatusCode::BAD_REQUEST, e))?,
             )
@@ -660,11 +660,11 @@ struct SaveWebConsoleSettingsParams {
 }
 
 pub fn bootstrap_web_console(app: &AppHandle) -> Result<(), String> {
-    let settings = load_web_console_settings()?;
+        let settings = load_web_console_settings()?;
     if settings.enabled {
         let app_handle = app.clone();
         tauri::async_runtime::spawn(async move {
-            if let Err(err) = start_web_console_runtime(&app_handle, settings.port).await {
+            if let Err(err) = start_web_console_runtime(app_handle.clone(), settings.port).await {
                 eprintln!("[NekoAI Manager] failed to bootstrap web console: {}", err);
             }
         });
@@ -683,5 +683,5 @@ pub async fn save_web_console_settings(
     settings: WebConsoleSettings,
     app: AppHandle,
 ) -> Result<WebConsoleStatus, String> {
-    apply_web_console_settings(&app, settings).await
+    apply_web_console_settings(app, settings).await
 }
