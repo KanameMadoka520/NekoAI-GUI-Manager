@@ -38,6 +38,31 @@ const pageTitles: Record<PageId, { title: string; subtitle: string }> = {
   ops: { title: '安全发布中心', subtitle: '快照、部署包、环境模板与启动自检' },
 };
 
+const APP_LAST_PAGE_STORAGE_KEY = 'nekoai-last-page';
+const VALID_PAGE_IDS: PageId[] = ['dashboard', 'api', 'config', 'personality', 'evaluation', 'memory', 'history', 'usage', 'commands', 'ops'];
+
+function loadLastActivePage(): PageId {
+  const raw = localStorage.getItem(APP_LAST_PAGE_STORAGE_KEY);
+  return VALID_PAGE_IDS.includes(raw as PageId) ? raw as PageId : 'dashboard';
+}
+
+function persistLastActivePage(page: PageId) {
+  try {
+    localStorage.setItem(APP_LAST_PAGE_STORAGE_KEY, page);
+  } catch {
+    // ignore local storage failure
+  }
+}
+
+function getCurrentPluginDirInfo() {
+  const fullPath = localStorage.getItem('nekoai-plugin-dir') ?? '';
+  if (!fullPath) {
+    return { fullPath: '', shortName: '' };
+  }
+  const shortName = fullPath.split(/[\\/]/).filter(Boolean).pop() ?? fullPath;
+  return { fullPath, shortName };
+}
+
 const scaleOptions = [
   { label: '80%', value: 0.8 },
   { label: '90%', value: 0.9 },
@@ -90,7 +115,7 @@ function App() {
     localStorage.getItem('nekoai-configured') === 'true' ? 'initializing' : 'setup'
   );
   const [refreshKey, setRefreshKey] = useState(0);
-  const [activePage, setActivePage] = useState<PageId>('dashboard');
+  const [activePage, setActivePage] = useState<PageId>(() => loadLastActivePage());
   const [showHelp, setShowHelp] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [pendingConfigRefresh, setPendingConfigRefresh] = useState(false);
@@ -115,10 +140,16 @@ function App() {
       usageEvents: startupCheck.items.filter((x) => x.code.startsWith('usageEvents.')).length,
     };
   }, [startupCheck]);
+  const pluginDirInfo = useMemo(() => getCurrentPluginDirInfo(), [phase, refreshKey]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', settings.theme);
   }, [settings.theme]);
+
+  useEffect(() => {
+    if (phase !== 'ready') return;
+    persistLastActivePage(activePage);
+  }, [phase, activePage]);
 
   useEffect(() => {
     if (phase !== 'ready') return;
@@ -218,7 +249,7 @@ function App() {
 
   function handleSetupComplete() {
     setRefreshKey((k) => k + 1);
-    setActivePage('dashboard');
+    setActivePage(loadLastActivePage());
     setPhase('ready');
   }
 
@@ -296,13 +327,23 @@ function App() {
               title={title}
               subtitle={subtitle}
               actions={
-                <button
-                  onClick={toggleHelp}
-                  className="text-xs px-2 py-1 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] cursor-pointer"
-                  title="快捷键帮助 (Ctrl+/)"
-                >
-                  ⌨
-                </button>
+                <div className="flex items-center gap-2">
+                  {pluginDirInfo.shortName && (
+                    <span
+                      className="inline-flex items-center px-2.5 py-1 text-[11px] rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] max-w-[220px] truncate"
+                      title={pluginDirInfo.fullPath}
+                    >
+                      目录：{pluginDirInfo.shortName}
+                    </span>
+                  )}
+                  <button
+                    onClick={toggleHelp}
+                    className="text-xs px-2 py-1 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] cursor-pointer"
+                    title="快捷键帮助 (Ctrl+/)"
+                  >
+                    ⌨
+                  </button>
+                </div>
               }
             />
             <div className="flex-1 overflow-y-auto p-6">
