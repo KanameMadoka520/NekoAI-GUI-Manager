@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { listen } from '@tauri-apps/api/event';
 import { Panel } from '../components/common/Panel';
 import { SearchBar } from '../components/common/SearchBar';
 import { SummaryCard } from '../components/common/SummaryCard';
 import { ConfirmDialog } from '../components/common/ConfirmDialog';
 import { useUiStore } from '../stores/uiStore';
+import { listenCompat } from '../lib/runtime-bridge';
 import {
   getConfig,
   runPersonalityEvalExperimentStream,
@@ -107,12 +107,12 @@ export function EvaluationLab() {
     let offDone: null | (() => void) = null;
 
     void (async () => {
-      offProgress = await listen<EvalProgressEvent>('eval-progress', (event) => {
+      offProgress = await listenCompat<EvalProgressEvent>('eval-progress', (event) => {
         if (disposed) return;
         if (event.payload.sessionId !== runningSessionId) return;
         setProgress(event.payload);
       });
-      offDone = await listen<EvalDoneEvent>('eval-done', (event) => {
+      offDone = await listenCompat<EvalDoneEvent>('eval-done', (event) => {
         if (disposed) return;
         if (event.payload.sessionId !== runningSessionId) return;
         setBusy(null);

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useUiStore } from '../stores/uiStore';
 import { setPluginDir, getSystemInfo, openPathInExplorer } from '../lib/tauri-commands';
+import { isTauriRuntime } from '../lib/runtime-bridge';
 
 interface SetupProps {
   onComplete: () => void;
@@ -8,6 +9,7 @@ interface SetupProps {
 
 export function Setup({ onComplete }: SetupProps) {
   const addToast = useUiStore((s) => s.addToast);
+  const runningInTauri = isTauriRuntime();
   // Pre-fill with previously saved dir (for re-configuration)
   const [dir, setDir] = useState(() => localStorage.getItem('nekoai-plugin-dir') ?? '');
   const [validating, setValidating] = useState(false);
@@ -105,12 +107,14 @@ export function Setup({ onComplete }: SetupProps) {
                 placeholder="C:\\Users\\...\\Koishi\\plugins\\koishi-plugin-Enhanced-NekoAI"
                 className="flex-1 px-3 py-2.5 text-sm mono rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)] placeholder:text-[var(--text-muted)]"
               />
-              <button
-                onClick={selectFolder}
-                className="px-4 py-2.5 text-sm rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-purple)] transition-colors cursor-pointer flex-shrink-0"
-              >
-                📁 浏览
-              </button>
+              {runningInTauri && (
+                <button
+                  onClick={selectFolder}
+                  className="px-4 py-2.5 text-sm rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-purple)] transition-colors cursor-pointer flex-shrink-0"
+                >
+                  📁 浏览
+                </button>
+              )}
               <button
                 onClick={openCurrentDir}
                 className="px-4 py-2.5 text-sm rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-purple)] transition-colors cursor-pointer flex-shrink-0"
@@ -118,6 +122,11 @@ export function Setup({ onComplete }: SetupProps) {
                 📂 打开目录
               </button>
             </div>
+            {!runningInTauri && (
+              <p className="text-[11px] text-[var(--text-muted)] mt-2">
+                当前是浏览器访问模式，无法直接弹出本地文件选择器，请手动填写插件目录绝对路径。
+              </p>
+            )}
           </div>
 
           {error && (

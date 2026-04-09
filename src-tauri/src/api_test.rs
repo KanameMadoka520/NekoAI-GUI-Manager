@@ -1,7 +1,8 @@
+use crate::ui_events::emit_ui_event;
 use reqwest::Client;
 use serde_json::{json, Value};
 use std::time::Instant;
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 use tokio::task::JoinSet;
 
 #[derive(serde::Serialize, Clone)]
@@ -64,9 +65,10 @@ pub async fn batch_ping_apis_stream(
     tokio::spawn(async move {
         let total = nodes.len();
         if total == 0 {
-            let _ = app_handle.emit_all(
+            emit_ui_event(
+                Some(&app_handle),
                 "batch-ping-done",
-                BatchPingDone {
+                &BatchPingDone {
                     session_id,
                     results: Vec::new(),
                 },
@@ -94,9 +96,10 @@ pub async fn batch_ping_apis_stream(
                 Ok((_idx, Ok(result))) => {
                     done += 1;
                     results.push(result.clone());
-                    let _ = app_handle.emit_all(
+                    emit_ui_event(
+                        Some(&app_handle),
                         "batch-ping-progress",
-                        BatchPingProgress {
+                        &BatchPingProgress {
                             session_id: session_id.clone(),
                             result,
                             done,
@@ -114,9 +117,10 @@ pub async fn batch_ping_apis_stream(
                         error: Some(err),
                     };
                     results.push(result.clone());
-                    let _ = app_handle.emit_all(
+                    emit_ui_event(
+                        Some(&app_handle),
                         "batch-ping-progress",
-                        BatchPingProgress {
+                        &BatchPingProgress {
                             session_id: session_id.clone(),
                             result,
                             done,
@@ -134,9 +138,10 @@ pub async fn batch_ping_apis_stream(
                         error: Some(format!("task join error: {}", err)),
                     };
                     results.push(result.clone());
-                    let _ = app_handle.emit_all(
+                    emit_ui_event(
+                        Some(&app_handle),
                         "batch-ping-progress",
-                        BatchPingProgress {
+                        &BatchPingProgress {
                             session_id: session_id.clone(),
                             result,
                             done,
@@ -157,9 +162,10 @@ pub async fn batch_ping_apis_stream(
         }
 
         results.sort_by_key(|r| r.index);
-        let _ = app_handle.emit_all(
+        emit_ui_event(
+            Some(&app_handle),
             "batch-ping-done",
-            BatchPingDone {
+            &BatchPingDone {
                 session_id,
                 results,
             },

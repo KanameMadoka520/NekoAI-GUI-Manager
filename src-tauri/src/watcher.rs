@@ -1,8 +1,9 @@
+use crate::ui_events::emit_ui_event;
 use notify::{Config, Event, RecommendedWatcher, RecursiveMode, Watcher};
 use serde::Serialize;
 use std::path::PathBuf;
 use std::sync::mpsc;
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 
 #[derive(Serialize)]
 struct FileChangePayload {
@@ -64,10 +65,10 @@ pub fn start_file_watcher(app: &AppHandle, plugin_dir: PathBuf) -> Result<Recomm
 
                     if parent == "group" || parent == "private" {
                         let payload = FileChangePayload { file: filename, kind: "memory".to_string() };
-                        let _ = app_handle.emit_all("memory-changed", &payload);
+                        emit_ui_event(Some(&app_handle), "memory-changed", &payload);
                     } else {
                         let payload = FileChangePayload { file: filename, kind: "config".to_string() };
-                        let _ = app_handle.emit_all("config-changed", &payload);
+                        emit_ui_event(Some(&app_handle), "config-changed", &payload);
                     }
                 }
             }

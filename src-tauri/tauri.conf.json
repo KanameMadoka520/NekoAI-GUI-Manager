@@ -56,7 +56,9 @@
         "providerShortName": null,
         "signingIdentity": null
       },
-      "resources": [],
+      "resources": [
+        "../dist"
+      ],
       "shortDescription": "",
       "targets": "all",
       "windows": {

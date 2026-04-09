@@ -1,4 +1,5 @@
 use crate::data_root::{ensure_subdir, now_id, read_json_file};
+use crate::ui_events::emit_ui_event;
 use chrono::Utc;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -6,7 +7,7 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 use tokio::task::JoinSet;
 
 const MAX_API_COUNT: usize = 5;
@@ -576,9 +577,10 @@ pub async fn run_personality_eval_experiment_stream(
         {
             Ok(c) => c,
             Err(_) => {
-                let _ = app_handle.emit_all(
+                emit_ui_event(
+                    Some(&app_handle),
                     "eval-done",
-                    EvalDoneEvent { session_id, experiment_id: String::new() },
+                    &EvalDoneEvent { session_id, experiment_id: String::new() },
                 );
                 return;
             }
@@ -697,9 +699,10 @@ pub async fn run_personality_eval_experiment_stream(
 
                 runs.push(run);
 
-                let _ = app_handle.emit_all(
+                emit_ui_event(
+                    Some(&app_handle),
                     "eval-progress",
-                    EvalProgressEvent {
+                    &EvalProgressEvent {
                         session_id: session_id.clone(),
                         done,
                         total,
@@ -790,9 +793,10 @@ pub async fn run_personality_eval_experiment_stream(
             }
         }
 
-        let _ = app_handle.emit_all(
+        emit_ui_event(
+            Some(&app_handle),
             "eval-done",
-            EvalDoneEvent { session_id, experiment_id },
+            &EvalDoneEvent { session_id, experiment_id },
         );
     });
 

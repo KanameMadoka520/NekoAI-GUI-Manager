@@ -11,17 +11,25 @@ mod ops;
 mod personality_ab;
 mod personality_eval;
 mod state;
+mod ui_events;
 mod watcher;
+mod web_console;
 
 use state::AppState;
 
 fn main() {
     tauri::Builder::default()
         .manage(AppState::new())
+        .setup(|app| {
+            ui_events::init_ui_events();
+            web_console::bootstrap_web_console(&app.handle())?;
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             config::get_config,
             config::save_config,
             config::get_system_info,
+            config::get_manager_context,
             config::set_plugin_dir,
             config::open_path_in_explorer,
             gui_prefs::get_api_health_weights,
@@ -59,6 +67,8 @@ fn main() {
             personality_eval::get_personality_eval_experiment,
             personality_eval::set_personality_eval_score,
             personality_eval::delete_personality_eval_experiment,
+            web_console::get_web_console_status,
+            web_console::save_web_console_settings,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

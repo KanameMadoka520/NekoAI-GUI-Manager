@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { listen } from '@tauri-apps/api/event';
 import { useUiStore } from '../stores/uiStore';
+import { listenCompat } from '../lib/runtime-bridge';
 
 interface FileChangePayload {
   file: string;
@@ -20,7 +20,7 @@ export function useFileWatcher(
 
     async function setup() {
       try {
-        unlistenConfig = await listen<FileChangePayload>('config-changed', (event) => {
+        unlistenConfig = await listenCompat<FileChangePayload>('config-changed', (event) => {
           const payload = event.payload;
           const now = Date.now();
           if (now - lastToastAtRef.current.config > 2000) {
@@ -30,7 +30,7 @@ export function useFileWatcher(
           if (payload) onConfigChanged?.(payload);
         });
 
-        unlistenMemory = await listen<FileChangePayload>('memory-changed', (event) => {
+        unlistenMemory = await listenCompat<FileChangePayload>('memory-changed', (event) => {
           const payload = event.payload;
           const now = Date.now();
           if (now - lastToastAtRef.current.memory > 2000) {

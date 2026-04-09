@@ -486,6 +486,24 @@ export interface SystemInfo {
   files: FileHealth[];
 }
 
+export interface ManagerContext {
+  pluginDir?: string | null;
+}
+
+export interface WebConsoleSettings {
+  enabled: boolean;
+  port: number;
+}
+
+export interface WebConsoleStatus {
+  enabled: boolean;
+  running: boolean;
+  host: string;
+  port: number;
+  url: string;
+  pluginDir?: string | null;
+}
+
 // ===== API Test =====
 export interface PingResult {
   index: number;

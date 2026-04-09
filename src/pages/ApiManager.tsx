@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo, useCallback, useRef, memo } from 'react';
-import { listen } from '@tauri-apps/api/event';
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor,
   useSensor, useSensors,
@@ -19,6 +18,7 @@ import { useUiStore } from '../stores/uiStore';
 import { useUndoRedo } from '../hooks/useUndoRedo';
 import { usePageDirtyState } from '../hooks/usePageDirtyState';
 import { getConfig, saveConfig, pingApi, batchPingApis, batchPingApisStream, getApiHistoryMetrics, getApiHealthWeights, saveApiHealthWeights } from '../lib/tauri-commands';
+import { listenCompat } from '../lib/runtime-bridge';
 import { downloadJsonWithTimestamp, pickJsonAndParse } from '../lib/json-transfer';
 import type { ApiNode, ImageApiNode, RuntimeConfig, PingResult, ApiHistoryMetric, ApiHealthWeights } from '../lib/types';
 
@@ -423,7 +423,7 @@ export function ApiManager() {
 
     async function setup() {
       try {
-        unlistenProgress = await listen<{ session_id: string; result: PingResult; done: number; total: number }>('batch-ping-progress', (event) => {
+        unlistenProgress = await listenCompat<{ session_id: string; result: PingResult; done: number; total: number }>('batch-ping-progress', (event) => {
           const payload = event.payload;
           if (!payload || payload.session_id !== batchSessionId) return;
           setPingResults((m) => {
@@ -434,7 +434,7 @@ export function ApiManager() {
           setBatchProgress({ done: payload.done, total: payload.total });
         });
 
-        unlistenDone = await listen<{ session_id: string; results: PingResult[] }>('batch-ping-done', (event) => {
+        unlistenDone = await listenCompat<{ session_id: string; results: PingResult[] }>('batch-ping-done', (event) => {
           const payload = event.payload;
           if (!payload || payload.session_id !== batchSessionId) return;
           setBatchPinging(false);

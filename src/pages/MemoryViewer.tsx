@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from 'react';
-import { listen } from '@tauri-apps/api/event';
 import { StatCard } from '../components/common/StatCard';
 import { ProgressBar } from '../components/common/ProgressBar';
 import { Modal } from '../components/common/Modal';
@@ -10,6 +9,7 @@ import { Panel } from '../components/common/Panel';
 import { SummaryCard } from '../components/common/SummaryCard';
 import { useUiStore } from '../stores/uiStore';
 import { getConfig, listMemory, getMemory, saveMemory, deleteMemory } from '../lib/tauri-commands';
+import { listenCompat } from '../lib/runtime-bridge';
 import { downloadJsonWithTimestamp, pickJsonAndParse } from '../lib/json-transfer';
 import type { MemoryMeta, RuntimeConfig } from '../lib/types';
 
@@ -118,7 +118,7 @@ export function MemoryViewer() {
 
     async function setup() {
       try {
-        unlistenMemory = await listen('memory-changed', () => {
+        unlistenMemory = await listenCompat('memory-changed', () => {
           load();
         });
       } catch {

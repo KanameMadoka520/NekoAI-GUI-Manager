@@ -86,6 +86,12 @@ pub struct SystemInfo {
     pub files: Vec<FileHealth>,
 }
 
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ManagerContext {
+    pub plugin_dir: Option<String>,
+}
+
 #[tauri::command]
 pub fn get_system_info(state: State<'_, AppState>) -> Result<SystemInfo, String> {
     let dir = state.get_plugin_dir()?;
@@ -116,6 +122,15 @@ pub fn get_system_info(state: State<'_, AppState>) -> Result<SystemInfo, String>
         plugin_dir: dir.to_string_lossy().to_string(),
         files,
     })
+}
+
+#[tauri::command]
+pub fn get_manager_context(state: State<'_, AppState>) -> Result<ManagerContext, String> {
+    let plugin_dir = state
+        .get_plugin_dir_optional()?
+        .map(|path| path.to_string_lossy().to_string());
+
+    Ok(ManagerContext { plugin_dir })
 }
 
 #[tauri::command]
