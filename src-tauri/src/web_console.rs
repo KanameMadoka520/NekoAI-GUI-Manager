@@ -21,6 +21,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::convert::Infallible;
 use std::fs;
+use std::net::TcpListener as StdTcpListener;
 use std::path::PathBuf;
 use std::time::Duration;
 use tauri::{AppHandle, Manager, State};
@@ -304,7 +305,7 @@ fn stop_web_console_runtime(state: &AppState) -> Result<(), String> {
     Ok(())
 }
 
-async fn start_web_console_runtime(app: AppHandle, port: u16) -> Result<(), String> {
+fn start_web_console_runtime(app: AppHandle, port: u16) -> Result<(), String> {
     let current_port = {
         let state = app.state::<AppState>();
         state.get_web_console_port()?
@@ -315,9 +316,13 @@ async fn start_web_console_runtime(app: AppHandle, port: u16) -> Result<(), Stri
     }
 
     let frontend_dir = resolve_frontend_dir(&app)?;
-    let listener = TcpListener::bind((WEB_CONSOLE_HOST, port))
-        .await
+    let std_listener = StdTcpListener::bind((WEB_CONSOLE_HOST, port))
         .map_err(|e| format!("本地 Web 控制台启动失败，端口 {} 可能已被占用：{}", port, e))?;
+    std_listener
+        .set_nonblocking(true)
+        .map_err(|e| format!("本地 Web 控制台启动失败，无法设置 nonblocking：{}", e))?;
+    let listener = TcpListener::from_std(std_listener)
+        .map_err(|e| format!("本地 Web 控制台启动失败，无法切换到 Tokio listener：{}", e))?;
 
     {
         let state = app.state::<AppState>();
@@ -358,11 +363,11 @@ fn current_status_from_app(app: &AppHandle, settings: &WebConsoleSettings) -> Re
     current_status(state.inner(), settings)
 }
 
-async fn apply_web_console_settings(app: AppHandle, settings: WebConsoleSettings) -> Result<WebConsoleStatus, String> {
+fn apply_web_console_settings(app: AppHandle, settings: WebConsoleSettings) -> Result<WebConsoleStatus, String> {
     let normalized = normalize_settings(settings);
 
     if normalized.enabled {
-        start_web_console_runtime(app.clone(), normalized.port).await?;
+        start_web_console_runtime(app.clone(), normalized.port)?;
     } else {
         let state = app.state::<AppState>();
         stop_web_console_runtime(state.inner())?;
@@ -615,11 +620,7 @@ async fn handle_invoke(
         }
         "save_web_console_settings" => {
             let p: SaveWebConsoleSettingsParams = parse_params(params)?;
-            http_ok(
-                apply_web_console_settings(ctx.app.clone(), p.settings)
-                    .await
-                    .map_err(|e| http_err(StatusCode::BAD_REQUEST, e))?,
-            )
+            http_ok(apply_web_console_settings(ctx.app.clone(), p.settings).map_err(|e| http_err(StatusCode::BAD_REQUEST, e))?)
         }
         _ => Err(http_err(StatusCode::NOT_FOUND, format!("Unknown command: {}", command))),
     }
@@ -660,14 +661,9 @@ struct SaveWebConsoleSettingsParams {
 }
 
 pub fn bootstrap_web_console(app: &AppHandle) -> Result<(), String> {
-        let settings = load_web_console_settings()?;
+    let settings = load_web_console_settings()?;
     if settings.enabled {
-        let app_handle = app.clone();
-        tauri::async_runtime::spawn(async move {
-            if let Err(err) = start_web_console_runtime(app_handle.clone(), settings.port).await {
-                eprintln!("[NekoAI Manager] failed to bootstrap web console: {}", err);
-            }
-        });
+        start_web_console_runtime(app.clone(), settings.port)?;
     }
     Ok(())
 }
@@ -679,9 +675,9 @@ pub fn get_web_console_status(state: State<'_, AppState>) -> Result<WebConsoleSt
 }
 
 #[tauri::command]
-pub async fn save_web_console_settings(
+pub fn save_web_console_settings(
     settings: WebConsoleSettings,
     app: AppHandle,
 ) -> Result<WebConsoleStatus, String> {
-    apply_web_console_settings(app, settings).await
+    apply_web_console_settings(app, settings)
 }
