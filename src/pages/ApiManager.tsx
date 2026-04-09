@@ -387,7 +387,7 @@ export function ApiManager() {
   const dirty = useMemo(() => JSON.stringify(state) !== original || JSON.stringify(weightState) !== originalWeights, [state, original, weightState, originalWeights]);
   const imageDirty = useMemo(() => JSON.stringify(imageState) !== imageOriginal, [imageState, imageOriginal]);
   const density = getDensityClass(settings.contentDensity);
-  const nodeCardStackGap = settings.contentDensity === 'compact' ? 'space-y-4' : settings.contentDensity === 'spacious' ? 'space-y-6' : 'space-y-5';
+  const nodeCardStackGap = settings.contentDensity === 'compact' ? 'space-y-6' : settings.contentDensity === 'spacious' ? 'space-y-10' : 'space-y-8';
   const allApiKeyExpanded = nodes.length > 0 && nodes.every((_, i) => expandedCards.has(i));
   usePageDirtyState('api', dirty || imageDirty, managerMode === 'image' ? '图像节点列表存在未保存改动，离开后这些改动不会自动写回文件。' : '聊天节点列表或评分设置存在未保存改动，离开后这些改动不会自动写回文件。');
 
@@ -1876,11 +1876,19 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
   return (
     <div
       ref={(el) => { setNodeRef(el); cardRef(el); }}
-      style={{ ...style, boxShadow: isActive ? 'var(--shadow-panel)' : 'var(--shadow-card)', background: 'var(--surface-card)' }}
-      className={`rounded-[var(--radius)] border border-[var(--border-subtle)] hover:border-[var(--border-hover)] transition-all duration-[240ms] overflow-hidden ${densityClass.cardPadding} ${isActive ? 'ring-1 ring-[var(--accent-purple)]' : ''} ${isSelected ? 'bg-[var(--nav-active-bg)]' : ''}`}
+      style={{
+        ...style,
+        boxShadow: isActive
+          ? '0 24px 56px rgba(15, 23, 42, 0.16), 0 0 0 1px rgba(168, 85, 247, 0.28)'
+          : isSelected
+            ? '0 18px 42px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(14, 165, 233, 0.18)'
+            : '0 14px 32px rgba(15, 23, 42, 0.10), 0 0 0 1px rgba(148, 163, 184, 0.12)',
+        background: 'var(--surface-card)',
+      }}
+      className={`rounded-[var(--radius)] border-2 hover:border-[var(--border-hover)] transition-all duration-[240ms] overflow-hidden ${densityClass.cardPadding} ${isActive ? 'border-[var(--accent-purple)] ring-1 ring-[rgba(168,85,247,0.16)]' : isSelected ? 'border-[rgba(14,165,233,0.28)]' : 'border-[var(--border-subtle)]'} ${isSelected ? 'bg-[var(--nav-active-bg)]' : ''}`}
     >
       <div
-        className="h-1 rounded-full mb-4"
+        className="h-1.5 rounded-full mb-4"
         style={{
           background: isActive
             ? 'var(--accent-purple)'
@@ -1892,7 +1900,7 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
           opacity: isActive ? 1 : 0.6,
         }}
       />
-      <div className={`flex flex-wrap items-start ${densityClass.cardGap} pb-3 mb-4 border-b border-[var(--border-subtle)]`}>
+      <div className={`-mx-5 -mt-5 px-5 pt-5 pb-4 mb-5 flex flex-wrap items-start ${densityClass.cardGap} border-b border-[var(--border-subtle)]`} style={{ background: isActive ? 'rgba(168, 85, 247, 0.05)' : 'rgba(148, 163, 184, 0.05)' }}>
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <input
             type="checkbox"
