@@ -761,7 +761,7 @@ npm install --no-save @rollup/rollup-win32-x64-msvc@4.59.0
 - `medium`（默认）
 - `high`
 
-设置入口在 `App.tsx` 的“显示设置”弹窗。
+漂浮效果设置入口仍在 `App.tsx` 的“显示设置”弹窗；本地 Web 控制台则已拆到侧栏底部独立的“本地服务”入口。
 
 ### 18.6 羊皮纸“墨迹衰减”效果原理
 
