@@ -624,6 +624,7 @@ export function ConfigEditor() {
   const [editorMode, setEditorMode] = useState<'common' | 'full'>('common');
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmResetSecond, setConfirmResetSecond] = useState(false);
+  const [diffOverviewExpanded, setDiffOverviewExpanded] = useState(false);
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -685,8 +686,16 @@ export function ConfigEditor() {
       savedDiffs: changedFromSaved.length,
     };
   }, [config, effectiveSections, currentUnknownPaths.length, currentDeprecatedPaths.length, currentDeprecatedValueIssues.length, currentValidationIssues.length, changedFromDefaults.length, changedFromSaved.length]);
+  const hasConfigOverviewAlert = summary.schemaIssues > 0 || summary.savedDiffs > 0;
+  const hasConfigOverviewContent = summary.defaultDiffs > 0 || summary.savedDiffs > 0;
 
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    if (hasConfigOverviewAlert) {
+      setDiffOverviewExpanded(true);
+    }
+  }, [hasConfigOverviewAlert]);
 
   useEffect(() => {
     if (!visibleSections.some((s) => s.id === activeSection)) {
@@ -1128,55 +1137,90 @@ export function ConfigEditor() {
         )}
 
         {schema && (
-          <div className="rounded-[var(--radius)] border border-[var(--border-subtle)] mb-3 px-4 py-3" style={{ background: 'var(--surface-card)', boxShadow: 'var(--shadow-card)' }}>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-sm">🧭</span>
-              <p className="text-sm font-medium text-[var(--text-primary)]">配置差异概览</p>
-            </div>
-            <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-3">
+          <div
+            className={`rounded-[var(--radius)] border mb-3 px-4 py-3 ${hasConfigOverviewAlert ? 'border-[rgba(255,171,64,0.35)] bg-[rgba(255,171,64,0.08)]' : 'border-[var(--border-subtle)]'}`}
+            style={{ background: hasConfigOverviewAlert ? undefined : 'var(--surface-card)', boxShadow: 'var(--shadow-card)' }}
+          >
+            <button
+              onClick={() => setDiffOverviewExpanded((v) => !v)}
+              className="w-full flex items-start gap-3 text-left cursor-pointer"
+            >
+              <span className="text-sm pt-0.5">🧭</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-medium text-[var(--text-primary)]">配置差异概览</p>
+                  {hasConfigOverviewAlert ? (
+                    <span className="px-2 py-0.5 text-[10px] rounded-full bg-[rgba(255,171,64,0.18)] text-[var(--warning)]">需关注</span>
+                  ) : (
+                    <span className="px-2 py-0.5 text-[10px] rounded-full bg-[rgba(0,230,118,0.12)] text-[var(--success)]">正常</span>
+                  )}
+                  {summary.savedDiffs > 0 && (
+                    <span className="px-2 py-0.5 text-[10px] rounded-full bg-[rgba(255,171,64,0.18)] text-[var(--warning)]">未保存 {summary.savedDiffs} 项</span>
+                  )}
+                  {summary.schemaIssues > 0 && (
+                    <span className="px-2 py-0.5 text-[10px] rounded-full bg-[rgba(255,82,82,0.16)] text-[var(--error)]">契约提醒 {summary.schemaIssues} 项</span>
+                  )}
+                </div>
+                <p className="mt-1 text-[11px] text-[var(--text-muted)] leading-relaxed">
+                  平时可收起，只看摘要；一旦出现 schema 异常或未保存改动，会自动展开并高亮这一块。
+                </p>
+              </div>
+              <span className="text-xs text-[var(--text-muted)] pt-1">{diffOverviewExpanded ? '收起' : '展开'}</span>
+            </button>
+
+            <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 mt-3">
               <SummaryCard label="相对默认值" value={`${summary.defaultDiffs} 项`} hint="和 schema 默认值相比，当前一共改了多少字段" />
               <SummaryCard label="相对上次保存" value={`${summary.savedDiffs} 项`} hint="你当前还没保存的变动字段数量" tone={summary.savedDiffs ? 'warning' : 'neutral'} />
               <SummaryCard label="默认状态" value={summary.defaultDiffs ? '已个性化' : '接近默认'} hint="字段越多，说明你当前配置越偏离默认模板" />
               <SummaryCard label="编辑状态" value={summary.savedDiffs ? '有未保存改动' : '已同步'} hint="这块只看当前表单和上次保存文件的差异" tone={summary.savedDiffs ? 'warning' : 'neutral'} />
             </div>
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 text-xs text-[var(--text-secondary)]">
-              <div className="space-y-2">
-                <p className="font-medium text-[var(--text-primary)]">相对默认值的主要改动</p>
-                {changedFromDefaults.length === 0 ? (
-                  <p className="text-[var(--text-muted)]">当前配置和默认值非常接近，没有明显偏离。</p>
-                ) : (
-                  changedFromDefaults.slice(0, 6).map((path) => (
-                    <p key={`default-${path}`}>
-                      <span className="mono">{path}</span>：
-                      <span className="text-[var(--text-muted)]"> 默认 </span>
-                      <span className="mono">{valueToDisplay(getValueAtPath(defaultConfig, path))}</span>
-                      <span className="text-[var(--text-muted)]">{' -> 当前 '}</span>
-                      <span className="mono">{valueToDisplay(getValueAtPath(config, path))}</span>
-                    </p>
-                  ))
-                )}
+
+            {diffOverviewExpanded && (
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 text-xs text-[var(--text-secondary)] mt-3">
+                <div className="space-y-2">
+                  <p className="font-medium text-[var(--text-primary)]">相对默认值的主要改动</p>
+                  {changedFromDefaults.length === 0 ? (
+                    <p className="text-[var(--text-muted)]">当前配置和默认值非常接近，没有明显偏离。</p>
+                  ) : (
+                    changedFromDefaults.slice(0, 6).map((path) => (
+                      <p key={`default-${path}`}>
+                        <span className="mono">{path}</span>：
+                        <span className="text-[var(--text-muted)]"> 默认 </span>
+                        <span className="mono">{valueToDisplay(getValueAtPath(defaultConfig, path))}</span>
+                        <span className="text-[var(--text-muted)]">{' -> 当前 '}</span>
+                        <span className="mono">{valueToDisplay(getValueAtPath(config, path))}</span>
+                      </p>
+                    ))
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <p className="font-medium text-[var(--text-primary)]">相对上次保存的未提交改动</p>
+                  {changedFromSaved.length === 0 ? (
+                    <p className="text-[var(--text-muted)]">当前表单和上次保存内容一致。</p>
+                  ) : (
+                    changedFromSaved.slice(0, 6).map((path) => (
+                      <p key={`saved-${path}`}>
+                        <span className="mono">{path}</span>：
+                        <span className="text-[var(--text-muted)]"> 上次 </span>
+                        <span className="mono">{valueToDisplay(getValueAtPath(savedConfig, path))}</span>
+                        <span className="text-[var(--text-muted)]">{' -> 当前 '}</span>
+                        <span className="mono">{valueToDisplay(getValueAtPath(config, path))}</span>
+                      </p>
+                    ))
+                  )}
+                </div>
               </div>
-              <div className="space-y-2">
-                <p className="font-medium text-[var(--text-primary)]">相对上次保存的未提交改动</p>
-                {changedFromSaved.length === 0 ? (
-                  <p className="text-[var(--text-muted)]">当前表单和上次保存内容一致。</p>
-                ) : (
-                  changedFromSaved.slice(0, 6).map((path) => (
-                    <p key={`saved-${path}`}>
-                      <span className="mono">{path}</span>：
-                      <span className="text-[var(--text-muted)]"> 上次 </span>
-                      <span className="mono">{valueToDisplay(getValueAtPath(savedConfig, path))}</span>
-                      <span className="text-[var(--text-muted)]">{' -> 当前 '}</span>
-                      <span className="mono">{valueToDisplay(getValueAtPath(config, path))}</span>
-                    </p>
-                  ))
-                )}
-              </div>
-            </div>
+            )}
+
+            {!diffOverviewExpanded && hasConfigOverviewContent && (
+              <p className="mt-3 text-[11px] text-[var(--text-muted)]">
+                当前只显示差异摘要。展开后可查看相对默认值和相对上次保存的明细。
+              </p>
+            )}
           </div>
         )}
 
-        <div ref={scrollRef} className={`flex-1 overflow-y-auto pr-2 ${contentGap}`}>
+        <div ref={scrollRef} className={`flex-1 min-h-0 overflow-y-auto pr-2 ${contentGap}`}>
           <SectionCard id="core" title={sectionMetaMap.get('core')?.label ?? '核心设置'} icon="⚙" summary={sectionMetaMap.get('core')?.summary ?? '昵称、主人账号、拒绝文案与日志级别。'} refs={sectionRefs}>
             {renderSchemaField('nickName')}
             {renderSchemaField('masterQQ')}
