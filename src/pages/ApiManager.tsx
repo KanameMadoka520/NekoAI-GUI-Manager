@@ -1669,6 +1669,15 @@ function ImageApiManagerPanel({
                             className="w-full px-2.5 py-2 text-xs mono rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
                             placeholder="grok-imagine-image"
                           />
+                          {String(node.modelName || '').trim().toLowerCase() === 'grok-imagine-image-pro' ? (
+                            <p className="mt-1 text-[10px] leading-relaxed text-[var(--warning)]">
+                              当前已知 `grok-imagine-image-pro` 可能阶段性返回 500 / 503。插件现在会在这种“模型暂时不可用”的场景下，自动回退到 `grok-imagine-image` 再重试一次，并在日志与完成提示里明确写出回退情况。
+                            </p>
+                          ) : (
+                            <p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">
+                              若你填写 `grok-imagine-image-pro`，当 xAI 返回“模型暂时不可用 / 服务不可用 / 内部生成失败”时，插件会自动回退到 `grok-imagine-image` 再重试一次。
+                            </p>
+                          )}
                         </div>
 
                         <div className="xl:col-span-2">

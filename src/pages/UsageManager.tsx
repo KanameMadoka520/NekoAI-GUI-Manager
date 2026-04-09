@@ -155,9 +155,9 @@ function normalizeUsageEvents(input: UsageEventLog | UsageEvent[] | null | undef
   const rawEvents = Array.isArray(input)
     ? input
     : (Array.isArray(input?.events) ? input.events : []);
-  const events = rawEvents
+  const events: UsageEvent[] = rawEvents
     .filter((item) => item && typeof item === 'object' && !Array.isArray(item))
-    .map((item) => {
+    .map((item): UsageEvent => {
       const event = item as Partial<UsageEvent>;
       return {
         id: String(event.id || ''),
@@ -182,6 +182,15 @@ function normalizeUsageEvents(input: UsageEventLog | UsageEvent[] | null | undef
     schemaVersion: !Array.isArray(input) && Number.isFinite(Number(input?.schemaVersion)) ? Number(input?.schemaVersion) : 1,
     events,
   };
+}
+
+function extractChartPayloadString(input: unknown, key: string) {
+  if (!input || typeof input !== 'object') return '';
+  const payload = 'payload' in input && input.payload && typeof input.payload === 'object'
+    ? input.payload as Record<string, unknown>
+    : null;
+  const value = payload?.[key];
+  return typeof value === 'string' ? value : '';
 }
 
 function getImageAccessModeLabel(mode: ImageAccessConfig['mode']) {
@@ -1707,7 +1716,7 @@ export function UsageManager() {
                       <XAxis dataKey="label" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} interval="preserveStartEnd" minTickGap={18} />
                       <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} allowDecimals={false} />
                       <Tooltip cursor={{ fill: 'rgba(255,255,255,0.03)' }} contentStyle={{ background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: 12, color: 'var(--text-primary)' }} />
-                      <Bar dataKey="count" fill="var(--chart-3)" radius={[8, 8, 0, 0]} cursor="pointer" onClick={(data) => drillDownUsageEventsByBucket('chat', String(data?.bucket || ''))} />
+                      <Bar dataKey="count" fill="var(--chart-3)" radius={[8, 8, 0, 0]} cursor="pointer" onClick={(data) => drillDownUsageEventsByBucket('chat', extractChartPayloadString(data, 'bucket'))} />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
@@ -1757,7 +1766,7 @@ export function UsageManager() {
                       <XAxis dataKey="label" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} interval="preserveStartEnd" minTickGap={18} />
                       <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} allowDecimals={false} />
                       <Tooltip cursor={{ fill: 'rgba(255,255,255,0.03)' }} contentStyle={{ background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: 12, color: 'var(--text-primary)' }} />
-                      <Bar dataKey="count" fill="var(--chart-5)" radius={[8, 8, 0, 0]} cursor="pointer" onClick={(data) => drillDownUsageEventsByBucket('image', String(data?.bucket || ''))} />
+                      <Bar dataKey="count" fill="var(--chart-5)" radius={[8, 8, 0, 0]} cursor="pointer" onClick={(data) => drillDownUsageEventsByBucket('image', extractChartPayloadString(data, 'bucket'))} />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
