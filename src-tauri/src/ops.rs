@@ -152,12 +152,6 @@ fn collect_top_level_diff_keys(a: &Value, b: &Value) -> Vec<String> {
     }
 }
 
-fn read_snapshot_manifest(snapshot_id: &str) -> Result<Value, String> {
-    let snapshots_dir = ensure_subdir("snapshots")?;
-    let manifest_path = snapshots_dir.join(snapshot_id).join("manifest.json");
-    read_json_file(&manifest_path)
-}
-
 #[tauri::command]
 pub fn list_snapshots() -> Result<Vec<SnapshotMeta>, String> {
     let snapshots_dir = ensure_subdir("snapshots")?;
