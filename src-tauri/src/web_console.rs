@@ -346,11 +346,13 @@ fn start_web_console_runtime(app: AppHandle, port: u16) -> Result<(), String> {
         state.set_web_console_runtime(WebConsoleRuntime { port, shutdown: shutdown_tx })?;
     }
 
-    tokio::spawn(async move {
+    tauri::async_runtime::spawn(async move {
         let server = axum::serve(listener, router).with_graceful_shutdown(async move {
             let _ = shutdown_rx.await;
         });
-        let _ = server.await;
+        if let Err(err) = server.await {
+            eprintln!("[NekoAI Manager] web console server exited with error: {}", err);
+        }
         let state = state_for_exit.state::<AppState>();
         let _ = state.clear_web_console_runtime_if_port(port);
     });
@@ -663,7 +665,9 @@ struct SaveWebConsoleSettingsParams {
 pub fn bootstrap_web_console(app: &AppHandle) -> Result<(), String> {
     let settings = load_web_console_settings()?;
     if settings.enabled {
-        start_web_console_runtime(app.clone(), settings.port)?;
+        if let Err(err) = start_web_console_runtime(app.clone(), settings.port) {
+            eprintln!("[NekoAI Manager] failed to bootstrap web console: {}", err);
+        }
     }
     Ok(())
 }
