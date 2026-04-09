@@ -1,6 +1,6 @@
 # NekoAI GUI Manager
 
-**NekoAI 统一可视化管理面板** — 基于 Tauri 的原生桌面应用，集成聊天节点管理、图像节点管理、配置编辑、人格管理、长期记忆监控、聊天历史分析、用量管理与安全发布能力。
+**NekoAI 统一可视化管理面板** — 基于 Tauri 的原生桌面应用，集成聊天节点管理、图像节点管理、配置编辑、人格管理、长期记忆监控、聊天历史分析、用量管理与安全发布能力，并新增可开关的本地 Web 控制台，允许在浏览器中同步操作同一套 GUI。
 
 > 当前推荐把它作为 `koishi-plugin-Enhanced-NekoAI` 的主管理器使用。插件目录内仍保留轻量 HTML 工具（`api_manager.html`、`image_api_manager.html`、`config_editor.html`、`dashboard.html`、`history_viewer.html`）作为补充；旧的独立 `NekoAI-GUI-Manager/`（Node.js + Express + Vue 3 CDN 方案）已经被本项目取代。
 
@@ -21,6 +21,7 @@
 - **只想本地开发调试（推荐）**：`npx tauri dev`
 - **只检查前端是否能构建**：`npm run build`
 - **要打包桌面应用（Windows/Linux）**：`npx tauri build`
+- **想在浏览器里同步打开 Manager**：先在 GUI 的“界面与本地服务设置”里开启 **本地 Web 控制台**，默认地址 `http://127.0.0.1:32191/`
 - **Windows 从 Linux/WSL 拷贝过来后安装失败（EBADPLATFORM）**：先看 [构建与打包（Windows / Linux）【当前推荐】](#构建与打包windows--linux当前推荐) 的 Windows 小节
 - **验证本轮修复（你现在正在做）**：优先跑 [本轮进展（2026-03）](#本轮进展2026-03) + [最小回归清单（提交前）](#最小回归清单提交前)
 
@@ -50,6 +51,18 @@
 
 ### 2026-04 增量更新
 
+- GUI 新增 **本地 Web 控制台 / 浏览器同步管理模式**
+  - 在“界面与本地服务设置”中可单独开关
+  - 默认仅监听 `127.0.0.1:32191`
+  - GUI 进程退出后服务同步关闭，不做后台常驻
+  - 浏览器访问时与桌面端共用同一后端状态、插件目录、文件监听、自检结果与事件流
+  - 浏览器模式下若桌面端已连接过插件目录，会自动继承；首次浏览器访问则支持手动输入插件目录
+- 前后端桥接层已升级为 **桌面 Tauri IPC + 浏览器 HTTP/SSE 双通道兼容**
+  - 前端不再只依赖 `invoke/listen`
+  - 批量测活、人格评测、外部文件变更等事件会同时走本地事件总线，供桌面端和浏览器端共用
+- 构建链路新增 **Rollup 原生依赖自动兜底**
+  - `npm run build` / `npm run dev` 会先执行 `scripts/ensure-rollup-native.mjs`
+  - 遇到 npm 漏装 `@rollup/rollup-win32-x64-msvc`、`@rollup/rollup-linux-x64-gnu` 等平台原生包时，会先尝试自动补装再继续构建
 - API 管理已升级为 **聊天节点列表 / 图像节点列表双模式**
   - 聊天节点继续落在 `api_config.json`
   - 图像节点独立落在 `image_api_config.json`
@@ -259,6 +272,7 @@
 - **启动前自检（新增）** — 进入就绪态后自动执行一次基础健康检查，发现问题可在弹窗里一键修复可修项
 - **Schema 契约（新增）** — GUI 会读取插件目录中的 `runtime_schema.json`，用于章节说明、字段约束、导入校验、迁移提醒与自检提示
 - **GUI 本地偏好隔离（新增）** — API 健康评分权重已迁移到 `NekoAI-GUI-Data/preferences/`，不再写回插件 `runtime_config.json`
+- **浏览器兼容桥接（新增）** — 同一套前端可在 Tauri 窗口和本地浏览器模式下运行；桌面端走 Tauri IPC，浏览器端走本地 HTTP/SSE
 - **自动备份** — 每次保存前自动备份原文件到 `.backups/` 目录，文件名带时间戳
 - **现代 3D 主题** — 白色光明风格、玻璃拟态、弹性动画、3D 阴影卡片、自定义滚动条
 - **代码分割** — React.lazy() 按页面懒加载，首屏秒开
@@ -269,12 +283,15 @@
 - **公共组件统一** — 已新增并接入 `Panel` / `SummaryCard`，用于主要页面的面板头与摘要卡统一
 - **显示设置** — 支持 UI 缩放（80%~130%）、三主题切换（亮色/暗色/羊皮纸）、背景漂浮密度（轻/中/重）和“重新选择插件目录”
 - **窗口标题栏** — 主题化自定义标题栏，支持拖动窗口、最小化/最大化/关闭
+- **本地 Web 控制台（新增）** — 可在 GUI 内开启仅本机可访问的 `127.0.0.1` Web 控制台，用浏览器完整访问同一套 Manager；支持复制地址、直接打开与端口自定义
 
 ---
 
 ## 构建与打包（Windows / Linux）【当前推荐】
 
 > 本项目 `package.json` **没有** `tauri:build` script。请直接使用 `npx tauri build`。
+
+> `npm run build` / `npm run dev` 现在都会先执行 `scripts/ensure-rollup-native.mjs`，自动检查当前平台的 Rollup 原生包是否缺失；如果 npm 漏装了 Windows/Linux 平台包，会先尝试自动补装再继续构建。
 
 ### Windows（生成 .exe / .msi）
 
@@ -292,6 +309,7 @@ Remove-Item -Force package-lock.json -ErrorAction SilentlyContinue
 npm install
 
 # 4) 构建并打包（会先执行 npm run build，再执行 Tauri 打包）
+#    若 npm 漏装了 @rollup/rollup-win32-x64-msvc，构建前会自动尝试补装
 npx tauri build
 ```
 
@@ -315,6 +333,7 @@ cd "NekoAI GUI Manager"
 npm install
 
 # 4) 构建并打包
+#    若 npm 漏装了 Linux 对应的 Rollup 原生包，构建前会自动尝试补装
 npx tauri build
 ```
 
@@ -526,6 +545,12 @@ npx vite
 3. 点击 **开始使用**，程序会验证目录是否正确
 4. 验证通过后进入主界面，路径会自动记住，下次打开不需要重新设置
 
+补充说明：
+
+- 桌面模式下可直接点击 **📁 浏览** 选择目录
+- 浏览器模式下不能直接调用本地文件夹选择器，所以 Setup 会提示你手动输入插件目录绝对路径
+- 如果你是从桌面端先开启了本地 Web 控制台，再在浏览器中打开地址，浏览器模式通常会直接继承桌面端已经连接的插件目录
+
 ---
 
 ## 使用说明
@@ -556,6 +581,24 @@ npx vite
 - **图像模板导出** — 图像节点工具栏支持导出 xAI 模板，便于快速落地 `image_api_config.json`
 - **图像节点保护策略** — 默认不提供图像测活，避免误耗图像额度；图像节点的活跃索引会保存到 `runtime_config.json` 的 `activeImageApiIndex`
 - **撤销/重做 / 导入导出** — 聊天节点和图像节点都支持独立的撤销、重做、导入、导出与保存流程
+
+### 显示设置 / 本地 Web 控制台
+
+- **界面与本地服务设置** 弹窗中，除了主题、内容密度、缩放外，现在还提供 **本地 Web 控制台** 配置
+- 默认关闭，默认端口为 `32191`
+- 仅监听 `127.0.0.1`，不会主动开放到局域网
+- 开启后可：
+  - 复制浏览器访问地址
+  - 直接用默认浏览器打开
+  - 修改监听端口后保存
+- 浏览器打开的是 **同一套 Manager 前端**，不是单独维护的一套简化页面
+- 浏览器模式会同步看到：
+  - 插件目录连接状态
+  - 外部文件变更提醒
+  - API 批量测活进度
+  - 人格评测实验进度
+  - 启动前自检与页面读写结果
+- 关闭 GUI 进程后，本地 Web 控制台也会一起关闭
 
 ### 配置编辑
 
@@ -630,9 +673,9 @@ npx vite
 
 | 对比项 | 旧版 (Node.js + Express) | 新版 (Tauri) |
 |--------|--------------------------|-------------|
-| **运行方式** | 启动 Node 服务 → 浏览器访问 `localhost:38880` | 双击直接打开桌面窗口 |
+| **运行方式** | 启动 Node 服务 → 浏览器访问 `localhost:38880` | 默认双击直接打开桌面窗口；也可额外开启仅本机可访问的本地 Web 控制台 |
 | **性能** | JavaScript 文件读写 + HTTP 传输开销 | Rust 原生文件 I/O，接近零开销 |
-| **安全性** | API 密钥通过 HTTP 传输，可被抓包 | 数据不离开进程，无网络暴露 |
+| **安全性** | API 密钥通过 HTTP 传输，可被抓包 | 默认无网络暴露；可选的 Web 控制台也只监听 `127.0.0.1` |
 | **依赖** | 需要端口监听 + 浏览器 | 自包含可执行文件 |
 | **前端技术** | Vue 3 CDN（单文件 HTML） | React 19 + TypeScript + Tailwind |
 | **功能完整度** | ~80%（多处缺失） | 当前主线能力已覆盖聊天节点、图像节点、配置、人格、记忆、历史、用量与安全发布 |
@@ -641,7 +684,7 @@ npx vite
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    Tauri 桌面窗口 (WebView)                   │
+│            Tauri 桌面窗口 (WebView) / 可选本地浏览器模式         │
 │  ┌───────────────────────────────────────────────────────┐  │
 │  │              React 19 + TypeScript 前端                │  │
 │  │                                                       │  │
@@ -649,11 +692,11 @@ npx vite
 │  │   │ 概览   │ API    │ 配置   │ 人格   │ 记忆/历史  │  │  │
 │  │   └────────┴────────┴────────┴────────┴────────────┘  │  │
 │  │        另含 用量管理 / 评测实验室 / 安全发布中心       │  │
-│  │          Zustand 状态管理 + React.lazy 懒加载          │  │
+│  │   Tauri IPC / HTTP + SSE 运行时桥接 + React.lazy 懒加载 │  │
 │  └──────────────────┬────────────────────────────────────┘  │
-│             Tauri IPC (invoke)                                │
+│    Tauri IPC (桌面) / localhost HTTP + SSE (浏览器可选)       │
 │  ┌──────────────────▼────────────────────────────────────┐  │
-│  │               Rust 后端 (40+ IPC 命令)                 │  │
+│  │               Rust 后端 (40+ IPC 命令 + Web 控制台)     │  │
 │  │  ┌──────────┐ ┌─────────┐ ┌────────┐ ┌────────────┐  │  │
 │  │  │config.rs │ │memory.rs│ │history │ │api_test.rs │  │  │
 │  │  │配置读写  │ │记忆CRUD │ │.rs     │ │连通测试    │  │  │
@@ -663,6 +706,11 @@ npx vite
 │  │       │           │           │       │watcher.rs  │  │  │
 │  │       │           │           │       │文件监听    │  │  │
 │  │       │           │           │       │事件广播    │  │  │
+│  │       │           │           │       └─────┬──────┘  │  │
+│  │       │           │           │       ┌────────────┐  │  │
+│  │       │           │           │       │web_console │  │  │
+│  │       │           │           │       │.rs         │  │  │
+│  │       │           │           │       │本地HTTP/SSE│  │  │
 │  │       │           │           │       └─────┬──────┘  │  │
 │  └───────┼───────────┼───────────┼─────────────┼─────────┘  │
 └──────────┼───────────┼───────────┼─────────────┼─────────────┘
@@ -692,7 +740,7 @@ npx vite
 
 ### 前后端如何通信
 
-Tauri 应用的前后端运行在 **同一个进程** 中，不需要 HTTP 或 WebSocket。前端通过 `invoke()` 函数直接调用 Rust 函数，就像调用本地函数一样：
+Tauri 桌面模式下，前后端运行在 **同一个进程** 中，不需要 HTTP 或 WebSocket。前端通过 `invoke()` 函数直接调用 Rust 函数，就像调用本地函数一样：
 
 ```typescript
 // 前端调用 Rust 后端（就像调用本地函数）
@@ -713,6 +761,13 @@ const result = await invoke('ping_api', {
 });
 // result = { pass: true, latency_ms: 230, status: 200 }
 ```
+
+浏览器模式下则改走 GUI 自带的本地 Web 控制台：
+
+- 命令调用：`POST /api/invoke/<command>`
+- 事件推送：`GET /events`（SSE）
+- 默认只监听 `127.0.0.1`
+- 前端通过 `runtime-bridge.ts` 自动判断当前是在 Tauri 还是浏览器模式，不需要维护两套页面
 
 ### 数据流示意
 
@@ -741,6 +796,8 @@ nekoai-gui/
 ├── README.md                          # 本文件
 ├── package.json                       # 前端依赖声明
 ├── package-lock.json                  # 依赖版本锁定
+├── scripts/
+│   └── ensure-rollup-native.mjs       # 构建前自动补当前平台 Rollup 原生依赖
 ├── vite.config.ts                     # Vite 构建配置
 ├── tsconfig.json                      # TypeScript 配置
 ├── node_modules/                      # 前端依赖包 (npm install 自动生成)
@@ -784,6 +841,7 @@ nekoai-gui/
 │   ├── lib/
 │   │   ├── types.ts                   #     所有 TypeScript 接口定义（含图像节点 / 人格评测类型）
 │   │   ├── tauri-commands.ts          #     Tauri IPC 调用包装
+│   │   ├── runtime-bridge.ts          #     Tauri IPC / 浏览器 HTTP+SSE 兼容桥接
 │   │   ├── human-issues.ts            #     技术项 -> 人话解释映射
 │   │   └── json-transfer.ts           #     统一 JSON 导入/导出
 │   │
@@ -796,6 +854,7 @@ nekoai-gui/
     └── src/
         ├── main.rs                    #     入口，注册 IPC 命令
         ├── state.rs                   #     AppState（插件目录路径管理）
+        ├── ui_events.rs               #     桌面事件 + SSE 统一事件总线
         ├── data_root.rs               #     EXE 同级数据根目录管理（NekoAI-GUI-Data）
         ├── gui_prefs.rs               #     GUI 本地偏好（如 API 健康评分权重）
         ├── ops.rs                     #     安全发布中心后端能力（快照/模板/自检/审计）
@@ -805,6 +864,7 @@ nekoai-gui/
         ├── api_test.rs                #     API 连通性测试（reqwest HTTP）
         ├── personality_ab.rs          #     人格 A/B 快速试跑后端（执行 / 记录 / 删除）
         ├── personality_eval.rs        #     人格评测实验室后端
+        ├── web_console.rs             #     本地 Web 控制台（HTTP / SSE / 前端静态资源）
         └── watcher.rs                 #     文件变更监听（notify crate）
 ```
 
@@ -846,7 +906,7 @@ NekoAI-GUI-Data/
 
 ## Rust 后端 IPC 命令一览
 
-前端通过 `invoke()` 调用这些命令，相当于旧版的 REST API，但不走网络：
+前端通过 `invoke()` 调用这些命令，相当于旧版的 REST API，但不走网络；当你开启本地 Web 控制台并从浏览器访问时，这些命令会被映射到本地 `POST /api/invoke/<command>`。
 
 ### 配置管理
 
@@ -855,9 +915,12 @@ NekoAI-GUI-Data/
 | `get_config` | `key` | JSON 数据 | 读取配置。key: `runtime` / `runtimeSchema` / `api` / `imageApi` / `groupPersonality` / `privatePersonality` / `commands` / `usage` |
 | `save_config` | `key`, `data` | - | 写入配置，**写入前自动备份**到 `.backups/` |
 | `get_system_info` | - | 系统信息 | 插件目录路径 + 8 个配置文件的健康状态 |
+| `get_manager_context` | - | 运行上下文 | 读取当前后端已连接的插件目录，供浏览器模式自动继承 |
 | `set_plugin_dir` | `dir` | - | 设置插件目录，验证存在且包含配置文件 |
 | `get_api_health_weights` | - | 本地偏好 | 读取 GUI 本地保存的 API 健康评分权重（支持从旧 runtime 迁移） |
 | `save_api_health_weights` | `weights` | - | 保存 GUI 本地健康评分权重，不写回插件运行配置 |
+| `get_web_console_status` | - | 本地服务状态 | 读取本地 Web 控制台开关、端口、运行状态与访问地址 |
+| `save_web_console_settings` | `settings` | 本地服务状态 | 保存并应用本地 Web 控制台设置（开关 / 端口） |
 
 ### 记忆管理
 
@@ -922,6 +985,7 @@ NekoAI-GUI-Data/
 - 复制项目到另一台机器时 **不需要** 复制 `node_modules/`，在新机器上重新 `npm install` 即可
 - 如果出了问题，删掉 `node_modules/` 重新 `npm install`
 - `package-lock.json` 锁定了精确版本号，保证所有人安装结果一致
+- `npm run build` / `npm run dev` 会先运行 `scripts/ensure-rollup-native.mjs`，自动检查当前平台的 Rollup 原生依赖是否缺失
 
 ### 主要依赖（我们直接用的）
 
@@ -950,7 +1014,7 @@ NekoAI-GUI-Data/
 | `config_editor.html` | 配置编辑页 | 从旧版基础配置扩展到 12 节，并接入 `runtime_schema.json` 的说明、迁移提醒与差异概览 |
 | `dashboard.html` | 概览仪表盘 | 新增群组映射标签、API类型分布进度条、配置健康表 |
 | `history_viewer.html` | 历史记录页 | 新增 Recharts 统计图表、4种视图模式、全局搜索 |
-| `NekoAI-GUI-Manager/` | **完全替代** | 从 Node.js 网页变为原生桌面应用，零网络暴露，并覆盖当前主线运维能力 |
+| `NekoAI-GUI-Manager/` | **完全替代** | 从 Node.js 网页变为原生桌面应用；若需要浏览器界面，也可开启新的本地 Web 控制台，继续用浏览器访问同一套 GUI |
 | *(无)* | 人格管理页 | **全新** — 旧版没有独立的人格管理界面 |
 | *(无)* | 命令管理页 | **全新** — 旧版完全没有命令列表管理功能 |
 | *(无)* | 记忆编辑 | **全新** — 旧版只能查看记忆，新版支持内联编辑单条消息 |
@@ -1084,6 +1148,53 @@ Error beforeBuildCommand `npm run build` failed with exit code 2
 
 ---
 
+### 错误 4.5：`Cannot find module @rollup/rollup-win32-x64-msvc` / `@rollup/rollup-linux-x64-gnu`
+
+**典型报错：**
+
+```powershell
+Error: Cannot find module @rollup/rollup-win32-x64-msvc
+```
+
+或：
+
+```bash
+Error: Cannot find module @rollup/rollup-linux-x64-gnu
+```
+
+**原因：** 这是 npm 的可选依赖漏装问题，不是项目源码本身坏了。Rollup 4 会按当前平台加载对应的原生包，偶发情况下 npm 虽然把包写进了 `package-lock.json`，但 `node_modules` 里没真正装上。
+
+**当前仓库的处理方式：**
+
+- `npm run build` / `npm run dev` 会先运行 `scripts/ensure-rollup-native.mjs`
+- 脚本会识别当前平台并尝试自动补装缺失的 Rollup 原生包
+
+**如果仍然失败，手动执行：**
+
+Windows x64：
+
+```powershell
+npm install --no-save @rollup/rollup-win32-x64-msvc@4.59.0
+npx tauri build
+```
+
+Linux x64 glibc：
+
+```bash
+npm install --no-save @rollup/rollup-linux-x64-gnu@4.59.0
+npx tauri build
+```
+
+如果还不行，再做一次干净重装：
+
+```powershell
+Remove-Item -Recurse -Force node_modules -ErrorAction SilentlyContinue
+npm install
+npx tauri build
+```
+
+---
+
 ### 错误 5：WiX 打包失败（`Connection Failed` / 网络错误）
 
 **完整报错：**
@@ -1177,7 +1288,8 @@ npx tsc -b
 
 ```powershell
 # 只构建前端，不编译 Rust（约 15 秒）
-npx vite build
+# 会先自动检查当前平台的 Rollup 原生依赖
+npm run build
 ```
 
 ---
@@ -1191,7 +1303,13 @@ A: 不需要重启 Koishi。保存后在群里发送 `neko.重载配置` 指令�
 A: 旧版是 Node.js 网页应用（需要启动服务 + 浏览器访问），新版是原生桌面应用（双击直接打开）。新版已经覆盖当前主线运维能力，并额外支持聊天节点 / 图像节点双模式、Responses / xAI Web Search、独立图像节点配置、自检与安全发布等能力。
 
 **Q: 可以远程访问吗？**
-A: 新版是桌面应用，不暴露网络端口，不支持也不需要远程访问。如果你需要远程管理，可以使用 SSH + X11 转发，或者继续使用旧版 `NekoAI-GUI-Manager`。
+A: 默认不暴露任何网络端口。现在新增的本地 Web 控制台也只监听 `127.0.0.1`，设计目标是“本机浏览器同步管理”，不是对外远程管理。如果你要远程用，应该自行通过 SSH 隧道 / 远程桌面等方式做受控转发，而不是把它直接暴露到公网或局域网。
+
+**Q: 本地 Web 控制台怎么开？**
+A: 进入 GUI 的“界面与本地服务设置”，打开“本地 Web 控制台”开关并保存。默认地址是 `http://127.0.0.1:32191/`，也可以自己改端口。
+
+**Q: 为什么浏览器模式里没有“📁 浏览”按钮，或者点了不能选文件夹？**
+A: 浏览器环境没有 Tauri 的本地文件夹选择能力，所以浏览器模式下 Setup 会要求你手动输入插件目录绝对路径。如果你是先从桌面端打开 GUI，再开启本地 Web 控制台，浏览器通常会直接继承桌面端已经连接的插件目录。
 
 **Q: 自定义标题栏能显示，但无法拖动或按钮（最小化/最大化/关闭）没反应？**
 A: 先检查两处：
@@ -1207,6 +1325,14 @@ A: 完全可以。本应用读写的是同一组 JSON 文件，但不占用任�
 
 **Q: node_modules 这么大，能删吗？**
 A: 可以。需要时再 `npm install` 就会完整恢复。`package-lock.json` 保证安装结果一致。
+
+**Q: `npx tauri build` 里还是报 Rollup 原生包缺失怎么办？**
+A: 先看报错里缺的是哪个包，例如 Windows 常见是 `@rollup/rollup-win32-x64-msvc`。仓库已经带自动兜底脚本，但如果 npm 当场还是没补上，就手动执行：
+
+```powershell
+npm install --no-save @rollup/rollup-win32-x64-msvc@4.59.0
+npx tauri build
+```
 
 **Q: 不安装 Rust 可以用吗？**
 A: 不安装 Rust 只能构建和调试前端 UI（`npx vite build`），但无法生成可运行的桌面应用。如果只是想看界面效果，用 `npx vite` 启动开发服务器即可在浏览器中预览（数据加载会报错，但 UI 可以看）。

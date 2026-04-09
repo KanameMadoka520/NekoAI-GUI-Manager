@@ -9,6 +9,7 @@
 ## 1. 项目定位与范围
 
 - 本仓库中的 **NekoAI GUI Manager** 是桌面可视化管理工具（Tauri + React）。
+- 当前 GUI 也支持 **可开关的本地 Web 控制台**，可在浏览器中同步操作同一套前端，但后端仍由本地 Tauri 进程承载。
 - 它用于编辑和查看 NekoAI 插件相关配置与数据。
 - 关联插件仓库为 `koishi-plugin-Enhanced-NekoAI`，但 GUI 开发一般只改 `NekoAI GUI Manager/`。
 
@@ -31,6 +32,13 @@
 
 - Tauri v1
 - Rust（配置读写、历史读取、记忆文件、API 测试、文件监听）
+- Axum（本地 Web 控制台的 HTTP / SSE）
+
+### 运行时桥接（新增）
+
+- 桌面模式：前端走 Tauri `invoke/listen`
+- 浏览器模式：前端走本地 `HTTP + SSE`
+- 两者由 `src/lib/runtime-bridge.ts` 做统一分发
 
 ---
 
@@ -58,9 +66,12 @@ NekoAI GUI Manager/
 │  │  └─ useKeyboardShortcuts.ts  # 快捷键
 │  ├─ lib/
 │  │  ├─ types.ts                 # TS 类型定义（含人格 A/B / 评测实验室类型）
-│  │  ├─ tauri-commands.ts        # 前端调用 Tauri 命令封装（含人格 A/B / 评测实验室命令）
+│  │  ├─ tauri-commands.ts        # 前端调用后端命令封装（桌面/浏览器共用）
+│  │  ├─ runtime-bridge.ts        # Tauri IPC / 浏览器 HTTP+SSE 运行时桥接
 │  │  ├─ human-issues.ts          # 技术术语 -> 人话解释映射（供自检/迁移提醒展示）
 │  │  └─ json-transfer.ts         # 统一 JSON 导入/导出（时间戳命名 + 文件读取）
+│  ├─ scripts/
+│  │  └─ ensure-rollup-native.mjs # 构建前自动检查并补装 Rollup 当前平台原生依赖
 │  ├─ stores/
 │  │  └─ uiStore.ts               # UI 持久化设置（主题/缩放/侧栏/漂浮密度）
 │  ├─ components/
@@ -81,6 +92,8 @@ NekoAI GUI Manager/
 │  ├─ src/api_test.rs             # API 连通测试
 │  ├─ src/personality_ab.rs       # 人格 A/B 快速试跑后端
 │  ├─ src/personality_eval.rs     # 人格评测实验室后端（实验执行 / 评分 / 删除）
+│  ├─ src/ui_events.rs            # 桌面事件 + 浏览器 SSE 统一事件总线
+│  ├─ src/web_console.rs          # 本地 Web 控制台（HTTP / SSE / dist 静态资源）
 │  └─ src/watcher.rs              # 文件变更监听（已纳入 image_api_config.json）
 └─ README.md
 ```
@@ -142,6 +155,12 @@ cd "NekoAI GUI Manager"
 npm install
 ```
 
+说明：
+
+- `npm run build` / `npm run dev` 会先执行 `scripts/ensure-rollup-native.mjs`
+- 这个脚本用于兜底 npm 漏装 Rollup 当前平台原生依赖的问题
+- 例如 Windows 常见缺的是 `@rollup/rollup-win32-x64-msvc`
+
 启动开发模式：
 
 ```bash
@@ -185,6 +204,23 @@ npm uninstall @rollup/rollup-linux-x64-gnu
 Remove-Item -Recurse -Force node_modules -ErrorAction SilentlyContinue
 Remove-Item -Force package-lock.json -ErrorAction SilentlyContinue
 npm install
+```
+
+如果你看到的是：
+
+- `Cannot find module @rollup/rollup-win32-x64-msvc`
+- `Cannot find module @rollup/rollup-linux-x64-gnu`
+
+优先重新执行一次：
+
+```bash
+npm run build
+```
+
+因为构建脚本会先自动运行 `scripts/ensure-rollup-native.mjs`。如果仍然失败，再手动执行对应平台的：
+
+```powershell
+npm install --no-save @rollup/rollup-win32-x64-msvc@4.59.0
 ```
 
 ---
@@ -249,6 +285,7 @@ npm install
 - 前端通过 `src/lib/tauri-commands.ts` 调用后端，不要直接绕过
 - 配置写入应保持现有备份机制
 - 不要把密钥打印到日志或错误信息里
+- 如果你改的是“桌面可用 + 浏览器模式也要可用”的能力，不能只改 Tauri `invoke/listen` 路径，还要检查 `src/lib/runtime-bridge.ts`、`src-tauri/src/web_console.rs`、`src-tauri/src/ui_events.rs`
 
 ---
 
@@ -262,6 +299,7 @@ npm install
 - `src-tauri/src/api_test.rs`：连通性测试实现
 - `src-tauri/src/config.rs` + `src-tauri/src/watcher.rs`：配置文件映射、监听文件集合、保存后联动
 - `src-tauri/src/ops.rs`：启动前自检 / 已废弃字段提示 / 快照契约 / 图像节点索引修复
+- `src/lib/runtime-bridge.ts` + `src-tauri/src/web_console.rs` + `src-tauri/src/ui_events.rs`：桌面 / 浏览器双模式桥接、HTTP/SSE 映射与事件同步
 
 ### 当前项目约定（务必遵守）
 
@@ -274,6 +312,8 @@ npm install
 至少手测以下内容：
 
 1. **Setup**：首次目录选择可用，错误路径有提示
+   - 桌面模式下 `📁 浏览` 可用
+   - 浏览器模式下会改为手动输入路径，不应假装还能弹原生文件夹选择器
 2. **API 管理**：
    - 聊天节点模式与图像节点模式都能正常切换
    - 聊天节点：新增/编辑/保存、拖拽后出现“需保存”提示
@@ -326,7 +366,12 @@ npm install
    - 部署包导出可用（目录包 + manifest）
    - dev/test/prod 模板保存/预览/应用可用
    - 启动前自检可跑，自动修复可修项后可重新通过
-10. **构建**：`npm run build` 通过
+10. **本地 Web 控制台**：
+   - 设置页可正确开关
+   - 默认地址为 `127.0.0.1:32191`
+   - 浏览器打开后可正常读取当前插件目录与页面数据
+   - 关闭 GUI 进程后服务不应残留
+11. **构建**：`npm run build` 通过
 
 如果你改到了 Tauri/Rust 层，再额外验证：
 
