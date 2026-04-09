@@ -1510,7 +1510,6 @@ export function ApiManager() {
         title="批量删除"
         message={`确定要删除选中的 ${selected.size} 个节点吗？`}
       />
-      </div>
     </div>
   );
 }
