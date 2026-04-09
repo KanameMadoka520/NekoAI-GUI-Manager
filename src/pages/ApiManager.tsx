@@ -55,6 +55,7 @@ type ApiManagerViewState = {
   healthFilter: 'all' | 'healthy' | 'warning' | 'risk';
   healthSourceFilter: 'all' | 'live' | 'history' | 'mixed' | 'none';
   showAdvancedToolbar: boolean;
+  showNodeHealthPanels: boolean;
 };
 
 const API_MANAGER_VIEW_STORAGE_KEY = 'nekoai-api-manager-view';
@@ -66,6 +67,7 @@ const DEFAULT_API_MANAGER_VIEW_STATE: ApiManagerViewState = {
   healthFilter: 'all',
   healthSourceFilter: 'all',
   showAdvancedToolbar: false,
+  showNodeHealthPanels: false,
 };
 
 function clampScore(v: number) {
@@ -259,6 +261,7 @@ function loadApiManagerViewState(): ApiManagerViewState {
         ? parsed.healthSourceFilter
         : 'all',
       showAdvancedToolbar: parsed.showAdvancedToolbar === true,
+      showNodeHealthPanels: parsed.showNodeHealthPanels === true,
     };
   } catch {
     return DEFAULT_API_MANAGER_VIEW_STATE;
@@ -367,6 +370,7 @@ export function ApiManager() {
   const [weightTimeout, setWeightTimeout] = useState(20);
   const [weightJitter, setWeightJitter] = useState(20);
   const [showAdvancedToolbar, setShowAdvancedToolbar] = useState(initialViewState.showAdvancedToolbar);
+  const [showNodeHealthPanels, setShowNodeHealthPanels] = useState(initialViewState.showNodeHealthPanels);
   const [expandedCards, setExpandedCards] = useState<Set<number>>(new Set());
   const cardRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const imageCardRefs = useRef<Map<number, HTMLDivElement>>(new Map());
@@ -397,8 +401,9 @@ export function ApiManager() {
       healthFilter,
       healthSourceFilter,
       showAdvancedToolbar,
+      showNodeHealthPanels,
     });
-  }, [managerMode, search, imageSearch, healthSort, healthFilter, healthSourceFilter, showAdvancedToolbar]);
+  }, [managerMode, search, imageSearch, healthSort, healthFilter, healthSourceFilter, showAdvancedToolbar, showNodeHealthPanels]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -1164,6 +1169,129 @@ export function ApiManager() {
   return (
     <div className={`flex flex-col h-full ${density.pageGap}`}>
       {modeSwitcher}
+      <div className={`grid grid-cols-2 xl:grid-cols-5 ${density.summaryGrid}`}>
+        <SummaryCard label="节点总数" value={String(nodes.length)} hint="这是你当前可以切换和测试的 API 节点总数。" />
+        <SummaryCard label="活跃节点" value={summary.activeNode} hint={`机器人默认会从 #${activeIndex} 这个节点开始用。`} />
+        <SummaryCard label="健康 / 警告 / 风险" value={`${summary.healthy} / ${summary.warning} / ${summary.risk}`} hint="这是 GUI 按测试结果和历史表现给出的参考分组，不是插件硬限制。" />
+        <SummaryCard label="批量测试" value={batchPinging ? `${batchProgress.done}/${batchProgress.total || nodes.length}` : `${summary.tested} 个结果`} hint={batchPinging ? '正在逐个测试节点可不可用。' : '这里显示的是本次会话里已经拿到的测试结果。'} />
+        <SummaryCard label="保存状态" value={dirty ? '待保存' : '已同步'} hint={dirty ? '你已经改了节点列表或默认节点，但还没真正写回文件。' : '当前编辑内容已经和文件一致。'} tone={dirty ? 'warning' : 'neutral'} />
+      </div>
+
+      <Panel title="操作区" subtitle="常规顺序通常是：新增或修改节点 -> 测试可用性 -> 确认默认节点 -> 最后保存。节点健康明细默认收起，可在这里统一展开。" padding="sm">
+        <div className="flex flex-wrap items-center gap-2">
+          <button onClick={save} disabled={!dirty}
+            className={`px-4 py-2 text-xs rounded-[var(--radius-sm)] font-medium transition-colors cursor-pointer ${dirty ? 'bg-[var(--accent-purple)] text-white hover:opacity-90 pulse-dirty' : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed'}`}
+            title="Ctrl+S">
+            💾 保存
+          </button>
+          <button onClick={() => set({ ...state, nodes: [...nodes, normalizeApiNode({ aiType: 'openai' })] })}
+            className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--accent-purple)] hover:bg-[var(--border-subtle)] transition-colors cursor-pointer">
+            + 新增节点
+          </button>
+          <button onClick={testAll} disabled={batchPinging}
+            className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer">
+            {batchPinging ? `⏳ 正在逐个测试 (${batchProgress.done}/${batchProgress.total || nodes.length})` : '🔍 测试全部节点'}
+          </button>
+          <button
+            onClick={toggleAllApiKeyExpanded}
+            disabled={nodes.length === 0}
+            className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] transition-colors ${nodes.length === 0 ? 'bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed opacity-60' : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer'}`}
+          >
+            {allApiKeyExpanded ? '收起全部 Key 区域' : '展开全部 Key 区域'}
+          </button>
+          <button
+            onClick={() => setShowNodeHealthPanels((v) => !v)}
+            disabled={nodes.length === 0}
+            className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] transition-colors ${nodes.length === 0 ? 'bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed opacity-60' : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer'}`}
+          >
+            {showNodeHealthPanels ? '收起节点健康栏' : '展开节点健康栏'}
+          </button>
+          <div className="flex-1" />
+          <div className="flex items-center gap-2">
+            <button onClick={undo} disabled={!canUndo}
+              className={`px-2.5 py-2 text-xs rounded-[var(--radius-sm)] cursor-pointer transition-colors ${canUndo ? 'text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)]' : 'text-[var(--text-muted)] cursor-not-allowed opacity-40'}`}
+              title="Ctrl+Z">↩ 撤销</button>
+            <button onClick={redo} disabled={!canRedo}
+              className={`px-2.5 py-2 text-xs rounded-[var(--radius-sm)] cursor-pointer transition-colors ${canRedo ? 'text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)]' : 'text-[var(--text-muted)] cursor-not-allowed opacity-40'}`}
+              title="Ctrl+Y">↪ 重做</button>
+            <button
+              onClick={() => setShowAdvancedToolbar((v) => !v)}
+              className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] border cursor-pointer ${showAdvancedToolbar ? 'border-transparent bg-[var(--accent-purple)] text-white' : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+            >
+              {showAdvancedToolbar ? '收起更多操作' : '展开更多操作'}
+            </button>
+          </div>
+        </div>
+
+        {dirty && (
+          <p className="mt-2 text-xs text-[var(--warning)]">当前有未保存改动。只有点保存之后，节点列表和默认节点设置才会真正写回文件。</p>
+        )}
+
+        {showAdvancedToolbar && (
+          <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+            <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-3">
+              <div>
+                <p className="text-xs font-medium text-[var(--text-primary)]">更多操作</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <ImportExportActions
+                  onExport={exportApiConfig}
+                  onImport={importApiConfig}
+                  confirmTitle="导入 API 配置"
+                  size="xs"
+                />
+                <button onClick={() => {
+                  const next = !showAllKeys;
+                  setShowAllKeys(next);
+                  setShowKey(next ? new Set(nodes.map((_, i) => i)) : new Set());
+                }}
+                  className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer">
+                  {showAllKeys ? '🙈 隐藏全部 Key' : '👁 显示全部 Key'}
+                </button>
+                <div className="flex items-center gap-2 text-xs">
+                  <label className="text-[var(--text-muted)]">活跃节点</label>
+                  <input
+                    type="number"
+                    value={activeIndex}
+                    onChange={(e) => set({ ...state, activeIndex: Math.max(0, Math.min(nodes.length - 1, Number(e.target.value))) })}
+                    min={0}
+                    max={Math.max(0, nodes.length - 1)}
+                    className="w-18 px-2 py-1.5 text-xs mono rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none"
+                  />
+                </div>
+                {selected.size > 0 && (
+                  <>
+                    <span className="text-xs text-[var(--text-muted)]">选中 {selected.size} 项</span>
+                    <button onClick={() => setConfirmBulkDelete(true)}
+                      className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[rgba(255,82,82,0.15)] text-[var(--error)] hover:bg-[rgba(255,82,82,0.25)] transition-colors cursor-pointer">
+                      批量删除
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-3">
+              <div>
+                <p className="text-xs font-medium text-[var(--text-primary)]">评分权重</p>
+                <p className="text-[11px] text-[var(--text-muted)] mt-1">这些权重只影响 GUI 里“健康分怎么看”，不会改插件本身的运行行为，也不会写回 `runtime_config.json`。</p>
+              </div>
+              <WeightSlider label="实时" value={weightLive} onChange={setWeightLive} />
+              <WeightSlider label="超时" value={weightTimeout} onChange={setWeightTimeout} />
+              <WeightSlider label="抖动" value={weightJitter} onChange={setWeightJitter} />
+              <div className="text-[11px] text-[var(--text-muted)] mono">历史 自动补足为 {historyWeight}%</div>
+            </div>
+          </div>
+        )}
+      </Panel>
+
+      <div className="rounded-[var(--radius-sm)] border border-[rgba(255,82,82,0.35)] bg-[rgba(255,82,82,0.08)] px-3 py-2">
+        <p className="text-[11px] text-[var(--error)] leading-relaxed">
+          这里最敏感的是 <span className="mono">api_config.json</span>。如果你只是想分享界面截图、差异结果或快照摘要，不一定要把这个文件一起带出去。
+          一旦把 API Key 发错人，通常就只能去原平台删掉或更换密钥。
+        </p>
+      </div>
+
       <div className={`flex flex-1 min-h-0 ${density.pageGap}`}>
       <div className="w-64 flex-shrink-0">
         <Panel title="节点目录" subtitle="先缩小范围，再点进具体节点。这样看起来不会像一整面表单墙。" padding="sm">
@@ -1313,124 +1441,7 @@ export function ApiManager() {
         </Panel>
       </div>
 
-      <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
-        <div className={`grid grid-cols-2 xl:grid-cols-5 ${density.summaryGrid} mb-4`}>
-          <SummaryCard label="节点总数" value={String(nodes.length)} hint="这是你当前可以切换和测试的 API 节点总数。" />
-          <SummaryCard label="活跃节点" value={summary.activeNode} hint={`机器人默认会从 #${activeIndex} 这个节点开始用。`} />
-          <SummaryCard label="健康 / 警告 / 风险" value={`${summary.healthy} / ${summary.warning} / ${summary.risk}`} hint="这是 GUI 按测试结果和历史表现给出的参考分组，不是插件硬限制。" />
-          <SummaryCard label="批量测试" value={batchPinging ? `${batchProgress.done}/${batchProgress.total || nodes.length}` : `${summary.tested} 个结果`} hint={batchPinging ? '正在逐个测试节点可不可用。' : '这里显示的是本次会话里已经拿到的测试结果。'} />
-          <SummaryCard label="保存状态" value={dirty ? '待保存' : '已同步'} hint={dirty ? '你已经改了节点列表或默认节点，但还没真正写回文件。' : '当前编辑内容已经和文件一致。'} tone={dirty ? 'warning' : 'neutral'} />
-        </div>
-
-        <Panel title="操作区" subtitle="常规顺序通常是：新增或修改节点 -> 测试可用性 -> 确认默认节点 -> 最后保存。" padding="sm">
-          <div className="flex flex-wrap items-center gap-2">
-            <button onClick={save} disabled={!dirty}
-              className={`px-4 py-2 text-xs rounded-[var(--radius-sm)] font-medium transition-colors cursor-pointer ${dirty ? 'bg-[var(--accent-purple)] text-white hover:opacity-90 pulse-dirty' : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed'}`}
-              title="Ctrl+S">
-              💾 保存
-            </button>
-            <button onClick={() => set({ ...state, nodes: [...nodes, normalizeApiNode({ aiType: 'openai' })] })}
-              className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--accent-purple)] hover:bg-[var(--border-subtle)] transition-colors cursor-pointer">
-              + 新增节点
-            </button>
-            <button onClick={testAll} disabled={batchPinging}
-              className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer">
-              {batchPinging ? `⏳ 正在逐个测试 (${batchProgress.done}/${batchProgress.total || nodes.length})` : '🔍 测试全部节点'}
-            </button>
-            <button
-              onClick={toggleAllApiKeyExpanded}
-              disabled={nodes.length === 0}
-              className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] transition-colors ${nodes.length === 0 ? 'bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed opacity-60' : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer'}`}
-            >
-              {allApiKeyExpanded ? '收起全部 Key 区域' : '展开全部 Key 区域'}
-            </button>
-            <div className="flex-1" />
-            <div className="flex items-center gap-2">
-              <button onClick={undo} disabled={!canUndo}
-                className={`px-2.5 py-2 text-xs rounded-[var(--radius-sm)] cursor-pointer transition-colors ${canUndo ? 'text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)]' : 'text-[var(--text-muted)] cursor-not-allowed opacity-40'}`}
-                title="Ctrl+Z">↩ 撤销</button>
-              <button onClick={redo} disabled={!canRedo}
-                className={`px-2.5 py-2 text-xs rounded-[var(--radius-sm)] cursor-pointer transition-colors ${canRedo ? 'text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)]' : 'text-[var(--text-muted)] cursor-not-allowed opacity-40'}`}
-                title="Ctrl+Y">↪ 重做</button>
-              <button
-                onClick={() => setShowAdvancedToolbar((v) => !v)}
-                className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] border cursor-pointer ${showAdvancedToolbar ? 'border-transparent bg-[var(--accent-purple)] text-white' : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
-              >
-                {showAdvancedToolbar ? '收起更多操作' : '展开更多操作'}
-              </button>
-            </div>
-          </div>
-
-          {dirty && (
-            <p className="mt-2 text-xs text-[var(--warning)]">当前有未保存改动。只有点保存之后，节点列表和默认节点设置才会真正写回文件。</p>
-          )}
-
-          {showAdvancedToolbar && (
-            <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-              <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-3">
-                <div>
-                  <p className="text-xs font-medium text-[var(--text-primary)]">更多操作</p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <ImportExportActions
-                    onExport={exportApiConfig}
-                    onImport={importApiConfig}
-                    confirmTitle="导入 API 配置"
-                    size="xs"
-                  />
-                  <button onClick={() => {
-                    const next = !showAllKeys;
-                    setShowAllKeys(next);
-                    setShowKey(next ? new Set(nodes.map((_, i) => i)) : new Set());
-                  }}
-                    className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer">
-                    {showAllKeys ? '🙈 隐藏全部 Key' : '👁 显示全部 Key'}
-                  </button>
-                  <div className="flex items-center gap-2 text-xs">
-                    <label className="text-[var(--text-muted)]">活跃节点</label>
-                    <input
-                      type="number"
-                      value={activeIndex}
-                      onChange={(e) => set({ ...state, activeIndex: Math.max(0, Math.min(nodes.length - 1, Number(e.target.value))) })}
-                      min={0}
-                      max={Math.max(0, nodes.length - 1)}
-                      className="w-18 px-2 py-1.5 text-xs mono rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none"
-                    />
-                  </div>
-                  {selected.size > 0 && (
-                    <>
-                      <span className="text-xs text-[var(--text-muted)]">选中 {selected.size} 项</span>
-                      <button onClick={() => setConfirmBulkDelete(true)}
-                        className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[rgba(255,82,82,0.15)] text-[var(--error)] hover:bg-[rgba(255,82,82,0.25)] transition-colors cursor-pointer">
-                        批量删除
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-3">
-                <div>
-                  <p className="text-xs font-medium text-[var(--text-primary)]">评分权重</p>
-                  <p className="text-[11px] text-[var(--text-muted)] mt-1">这些权重只影响 GUI 里“健康分怎么看”，不会改插件本身的运行行为，也不会写回 `runtime_config.json`。</p>
-                </div>
-                <WeightSlider label="实时" value={weightLive} onChange={setWeightLive} />
-                <WeightSlider label="超时" value={weightTimeout} onChange={setWeightTimeout} />
-                <WeightSlider label="抖动" value={weightJitter} onChange={setWeightJitter} />
-                <div className="text-[11px] text-[var(--text-muted)] mono">历史 自动补足为 {historyWeight}%</div>
-              </div>
-            </div>
-          )}
-        </Panel>
-
-        <div className="mb-3 rounded-[var(--radius-sm)] border border-[rgba(255,82,82,0.35)] bg-[rgba(255,82,82,0.08)] px-3 py-2">
-          <p className="text-[11px] text-[var(--error)] leading-relaxed">
-            这里最敏感的是 <span className="mono">api_config.json</span>。如果你只是想分享界面截图、差异结果或快照摘要，不一定要把这个文件一起带出去。
-            一旦把 API Key 发错人，通常就只能去原平台删掉或更换密钥。
-          </p>
-        </div>
-
-        <div className="flex-1 overflow-y-auto pr-1">
+      <div className="flex-1 min-w-0 overflow-y-auto pr-1">
           {nodes.length === 0 ? (
             <div className="flex items-center justify-center h-full rounded-[var(--radius)] border border-dashed border-[var(--border-subtle)]">
               <p className="text-sm text-[var(--text-muted)]">你这里还没有任何 API 节点。先点“新增节点”，把 URL、Key 和模型名填进去，再测试它可不可用。</p>
@@ -1463,6 +1474,7 @@ export function ApiManager() {
                       pingResult={pingResults.get(i)}
                       health={nodeHealthMap.get(i)}
                       showKey={showKey.has(i)}
+                      showHealthPanel={showNodeHealthPanels}
                       onUpdate={updateNode}
                       onRemove={removeNode}
                       onClone={cloneNode}
@@ -1824,7 +1836,7 @@ function WeightSlider({ label, value, onChange }: { label: string; value: number
 }
 
 const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, density, isActive, isDuplicate, isSelected, isExpanded, isPinging, pingResult, health, showKey,
-  onUpdate, onRemove, onClone, onInsert, onTest, onApplyDefaultUrlSuffix, onSetActive, onToggleSelect, onToggleKey, onToggleExpanded, cardRef,
+  showHealthPanel, onUpdate, onRemove, onClone, onInsert, onTest, onApplyDefaultUrlSuffix, onSetActive, onToggleSelect, onToggleKey, onToggleExpanded, cardRef,
 }: {
   id: number;
   node: ApiNode;
@@ -1838,6 +1850,7 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
   pingResult?: PingResult;
   health?: NodeHealth;
   showKey: boolean;
+  showHealthPanel: boolean;
   onUpdate: (i: number, field: keyof ApiNode, value: ApiNode[keyof ApiNode]) => void;
   onRemove: (i: number) => void;
   onClone: (i: number) => void;
@@ -1923,7 +1936,7 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
         </div>
       </div>
 
-      <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+      <div className={`mt-4 grid gap-3 ${showHealthPanel ? 'xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]' : 'grid-cols-1'}`}>
         <div className="space-y-3">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
@@ -2024,6 +2037,7 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
           )}
         </div>
 
+        {showHealthPanel && (
         <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-3">
           <div>
             <div className="flex items-center justify-between gap-2">
@@ -2038,6 +2052,7 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
           <MetricBar label="超时" score={health?.timeoutScore} weight={health?.timeoutWeight ?? 0} color="var(--warning)" hint={health?.timeoutScore !== null && (health?.timeoutScore ?? 0) < 80 ? '超时占比偏高' : undefined} />
           <MetricBar label="抖动" score={health?.jitterScore} weight={health?.jitterWeight ?? 0} color="var(--success)" hint={health?.jitterScore !== null && (health?.jitterScore ?? 0) < 80 ? '响应波动偏大' : undefined} />
         </div>
+        )}
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-1.5">
