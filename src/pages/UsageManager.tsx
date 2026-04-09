@@ -271,6 +271,12 @@ type UsageEventActiveFilterChip = {
   label: string;
 };
 
+type UsageEventFilterPreset = {
+  id: string;
+  name: string;
+  filters: UsageManagerViewState;
+};
+
 const DEFAULT_USAGE_MANAGER_VIEW_STATE: UsageManagerViewState = {
   usageChartGranularity: 'hour',
   usageEventSearch: '',
@@ -283,6 +289,32 @@ const DEFAULT_USAGE_MANAGER_VIEW_STATE: UsageManagerViewState = {
   usageEventBucketFilter: '',
   usageEventPageSize: 100,
 };
+const USAGE_EVENT_FILTER_PRESETS_STORAGE_KEY = 'nekoai-usage-event-filter-presets';
+const BUILTIN_USAGE_EVENT_PRESETS: UsageEventFilterPreset[] = [
+  {
+    id: 'builtin-denied-only',
+    name: '只看拒绝事件',
+    filters: { ...DEFAULT_USAGE_MANAGER_VIEW_STATE, usageEventAllowedFilter: 'denied' },
+  },
+  {
+    id: 'builtin-image-quota-denied',
+    name: '只看图像额度不足',
+    filters: {
+      ...DEFAULT_USAGE_MANAGER_VIEW_STATE,
+      usageEventCategoryFilter: 'image',
+      usageEventAllowedFilter: 'denied',
+      usageEventReasonFilter: 'quota-denied',
+    },
+  },
+  {
+    id: 'builtin-request-failed',
+    name: '只看请求失败',
+    filters: {
+      ...DEFAULT_USAGE_MANAGER_VIEW_STATE,
+      usageEventReasonFilter: 'request-failed',
+    },
+  },
+];
 
 function loadUsageManagerViewState(): UsageManagerViewState {
   try {
@@ -320,6 +352,39 @@ function loadUsageManagerViewState(): UsageManagerViewState {
 function persistUsageManagerViewState(next: UsageManagerViewState) {
   try {
     localStorage.setItem(USAGE_MANAGER_VIEW_STORAGE_KEY, JSON.stringify(next));
+  } catch {
+    // ignore local storage failure
+  }
+}
+
+function loadUsageEventFilterPresets(): UsageEventFilterPreset[] {
+  try {
+    const raw = localStorage.getItem(USAGE_EVENT_FILTER_PRESETS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((item) => item && typeof item === 'object' && !Array.isArray(item))
+      .map((item) => {
+        const preset = item as Partial<UsageEventFilterPreset>;
+        return {
+          id: String(preset.id || ''),
+          name: String(preset.name || '').trim(),
+          filters: {
+            ...DEFAULT_USAGE_MANAGER_VIEW_STATE,
+            ...(preset.filters && typeof preset.filters === 'object' ? preset.filters : {}),
+          },
+        } satisfies UsageEventFilterPreset;
+      })
+      .filter((preset) => preset.id && preset.name);
+  } catch {
+    return [];
+  }
+}
+
+function persistUsageEventFilterPresets(next: UsageEventFilterPreset[]) {
+  try {
+    localStorage.setItem(USAGE_EVENT_FILTER_PRESETS_STORAGE_KEY, JSON.stringify(next));
   } catch {
     // ignore local storage failure
   }
@@ -489,6 +554,8 @@ export function UsageManager() {
   const [usageEventBucketFilter, setUsageEventBucketFilter] = useState(initialViewState.usageEventBucketFilter);
   const [usageEventPage, setUsageEventPage] = useState(0);
   const [usageEventPageSize, setUsageEventPageSize] = useState<(typeof USAGE_EVENT_PAGE_SIZES)[number]>(initialViewState.usageEventPageSize);
+  const [usageEventPresetName, setUsageEventPresetName] = useState('');
+  const [usageEventFilterPresets, setUsageEventFilterPresets] = useState<UsageEventFilterPreset[]>(() => loadUsageEventFilterPresets());
   const [pendingQuotaFocus, setPendingQuotaFocus] = useState<{ category: 'chat' | 'image'; userId: string } | null>(null);
   const [highlightedQuotaKey, setHighlightedQuotaKey] = useState('');
 
@@ -556,6 +623,10 @@ export function UsageManager() {
     usageEventBucketFilter,
     usageEventPageSize,
   ]);
+
+  useEffect(() => {
+    persistUsageEventFilterPresets(usageEventFilterPresets);
+  }, [usageEventFilterPresets]);
 
   async function load() {
     setLoading(true);
@@ -1481,6 +1552,60 @@ export function UsageManager() {
     setConfirmDropUnknown(false);
   }
 
+  function applyUsageEventFilterState(filters: UsageManagerViewState) {
+    setUsageChartGranularity(filters.usageChartGranularity);
+    setUsageEventSearch(filters.usageEventSearch);
+    setUsageEventCategoryFilter(filters.usageEventCategoryFilter);
+    setUsageEventAllowedFilter(filters.usageEventAllowedFilter);
+    setUsageEventScopeFilter(filters.usageEventScopeFilter);
+    setUsageEventActionFilter(filters.usageEventActionFilter);
+    setUsageEventReasonFilter(filters.usageEventReasonFilter);
+    setUsageEventUserFilter(filters.usageEventUserFilter);
+    setUsageEventBucketFilter(filters.usageEventBucketFilter);
+    setUsageEventPageSize(filters.usageEventPageSize);
+    setUsageEventPage(0);
+  }
+
+  function buildCurrentUsageEventFilterState(): UsageManagerViewState {
+    return {
+      usageChartGranularity,
+      usageEventSearch,
+      usageEventCategoryFilter,
+      usageEventAllowedFilter,
+      usageEventScopeFilter,
+      usageEventActionFilter,
+      usageEventReasonFilter,
+      usageEventUserFilter,
+      usageEventBucketFilter,
+      usageEventPageSize,
+    };
+  }
+
+  function saveCurrentUsageEventPreset() {
+    const name = usageEventPresetName.trim();
+    if (!name) {
+      addToast('warning', '请先给这个运维预设起一个名字');
+      return;
+    }
+    const hasAnyFilter = usageEventActiveFilterSummary.length > 0;
+    if (!hasAnyFilter) {
+      addToast('warning', '当前没有任何筛选条件，不建议保存成运维预设');
+      return;
+    }
+    const nextPreset: UsageEventFilterPreset = {
+      id: `custom-${Date.now()}`,
+      name,
+      filters: buildCurrentUsageEventFilterState(),
+    };
+    setUsageEventFilterPresets((prev) => [nextPreset, ...prev.filter((item) => item.name !== name)].slice(0, 20));
+    setUsageEventPresetName('');
+    addToast('success', `已保存运维预设：${name}`);
+  }
+
+  function deleteUsageEventPreset(id: string) {
+    setUsageEventFilterPresets((prev) => prev.filter((item) => item.id !== id));
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -1760,6 +1885,60 @@ export function UsageManager() {
                 )}
               </div>
               <p className="mt-2 text-[11px] text-[var(--text-muted)]">明细按时间倒序显示。点击表格里的 QQ 会锁定该用户，点击上面的筛选标签可单独移除对应条件；这些筛选和粒度会自动记住，刷新后仍保留。</p>
+            </div>
+
+            <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] px-4 py-3 space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs text-[var(--text-muted)]">内置运维预设</span>
+                {BUILTIN_USAGE_EVENT_PRESETS.map((preset) => (
+                  <button
+                    key={preset.id}
+                    onClick={() => applyUsageEventFilterState(preset.filters)}
+                    className="px-2.5 py-1.5 text-[11px] rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+                  >
+                    {preset.name}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  type="text"
+                  value={usageEventPresetName}
+                  onChange={(e) => setUsageEventPresetName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') saveCurrentUsageEventPreset(); }}
+                  placeholder="把当前筛选保存成运维预设，例如：群105083735拒绝事件"
+                  className="min-w-[260px] flex-1 px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
+                />
+                <button
+                  onClick={saveCurrentUsageEventPreset}
+                  className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-white hover:opacity-90 cursor-pointer"
+                >
+                  保存当前筛选为预设
+                </button>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                {usageEventFilterPresets.length > 0 ? usageEventFilterPresets.map((preset) => (
+                  <div key={preset.id} className="inline-flex items-center gap-1 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-2 py-1">
+                    <button
+                      onClick={() => applyUsageEventFilterState(preset.filters)}
+                      className="text-[11px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+                    >
+                      {preset.name}
+                    </button>
+                    <button
+                      onClick={() => deleteUsageEventPreset(preset.id)}
+                      className="text-[11px] text-[var(--text-muted)] hover:text-[var(--error)] cursor-pointer"
+                      title="删除这个自定义预设"
+                    >
+                      ×
+                    </button>
+                  </div>
+                )) : (
+                  <span className="text-[11px] text-[var(--text-muted)]">你还没有自定义运维预设。筛好一次后可以直接保存，下次一键套用。</span>
+                )}
+              </div>
             </div>
 
             <div className="overflow-hidden rounded-[var(--radius-sm)] border border-[var(--border-subtle)]">
