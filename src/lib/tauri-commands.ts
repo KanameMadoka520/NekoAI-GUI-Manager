@@ -29,6 +29,9 @@ export const setPluginDir = (dir: string) =>
 export const openPathInExplorer = (path: string) =>
   invokeCompat<void>('open_path_in_explorer', { path });
 
+export const openUrlInBrowser = (url: string) =>
+  invokeCompat<void>('open_url_in_browser', { url });
+
 export const getApiHealthWeights = () =>
   invokeCompat<ApiHealthWeights>('get_api_health_weights');
 

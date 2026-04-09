@@ -32,6 +32,7 @@ fn main() {
             config::get_manager_context,
             config::set_plugin_dir,
             config::open_path_in_explorer,
+            config::open_url_in_browser,
             gui_prefs::get_api_health_weights,
             gui_prefs::save_api_health_weights,
             memory::list_memory,

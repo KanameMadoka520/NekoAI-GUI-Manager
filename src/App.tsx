@@ -10,7 +10,7 @@ import { ConfirmDialog } from './components/common/ConfirmDialog';
 import { Setup } from './pages/Setup';
 import { useKeyboardShortcuts, shortcutList } from './hooks/useKeyboardShortcuts';
 import { useFileWatcher } from './hooks/useFileWatcher';
-import { setPluginDir, runStartupSelfCheck, applySelfCheckFixes, getManagerContext, getWebConsoleStatus, saveWebConsoleSettings } from './lib/tauri-commands';
+import { setPluginDir, runStartupSelfCheck, applySelfCheckFixes, getManagerContext, getWebConsoleStatus, saveWebConsoleSettings, openUrlInBrowser } from './lib/tauri-commands';
 import { isTauriRuntime } from './lib/runtime-bridge';
 import type { SelfCheckReport, WebConsoleStatus } from './lib/types';
 import { explainSelfCheckItem } from './lib/human-issues';
@@ -119,6 +119,7 @@ function App() {
   const [activePage, setActivePage] = useState<PageId>(() => loadLastActivePage());
   const [showHelp, setShowHelp] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showWebConsolePanel, setShowWebConsolePanel] = useState(false);
   const [pendingConfigRefresh, setPendingConfigRefresh] = useState(false);
   const [startupCheck, setStartupCheck] = useState<SelfCheckReport | null>(null);
   const [showStartupCheck, setShowStartupCheck] = useState(false);
@@ -126,7 +127,6 @@ function App() {
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [pendingLeaveAction, setPendingLeaveAction] = useState<PendingLeaveAction>(null);
   const [webConsoleStatus, setWebConsoleStatus] = useState<WebConsoleStatus | null>(null);
-  const [webConsoleEnabledDraft, setWebConsoleEnabledDraft] = useState(false);
   const [webConsolePortDraft, setWebConsolePortDraft] = useState('32191');
   const [webConsoleBusy, setWebConsoleBusy] = useState(false);
   const { title, subtitle } = pageTitles[activePage];
@@ -156,6 +156,9 @@ function App() {
     const port = webConsolePortDraft.trim() || '32191';
     return `http://127.0.0.1:${port}/`;
   }, [webConsolePortDraft]);
+  const webConsolePortParsed = useMemo(() => Number.parseInt(webConsolePortDraft.trim(), 10), [webConsolePortDraft]);
+  const webConsoleRunning = webConsoleStatus?.running === true;
+  const webConsolePortChangedWhileRunning = webConsoleRunning && Number.isFinite(webConsolePortParsed) && webConsoleStatus?.port !== webConsolePortParsed;
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', settings.theme);
@@ -255,7 +258,6 @@ function App() {
     try {
       const status = await getWebConsoleStatus();
       setWebConsoleStatus(status);
-      setWebConsoleEnabledDraft(status.enabled);
       setWebConsolePortDraft(String(status.port || 32191));
     } catch (e: any) {
       addToast('error', `加载本地 Web 控制台状态失败: ${e?.message ?? e}`);
@@ -263,9 +265,9 @@ function App() {
   }, [addToast]);
 
   useEffect(() => {
-    if (!showSettings || phase !== 'ready') return;
+    if (!showWebConsolePanel || phase !== 'ready') return;
     void loadWebConsole();
-  }, [showSettings, phase, loadWebConsole]);
+  }, [showWebConsolePanel, phase, loadWebConsole]);
 
   const ready = phase === 'ready';
   const ambientEnabled = ready && (activePage === 'dashboard' || activePage === 'ops');
@@ -319,7 +321,15 @@ function App() {
     }
   }
 
-  async function handleSaveWebConsole() {
+  async function openWebConsoleExternally(target: string) {
+    if (runningInTauri) {
+      await openUrlInBrowser(target);
+      return;
+    }
+    window.open(target, '_blank', 'noopener,noreferrer');
+  }
+
+  async function handleToggleWebConsole() {
     const parsedPort = Number.parseInt(webConsolePortDraft.trim(), 10);
     if (!Number.isFinite(parsedPort) || parsedPort < 1024 || parsedPort > 65535) {
       addToast('warning', '本地 Web 控制台端口必须是 1024 到 65535 之间的整数');
@@ -328,20 +338,22 @@ function App() {
 
     setWebConsoleBusy(true);
     try {
-      const status = await saveWebConsoleSettings({
-        enabled: webConsoleEnabledDraft,
-        port: parsedPort,
-      });
+      const shouldEnable = !webConsoleRunning || webConsolePortChangedWhileRunning;
+      await saveWebConsoleSettings({ enabled: shouldEnable, port: parsedPort });
+      await new Promise((resolve) => window.setTimeout(resolve, 180));
+      const status = await getWebConsoleStatus();
       setWebConsoleStatus(status);
-      setWebConsoleEnabledDraft(status.enabled);
       setWebConsolePortDraft(String(status.port));
-      if (status.enabled && status.running) {
-        addToast('success', `本地 Web 控制台已启动：${status.url}`);
+      if (shouldEnable && status.enabled && status.running) {
+        addToast('success', webConsolePortChangedWhileRunning ? `本地 Web 控制台已切换到新端口：${status.url}` : `本地 Web 控制台已启动：${status.url}`);
+        await openWebConsoleExternally(status.url);
+      } else if (shouldEnable) {
+        addToast('error', '本地 Web 控制台未能稳定启动，请先点“刷新状态”再看是否仍为未运行');
       } else {
         addToast('success', '本地 Web 控制台已关闭');
       }
     } catch (e: any) {
-      addToast('error', `保存本地 Web 控制台设置失败: ${e?.message ?? e}`);
+      addToast('error', `切换本地 Web 控制台失败: ${e?.message ?? e}`);
     } finally {
       setWebConsoleBusy(false);
     }
@@ -357,9 +369,16 @@ function App() {
     }
   }
 
-  function handleOpenWebConsoleUrl() {
-    const target = webConsoleStatus?.url ?? webConsoleUrlPreview;
-    window.open(target, '_blank', 'noopener,noreferrer');
+  async function handleOpenWebConsoleUrl() {
+    if (!webConsoleRunning || !webConsoleStatus?.url) {
+      addToast('warning', '本地 Web 控制台尚未运行，请先点击“开启并打开浏览器”');
+      return;
+    }
+    try {
+      await openWebConsoleExternally(webConsoleStatus.url);
+    } catch (e: any) {
+      addToast('error', `打开浏览器失败: ${e?.message ?? e}`);
+    }
   }
 
   function handleSetupComplete() {
@@ -456,6 +475,7 @@ function App() {
             onNavigate={handleNavigate}
             onChangeDir={handleChangeDir}
             onOpenSettings={() => setShowSettings(true)}
+            onOpenWebConsole={() => setShowWebConsolePanel(true)}
             onToggleCollapse={toggleSidebar}
             collapsed={settings.sidebarCollapsed}
             width={settings.sidebarWidth}
@@ -632,15 +652,102 @@ function App() {
             </div>
           </Modal>
 
-          {/* Settings modal */}
-          <Modal open={showSettings} onClose={() => setShowSettings(false)} title="界面与本地服务设置" width="520px">
-            <div className="space-y-5">
+          <Modal open={showWebConsolePanel} onClose={() => setShowWebConsolePanel(false)} title="本地 Web 服务" width="560px">
+            <div className="space-y-4">
               {!runningInTauri && (
                 <div className="rounded-[var(--radius-sm)] border border-[rgba(14,165,233,0.28)] bg-[rgba(14,165,233,0.08)] px-3 py-2.5 text-xs text-[var(--text-secondary)] leading-relaxed">
-                  当前正在使用浏览器访问模式。这里关闭本地 Web 控制台后，当前浏览器页面会在刷新后失去连接。
+                  当前正在浏览器模式下访问本地 Web 服务。若在这里关闭服务，当前浏览器页面刷新后会失去连接。
                 </div>
               )}
 
+              <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-4 space-y-3">
+                <div className="flex items-start justify-between gap-3 flex-wrap">
+                  <div>
+                    <h3 className="text-sm font-semibold text-[var(--text-primary)]">控制台状态</h3>
+                    <p className="text-[11px] text-[var(--text-muted)] mt-1 leading-relaxed">
+                      这里只管理本机 `127.0.0.1` 的浏览器控制台，不对外开放。建议只在你确实需要同时开浏览器操作时启用。
+                    </p>
+                  </div>
+                  <span className={`inline-flex items-center px-2.5 py-1 rounded border text-xs ${webConsoleRunning ? 'border-[rgba(0,230,118,0.35)] text-[var(--success)] bg-[rgba(0,230,118,0.08)]' : 'border-[var(--border-subtle)] text-[var(--text-muted)] bg-[var(--surface-card)]'}`}>
+                    {webConsoleRunning ? '运行中' : '未运行'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-[120px_1fr] gap-3 items-center">
+                  <span className="text-xs text-[var(--text-secondary)]">监听端口</span>
+                  <input
+                    type="number"
+                    min={1024}
+                    max={65535}
+                    value={webConsolePortDraft}
+                    onChange={(e) => setWebConsolePortDraft(e.target.value)}
+                    className="w-full px-3 py-2 text-sm mono rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
+                  />
+
+                  <span className="text-xs text-[var(--text-secondary)]">访问地址</span>
+                  <div className="px-3 py-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] text-xs mono break-all text-[var(--text-secondary)]">
+                    {webConsoleStatus?.url ?? webConsoleUrlPreview}
+                  </div>
+
+                  <span className="text-xs text-[var(--text-secondary)]">当前说明</span>
+                  <div className="flex flex-wrap gap-2 text-[11px] text-[var(--text-secondary)]">
+                    <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--surface-card)]">默认冷门端口：32191</span>
+                    {webConsolePortChangedWhileRunning && (
+                      <span className="px-2 py-1 rounded border border-[rgba(255,171,64,0.35)] text-[var(--warning)] bg-[rgba(255,171,64,0.08)]">
+                        你修改了端口，下一次按钮操作会重启服务到新端口
+                      </span>
+                    )}
+                    {webConsoleStatus?.pluginDir && (
+                      <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--surface-card)] max-w-full">
+                        已连接目录：<span className="mono ml-1">{webConsoleStatus.pluginDir.split(/[\\/]/).filter(Boolean).pop() ?? webConsoleStatus.pluginDir}</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={handleToggleWebConsole}
+                  disabled={webConsoleBusy}
+                  className={`px-4 py-2 text-sm rounded-[var(--radius-sm)] text-white disabled:opacity-60 cursor-pointer ${webConsoleRunning && !webConsolePortChangedWhileRunning ? 'bg-[var(--error)] hover:opacity-90' : 'bg-[var(--accent-purple)] hover:opacity-90'}`}
+                >
+                  {webConsoleBusy
+                    ? '处理中...'
+                    : webConsoleRunning && !webConsolePortChangedWhileRunning
+                      ? '关闭服务'
+                      : webConsoleRunning && webConsolePortChangedWhileRunning
+                        ? '应用新端口并重启'
+                        : '开启并打开浏览器'}
+                </button>
+                <button
+                  onClick={handleOpenWebConsoleUrl}
+                  disabled={!webConsoleRunning || webConsoleBusy}
+                  className="px-4 py-2 text-sm rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-50 cursor-pointer"
+                >
+                  打开浏览器
+                </button>
+                <button
+                  onClick={handleCopyWebConsoleUrl}
+                  disabled={webConsoleBusy}
+                  className="px-4 py-2 text-sm rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-50 cursor-pointer"
+                >
+                  复制地址
+                </button>
+                <button
+                  onClick={() => void loadWebConsole()}
+                  disabled={webConsoleBusy}
+                  className="px-4 py-2 text-sm rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-50 cursor-pointer"
+                >
+                  刷新状态
+                </button>
+              </div>
+            </div>
+          </Modal>
+
+          {/* Settings modal */}
+          <Modal open={showSettings} onClose={() => setShowSettings(false)} title="显示设置" width="420px">
+            <div className="space-y-5">
               <div>
                 <label className="text-sm text-[var(--text-secondary)] mb-3 block">主题</label>
                 <div className="grid grid-cols-3 gap-1.5">
@@ -757,80 +864,6 @@ function App() {
                 <p className="text-[11px] text-[var(--text-muted)] mt-2">
                   调整界面整体大小，包括文字和控件
                 </p>
-              </div>
-
-              <div className="border-t border-[var(--border-subtle)]" />
-
-              <div className="space-y-3">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <label className="text-sm text-[var(--text-secondary)] block">本地 Web 控制台</label>
-                    <p className="text-[11px] text-[var(--text-muted)] mt-1 leading-relaxed">
-                      默认关闭，只监听 <code className="mono">127.0.0.1</code>。开启后可直接用浏览器完整访问当前 GUI，且和桌面端共享同一后端状态与文件监控。GUI 进程退出后服务会一起关闭。
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setWebConsoleEnabledDraft((v) => !v)}
-                    className={`mt-0.5 inline-flex items-center px-3 py-1.5 text-xs rounded-[var(--radius-sm)] border cursor-pointer transition-colors ${webConsoleEnabledDraft ? 'bg-[var(--accent-purple)] text-white border-transparent' : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:text-[var(--text-primary)]'}`}
-                  >
-                    {webConsoleEnabledDraft ? '已开启' : '已关闭'}
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-[120px_1fr] gap-3 items-center">
-                  <span className="text-xs text-[var(--text-secondary)]">监听端口</span>
-                  <input
-                    type="number"
-                    min={1024}
-                    max={65535}
-                    value={webConsolePortDraft}
-                    onChange={(e) => setWebConsolePortDraft(e.target.value)}
-                    className="w-full px-3 py-2 text-sm mono rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
-                  />
-
-                  <span className="text-xs text-[var(--text-secondary)]">访问地址</span>
-                  <div className="space-y-2">
-                    <div className="px-3 py-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-xs mono break-all text-[var(--text-secondary)]">
-                      {webConsoleStatus?.url ?? webConsoleUrlPreview}
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        onClick={handleCopyWebConsoleUrl}
-                        className="px-3 py-1.5 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
-                      >
-                        复制地址
-                      </button>
-                      <button
-                        onClick={handleOpenWebConsoleUrl}
-                        className="px-3 py-1.5 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
-                      >
-                        浏览器打开
-                      </button>
-                      <button
-                        onClick={handleSaveWebConsole}
-                        disabled={webConsoleBusy}
-                        className="px-3 py-1.5 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-white hover:opacity-90 disabled:opacity-60 cursor-pointer"
-                      >
-                        {webConsoleBusy ? '保存中...' : '保存服务设置'}
-                      </button>
-                    </div>
-                  </div>
-
-                  <span className="text-xs text-[var(--text-secondary)]">当前状态</span>
-                  <div className="flex flex-wrap items-center gap-2 text-[11px] text-[var(--text-secondary)]">
-                    <span className={`inline-flex items-center px-2 py-1 rounded border ${webConsoleStatus?.running ? 'border-[rgba(0,230,118,0.35)] text-[var(--success)]' : 'border-[var(--border-subtle)] text-[var(--text-muted)]'}`}>
-                      {webConsoleStatus?.running ? '运行中' : '未运行'}
-                    </span>
-                    <span className="inline-flex items-center px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">
-                      默认冷门端口：32191
-                    </span>
-                    {webConsoleStatus?.pluginDir && (
-                      <span className="inline-flex items-center px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)] max-w-full">
-                        已连接目录：<span className="mono ml-1 truncate">{webConsoleStatus.pluginDir.split(/[\\/]/).filter(Boolean).pop() ?? webConsoleStatus.pluginDir}</span>
-                      </span>
-                    )}
-                  </div>
-                </div>
               </div>
 
               <div className="border-t border-[var(--border-subtle)]" />

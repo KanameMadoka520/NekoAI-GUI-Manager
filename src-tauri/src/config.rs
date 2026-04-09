@@ -188,3 +188,44 @@ pub fn open_path_in_explorer(path: String) -> Result<(), String> {
     #[allow(unreachable_code)]
     Err("当前平台不支持打开目录".to_string())
 }
+
+#[tauri::command]
+pub fn open_url_in_browser(url: String) -> Result<(), String> {
+    let normalized = url.trim();
+    if normalized.is_empty() {
+        return Err("URL 不能为空".to_string());
+    }
+    if !(normalized.starts_with("http://") || normalized.starts_with("https://")) {
+        return Err(format!("暂不支持打开该 URL：{}", normalized));
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("cmd")
+            .args(["/C", "start", "", normalized])
+            .spawn()
+            .map_err(|e| format!("调用默认浏览器失败: {}", e))?;
+        return Ok(());
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(normalized)
+            .spawn()
+            .map_err(|e| format!("调用默认浏览器失败: {}", e))?;
+        return Ok(());
+    }
+
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(normalized)
+            .spawn()
+            .map_err(|e| format!("调用默认浏览器失败: {}", e))?;
+        return Ok(());
+    }
+
+    #[allow(unreachable_code)]
+    Err("当前平台不支持打开浏览器".to_string())
+}

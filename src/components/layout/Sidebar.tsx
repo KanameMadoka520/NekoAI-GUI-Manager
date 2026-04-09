@@ -27,12 +27,13 @@ interface SidebarProps {
   onNavigate: (page: PageId) => void;
   onChangeDir?: () => void;
   onOpenSettings?: () => void;
+  onOpenWebConsole?: () => void;
   onToggleCollapse?: () => void;
   collapsed?: boolean;
   width?: number;
 }
 
-export function Sidebar({ activePage, onNavigate, onChangeDir, onOpenSettings, onToggleCollapse, collapsed = false, width = 224 }: SidebarProps) {
+export function Sidebar({ activePage, onNavigate, onChangeDir, onOpenSettings, onOpenWebConsole, onToggleCollapse, collapsed = false, width = 224 }: SidebarProps) {
   const [clock, setClock] = useState('');
 
   useEffect(() => {
@@ -132,6 +133,17 @@ export function Sidebar({ activePage, onNavigate, onChangeDir, onOpenSettings, o
           >
             <span className="text-xs">🎨</span>
             {!collapsed && <span className="text-[10px]">显示设置</span>}
+          </button>
+        )}
+
+        {onOpenWebConsole && (
+          <button
+            onClick={onOpenWebConsole}
+            className="w-full flex items-center gap-2 px-2 py-2 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] cursor-pointer"
+            title={collapsed ? '本地服务' : undefined}
+          >
+            <span className="text-xs">🌐</span>
+            {!collapsed && <span className="text-[10px]">本地服务</span>}
           </button>
         )}
 
