@@ -1293,9 +1293,9 @@ export function ApiManager() {
         </p>
       </div>
 
-      <div className={`flex items-stretch ${density.pageGap}`}>
-      <div className="w-64 flex-shrink-0 self-stretch">
-        <Panel title="节点目录" subtitle="先缩小范围，再点进具体节点。这样看起来不会像一整面表单墙。" padding="sm">
+      <div className={`flex items-start ${density.pageGap}`}>
+      <div className="w-64 flex-shrink-0 sticky top-0 self-start z-[2]">
+        <Panel title="节点目录" subtitle="这个目录会像悬浮导航一样跟随页面滚动，滚到很下面时也能直接点回来。" padding="sm">
           <div className={density.sectionGap}>
             <SearchBar value={search} onChange={setSearch} placeholder="搜索模型 / 备注 / 类型..." />
 
