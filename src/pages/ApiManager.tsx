@@ -46,6 +46,27 @@ type NodeHealth = {
   jitterWeight: number;
 };
 
+type ApiManagerViewState = {
+  managerMode: 'chat' | 'image';
+  search: string;
+  imageSearch: string;
+  healthSort: 'none' | 'desc' | 'asc';
+  healthFilter: 'all' | 'healthy' | 'warning' | 'risk';
+  healthSourceFilter: 'all' | 'live' | 'history' | 'mixed' | 'none';
+  showAdvancedToolbar: boolean;
+};
+
+const API_MANAGER_VIEW_STORAGE_KEY = 'nekoai-api-manager-view';
+const DEFAULT_API_MANAGER_VIEW_STATE: ApiManagerViewState = {
+  managerMode: 'chat',
+  search: '',
+  imageSearch: '',
+  healthSort: 'none',
+  healthFilter: 'all',
+  healthSourceFilter: 'all',
+  showAdvancedToolbar: false,
+};
+
 function clampScore(v: number) {
   return Math.max(0, Math.min(100, Math.round(v)));
 }
@@ -210,10 +231,45 @@ function getHealthSourceLabel(source: NodeHealth['source'] | undefined) {
   return '无数据';
 }
 
+function getHealthSourceHint(source: NodeHealth['source'] | undefined) {
+  if (source === 'live') return '来自本次窗口里实际点过的节点健康测试';
+  if (source === 'history') return '来自历史调用统计，本次窗口未必重新测过';
+  if (source === 'mixed') return '同时参考了本次测试结果和历史统计';
+  return '还没有可用的实时或历史数据';
+}
+
 function formatHealthBadge(health: NodeHealth | undefined) {
-  if (!health || health.source === 'none') return '--';
-  const short = health.source === 'live' ? '实' : health.source === 'history' ? '历' : '混';
-  return `${short} ${health.score}`;
+  if (!health || health.source === 'none') return '无数据';
+  return `${getHealthSourceLabel(health.source)} ${health.score}分`;
+}
+
+function loadApiManagerViewState(): ApiManagerViewState {
+  try {
+    const raw = localStorage.getItem(API_MANAGER_VIEW_STORAGE_KEY);
+    if (!raw) return DEFAULT_API_MANAGER_VIEW_STATE;
+    const parsed = JSON.parse(raw) as Partial<ApiManagerViewState>;
+    return {
+      managerMode: parsed.managerMode === 'image' ? 'image' : 'chat',
+      search: typeof parsed.search === 'string' ? parsed.search : '',
+      imageSearch: typeof parsed.imageSearch === 'string' ? parsed.imageSearch : '',
+      healthSort: parsed.healthSort === 'asc' || parsed.healthSort === 'desc' ? parsed.healthSort : 'none',
+      healthFilter: parsed.healthFilter === 'healthy' || parsed.healthFilter === 'warning' || parsed.healthFilter === 'risk' ? parsed.healthFilter : 'all',
+      healthSourceFilter: parsed.healthSourceFilter === 'live' || parsed.healthSourceFilter === 'history' || parsed.healthSourceFilter === 'mixed' || parsed.healthSourceFilter === 'none'
+        ? parsed.healthSourceFilter
+        : 'all',
+      showAdvancedToolbar: parsed.showAdvancedToolbar === true,
+    };
+  } catch {
+    return DEFAULT_API_MANAGER_VIEW_STATE;
+  }
+}
+
+function persistApiManagerViewState(next: ApiManagerViewState) {
+  try {
+    localStorage.setItem(API_MANAGER_VIEW_STORAGE_KEY, JSON.stringify(next));
+  } catch {
+    // ignore local storage failure
+  }
 }
 
 function getDensityClass(density: 'compact' | 'standard' | 'spacious') {
@@ -272,6 +328,7 @@ function MetricBar({ label, score, weight, color, hint }: { label: string; score
 export function ApiManager() {
   const addToast = useUiStore((s) => s.addToast);
   const settings = useUiStore((s) => s.settings);
+  const initialViewState = useMemo(() => loadApiManagerViewState(), []);
   const { state, set, reset, undo, redo, canUndo, canRedo } = useUndoRedo<NodeState>({ nodes: [], activeIndex: 0 });
   const {
     state: imageState,
@@ -286,9 +343,9 @@ export function ApiManager() {
   const [imageOriginal, setImageOriginal] = useState('');
   const [originalWeights, setOriginalWeights] = useState('');
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [imageSearch, setImageSearch] = useState('');
-  const [managerMode, setManagerMode] = useState<'chat' | 'image'>('chat');
+  const [search, setSearch] = useState(initialViewState.search);
+  const [imageSearch, setImageSearch] = useState(initialViewState.imageSearch);
+  const [managerMode, setManagerMode] = useState<'chat' | 'image'>(initialViewState.managerMode);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [pingResults, setPingResults] = useState<Map<number, PingResult>>(new Map());
   const [pinging, setPinging] = useState<Set<number>>(new Set());
@@ -298,14 +355,15 @@ export function ApiManager() {
   const [batchPinging, setBatchPinging] = useState(false);
   const [batchProgress, setBatchProgress] = useState({ done: 0, total: 0 });
   const [batchSessionId, setBatchSessionId] = useState<string | null>(null);
-  const [healthSort, setHealthSort] = useState<'none' | 'desc' | 'asc'>('none');
-  const [healthFilter, setHealthFilter] = useState<'all' | 'healthy' | 'warning' | 'risk'>('all');
+  const [healthSort, setHealthSort] = useState<'none' | 'desc' | 'asc'>(initialViewState.healthSort);
+  const [healthFilter, setHealthFilter] = useState<'all' | 'healthy' | 'warning' | 'risk'>(initialViewState.healthFilter);
+  const [healthSourceFilter, setHealthSourceFilter] = useState<'all' | 'live' | 'history' | 'mixed' | 'none'>(initialViewState.healthSourceFilter);
   const [historyMetrics, setHistoryMetrics] = useState<ApiHistoryMetric[]>([]);
   const [runtimeConfig, setRuntimeConfig] = useState<RuntimeConfig | null>(null);
   const [weightLive, setWeightLive] = useState(60);
   const [weightTimeout, setWeightTimeout] = useState(20);
   const [weightJitter, setWeightJitter] = useState(20);
-  const [showAdvancedToolbar, setShowAdvancedToolbar] = useState(false);
+  const [showAdvancedToolbar, setShowAdvancedToolbar] = useState(initialViewState.showAdvancedToolbar);
   const [expandedCards, setExpandedCards] = useState<Set<number>>(new Set());
   const cardRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
@@ -324,6 +382,18 @@ export function ApiManager() {
   const allApiKeyExpanded = nodes.length > 0 && nodes.every((_, i) => expandedCards.has(i));
 
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    persistApiManagerViewState({
+      managerMode,
+      search,
+      imageSearch,
+      healthSort,
+      healthFilter,
+      healthSourceFilter,
+      showAdvancedToolbar,
+    });
+  }, [managerMode, search, imageSearch, healthSort, healthFilter, healthSourceFilter, showAdvancedToolbar]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -907,6 +977,10 @@ export function ApiManager() {
       arr = arr.filter((i) => (nodeHealthMap.get(i)?.level ?? 'risk') === healthFilter);
     }
 
+    if (healthSourceFilter !== 'all') {
+      arr = arr.filter((i) => (nodeHealthMap.get(i)?.source ?? 'none') === healthSourceFilter);
+    }
+
     if (healthSort !== 'none') {
       arr.sort((a, b) => {
         const sa = nodeHealthMap.get(a)?.score ?? 0;
@@ -916,7 +990,16 @@ export function ApiManager() {
     }
 
     return arr;
-  }, [filteredIndices, healthFilter, healthSort, nodeHealthMap]);
+  }, [filteredIndices, healthFilter, healthSourceFilter, healthSort, nodeHealthMap]);
+
+  const activeDirectoryFilters = useMemo(() => {
+    const items: string[] = [];
+    if (search.trim()) items.push(`搜索：${search.trim()}`);
+    if (healthSort !== 'none') items.push(`排序：${healthSort === 'desc' ? '健康分高到低' : '健康分低到高'}`);
+    if (healthFilter !== 'all') items.push(`等级：${healthFilter === 'healthy' ? '健康' : healthFilter === 'warning' ? '警告' : '风险'}`);
+    if (healthSourceFilter !== 'all') items.push(`来源：${getHealthSourceLabel(healthSourceFilter)}`);
+    return items;
+  }, [search, healthSort, healthFilter, healthSourceFilter]);
 
   const grouped = useMemo(() => {
     const groups = new Map<string, number[]>();
@@ -942,10 +1025,24 @@ export function ApiManager() {
     };
   }, [nodes, nodeHealthMap, activeIndex, pingResults]);
 
+  const sourceSummary = useMemo(() => ({
+    live: nodes.filter((_, i) => nodeHealthMap.get(i)?.source === 'live').length,
+    history: nodes.filter((_, i) => nodeHealthMap.get(i)?.source === 'history').length,
+    mixed: nodes.filter((_, i) => nodeHealthMap.get(i)?.source === 'mixed').length,
+    none: nodes.filter((_, i) => (nodeHealthMap.get(i)?.source ?? 'none') === 'none').length,
+  }), [nodes, nodeHealthMap]);
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor),
   );
+
+  function resetDirectoryFilters() {
+    setSearch('');
+    setHealthSort('none');
+    setHealthFilter('all');
+    setHealthSourceFilter('all');
+  }
 
   const modeSwitcher = (
     <Panel
@@ -1047,6 +1144,29 @@ export function ApiManager() {
             </div>
 
             <div className="grid grid-cols-2 gap-2">
+              <select
+                value={healthSourceFilter}
+                onChange={(e) => setHealthSourceFilter(e.target.value as 'all' | 'live' | 'history' | 'mixed' | 'none')}
+                className="px-2 py-2 text-[11px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)]"
+                title="按健康分来源筛选"
+              >
+                <option value="all">来源：全部</option>
+                <option value="live">仅实时</option>
+                <option value="history">仅历史</option>
+                <option value="mixed">仅混合</option>
+                <option value="none">仅无数据</option>
+              </select>
+              <button
+                onClick={resetDirectoryFilters}
+                disabled={activeDirectoryFilters.length === 0}
+                className={`px-2 py-2 text-[11px] rounded-[var(--radius-sm)] border transition-colors ${activeDirectoryFilters.length > 0 ? 'bg-[var(--surface-card)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer' : 'bg-[var(--bg-elevated)] border-[var(--border-subtle)] text-[var(--text-muted)] cursor-not-allowed opacity-60'}`}
+                title="清空目录筛选"
+              >
+                清空筛选
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
               <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2">
                 <p className="text-[10px] text-[var(--text-muted)]">当前显示</p>
                 <p className="text-sm font-medium text-[var(--text-primary)]">{displayedIndices.length}/{nodes.length}</p>
@@ -1062,6 +1182,37 @@ export function ApiManager() {
               <p className="text-[11px] text-[var(--text-secondary)] mt-1 mono break-all">
                 实时 / 历史 / 超时 / 抖动 = {weightLive} / {historyWeight} / {weightTimeout} / {weightJitter}
               </p>
+            </div>
+
+            <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2">
+              <p className="text-[10px] text-[var(--text-muted)]">来源概览</p>
+              <p className="text-[11px] text-[var(--text-secondary)] mt-1">实时 {sourceSummary.live} · 历史 {sourceSummary.history} · 混合 {sourceSummary.mixed} · 无数据 {sourceSummary.none}</p>
+              <p className="text-[10px] text-[var(--text-muted)] mt-1 leading-relaxed">实时表示本窗口刚测过，历史表示沿用历史统计，混合表示两边都参与了评分。</p>
+            </div>
+
+            <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2">
+              <p className="text-[10px] text-[var(--text-muted)]">分数怎么看</p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                <span className="px-1.5 py-0.5 rounded text-[10px]" style={{ background: 'rgba(14,165,233,0.12)', color: 'var(--info)' }}>实时 82分</span>
+                <span className="px-1.5 py-0.5 rounded text-[10px]" style={{ background: 'rgba(251,191,36,0.14)', color: 'var(--warning)' }}>历史 61分</span>
+                <span className="px-1.5 py-0.5 rounded text-[10px]" style={{ background: 'rgba(168,85,247,0.14)', color: 'var(--accent-purple)' }}>混合 88分</span>
+                <span className="px-1.5 py-0.5 rounded text-[10px] bg-[var(--surface-card)] text-[var(--text-muted)]">无数据</span>
+              </div>
+              <p className="text-[10px] text-[var(--text-muted)] mt-2 leading-relaxed">这样刷新回来时不会只看到 20、40 这类裸数字。目录、卡片和详情里的健康分都统一带上来源与“分”字。</p>
+            </div>
+
+            <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 py-2">
+              {activeDirectoryFilters.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {activeDirectoryFilters.map((item) => (
+                    <span key={item} className="px-2 py-1 text-[10px] rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)]">
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[10px] text-[var(--text-muted)] leading-relaxed">当前目录未额外筛选，显示的是全部聊天节点。这里的筛选条件会自动记住，刷新后还能延续。</p>
+              )}
             </div>
           </div>
 
@@ -1089,9 +1240,9 @@ export function ApiManager() {
                         <span className="block truncate text-[10px] text-[var(--text-muted)]">{n.remark || '还没写备注'}</span>
                       </span>
                       <span
-                        className="text-[10px] px-1.5 py-0.5 rounded"
+                        className="text-[10px] px-1.5 py-0.5 rounded whitespace-nowrap"
                         style={{ background: levelMeta.bg, color: levelMeta.color }}
-                        title={health ? `来源：${getHealthSourceLabel(health.source)}${health.reason ? `；${health.reason}` : ''}` : '无数据'}
+                        title={health ? `健康分 ${health.score} 分；来源：${getHealthSourceLabel(health.source)}（${getHealthSourceHint(health.source)}）${health.reason ? `；${health.reason}` : ''}` : '无数据'}
                       >
                         {formatHealthBadge(health)}
                       </span>
@@ -1235,7 +1386,12 @@ export function ApiManager() {
             </div>
           ) : displayedIndices.length === 0 ? (
             <div className="flex items-center justify-center h-full rounded-[var(--radius)] border border-dashed border-[var(--border-subtle)]">
-              <p className="text-sm text-[var(--text-muted)]">当前筛选条件下没有匹配节点。可以清掉搜索词，或者放宽健康等级筛选再试一次。</p>
+              <div className="px-6 text-center">
+                <p className="text-sm text-[var(--text-muted)]">当前筛选条件下没有匹配节点。可以清掉搜索词，或者放宽健康等级 / 来源筛选再试一次。</p>
+                {activeDirectoryFilters.length > 0 && (
+                  <p className="mt-2 text-[11px] text-[var(--text-muted)]">当前条件：{activeDirectoryFilters.join(' / ')}</p>
+                )}
+              </div>
             </div>
           ) : (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
