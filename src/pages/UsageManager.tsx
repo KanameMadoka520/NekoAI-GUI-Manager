@@ -250,6 +250,79 @@ const CHART_COLORS = [
 
 const USAGE_EVENT_RETENTION_LIMIT = 10000;
 const USAGE_EVENT_PAGE_SIZES = [50, 100, 200] as const;
+const USAGE_MANAGER_VIEW_STORAGE_KEY = 'nekoai-usage-manager-view';
+
+type UsageManagerViewState = {
+  usageChartGranularity: 'hour' | 'day' | 'week' | 'month';
+  usageEventSearch: string;
+  usageEventCategoryFilter: 'all' | 'chat' | 'image';
+  usageEventAllowedFilter: 'all' | 'allowed' | 'denied';
+  usageEventScopeFilter: 'all' | 'group' | 'private';
+  usageEventActionFilter: string;
+  usageEventReasonFilter: string;
+  usageEventUserFilter: string;
+  usageEventBucketFilter: string;
+  usageEventPageSize: (typeof USAGE_EVENT_PAGE_SIZES)[number];
+};
+
+type UsageEventActiveFilterChip = {
+  key: 'category' | 'allowed' | 'scope' | 'action' | 'reason' | 'user' | 'bucket' | 'search';
+  label: string;
+};
+
+const DEFAULT_USAGE_MANAGER_VIEW_STATE: UsageManagerViewState = {
+  usageChartGranularity: 'hour',
+  usageEventSearch: '',
+  usageEventCategoryFilter: 'all',
+  usageEventAllowedFilter: 'all',
+  usageEventScopeFilter: 'all',
+  usageEventActionFilter: 'all',
+  usageEventReasonFilter: 'all',
+  usageEventUserFilter: '',
+  usageEventBucketFilter: '',
+  usageEventPageSize: 100,
+};
+
+function loadUsageManagerViewState(): UsageManagerViewState {
+  try {
+    const raw = localStorage.getItem(USAGE_MANAGER_VIEW_STORAGE_KEY);
+    if (!raw) return DEFAULT_USAGE_MANAGER_VIEW_STATE;
+    const parsed = JSON.parse(raw) as Partial<UsageManagerViewState>;
+    const parsedPageSize = Number(parsed.usageEventPageSize);
+    return {
+      usageChartGranularity: parsed.usageChartGranularity === 'day' || parsed.usageChartGranularity === 'week' || parsed.usageChartGranularity === 'month'
+        ? parsed.usageChartGranularity
+        : 'hour',
+      usageEventSearch: typeof parsed.usageEventSearch === 'string' ? parsed.usageEventSearch : '',
+      usageEventCategoryFilter: parsed.usageEventCategoryFilter === 'chat' || parsed.usageEventCategoryFilter === 'image'
+        ? parsed.usageEventCategoryFilter
+        : 'all',
+      usageEventAllowedFilter: parsed.usageEventAllowedFilter === 'allowed' || parsed.usageEventAllowedFilter === 'denied'
+        ? parsed.usageEventAllowedFilter
+        : 'all',
+      usageEventScopeFilter: parsed.usageEventScopeFilter === 'group' || parsed.usageEventScopeFilter === 'private'
+        ? parsed.usageEventScopeFilter
+        : 'all',
+      usageEventActionFilter: typeof parsed.usageEventActionFilter === 'string' ? parsed.usageEventActionFilter : 'all',
+      usageEventReasonFilter: typeof parsed.usageEventReasonFilter === 'string' ? parsed.usageEventReasonFilter : 'all',
+      usageEventUserFilter: typeof parsed.usageEventUserFilter === 'string' ? parsed.usageEventUserFilter : '',
+      usageEventBucketFilter: typeof parsed.usageEventBucketFilter === 'string' ? parsed.usageEventBucketFilter : '',
+      usageEventPageSize: USAGE_EVENT_PAGE_SIZES.includes(parsedPageSize as (typeof USAGE_EVENT_PAGE_SIZES)[number])
+        ? parsedPageSize as (typeof USAGE_EVENT_PAGE_SIZES)[number]
+        : 100,
+    };
+  } catch {
+    return DEFAULT_USAGE_MANAGER_VIEW_STATE;
+  }
+}
+
+function persistUsageManagerViewState(next: UsageManagerViewState) {
+  try {
+    localStorage.setItem(USAGE_MANAGER_VIEW_STORAGE_KEY, JSON.stringify(next));
+  } catch {
+    // ignore local storage failure
+  }
+}
 
 function getUsageEventCategoryLabel(category: UsageEvent['category']) {
   return category === 'image' ? '图像' : '聊天';
@@ -372,6 +445,7 @@ type ImageQuotaRow = {
 
 export function UsageManager() {
   const addToast = useUiStore((s) => s.addToast);
+  const initialViewState = useMemo(() => loadUsageManagerViewState(), []);
 
   const [groupUsage, setGroupUsage] = useState<UsageData>(() => normalizeUsage(null));
   const [imageUsage, setImageUsage] = useState<ImageUsageData>(() => normalizeImageUsage(null));
@@ -400,17 +474,17 @@ export function UsageManager() {
   const [newChatWhitelistUserId, setNewChatWhitelistUserId] = useState('');
   const [newUserId, setNewUserId] = useState('');
   const [newWhitelistUserId, setNewWhitelistUserId] = useState('');
-  const [usageChartGranularity, setUsageChartGranularity] = useState<'hour' | 'day' | 'week' | 'month'>('hour');
-  const [usageEventSearch, setUsageEventSearch] = useState('');
-  const [usageEventCategoryFilter, setUsageEventCategoryFilter] = useState<'all' | 'chat' | 'image'>('all');
-  const [usageEventAllowedFilter, setUsageEventAllowedFilter] = useState<'all' | 'allowed' | 'denied'>('all');
-  const [usageEventScopeFilter, setUsageEventScopeFilter] = useState<'all' | 'group' | 'private'>('all');
-  const [usageEventActionFilter, setUsageEventActionFilter] = useState('all');
-  const [usageEventReasonFilter, setUsageEventReasonFilter] = useState('all');
-  const [usageEventUserFilter, setUsageEventUserFilter] = useState('');
-  const [usageEventBucketFilter, setUsageEventBucketFilter] = useState('');
+  const [usageChartGranularity, setUsageChartGranularity] = useState<'hour' | 'day' | 'week' | 'month'>(initialViewState.usageChartGranularity);
+  const [usageEventSearch, setUsageEventSearch] = useState(initialViewState.usageEventSearch);
+  const [usageEventCategoryFilter, setUsageEventCategoryFilter] = useState<'all' | 'chat' | 'image'>(initialViewState.usageEventCategoryFilter);
+  const [usageEventAllowedFilter, setUsageEventAllowedFilter] = useState<'all' | 'allowed' | 'denied'>(initialViewState.usageEventAllowedFilter);
+  const [usageEventScopeFilter, setUsageEventScopeFilter] = useState<'all' | 'group' | 'private'>(initialViewState.usageEventScopeFilter);
+  const [usageEventActionFilter, setUsageEventActionFilter] = useState(initialViewState.usageEventActionFilter);
+  const [usageEventReasonFilter, setUsageEventReasonFilter] = useState(initialViewState.usageEventReasonFilter);
+  const [usageEventUserFilter, setUsageEventUserFilter] = useState(initialViewState.usageEventUserFilter);
+  const [usageEventBucketFilter, setUsageEventBucketFilter] = useState(initialViewState.usageEventBucketFilter);
   const [usageEventPage, setUsageEventPage] = useState(0);
-  const [usageEventPageSize, setUsageEventPageSize] = useState<(typeof USAGE_EVENT_PAGE_SIZES)[number]>(100);
+  const [usageEventPageSize, setUsageEventPageSize] = useState<(typeof USAGE_EVENT_PAGE_SIZES)[number]>(initialViewState.usageEventPageSize);
 
   const [confirmResetGroup, setConfirmResetGroup] = useState(false);
   const [confirmDropUnknown, setConfirmDropUnknown] = useState(false);
@@ -437,6 +511,32 @@ export function UsageManager() {
   useEffect(() => {
     setUsageEventPage(0);
   }, [
+    usageEventSearch,
+    usageEventCategoryFilter,
+    usageEventAllowedFilter,
+    usageEventScopeFilter,
+    usageEventActionFilter,
+    usageEventReasonFilter,
+    usageEventUserFilter,
+    usageEventBucketFilter,
+    usageEventPageSize,
+  ]);
+
+  useEffect(() => {
+    persistUsageManagerViewState({
+      usageChartGranularity,
+      usageEventSearch,
+      usageEventCategoryFilter,
+      usageEventAllowedFilter,
+      usageEventScopeFilter,
+      usageEventActionFilter,
+      usageEventReasonFilter,
+      usageEventUserFilter,
+      usageEventBucketFilter,
+      usageEventPageSize,
+    });
+  }, [
+    usageChartGranularity,
     usageEventSearch,
     usageEventCategoryFilter,
     usageEventAllowedFilter,
@@ -722,6 +822,18 @@ export function UsageManager() {
     [usageEvents.events],
   );
 
+  useEffect(() => {
+    if (usageEventActionFilter !== 'all' && !usageEventActionOptions.includes(usageEventActionFilter)) {
+      setUsageEventActionFilter('all');
+    }
+  }, [usageEventActionFilter, usageEventActionOptions]);
+
+  useEffect(() => {
+    if (usageEventReasonFilter !== 'all' && !usageEventReasonOptions.includes(usageEventReasonFilter)) {
+      setUsageEventReasonFilter('all');
+    }
+  }, [usageEventReasonFilter, usageEventReasonOptions]);
+
   const sortedUsageEvents = useMemo(
     () => [...usageEvents.events].sort((a, b) => {
       const left = parseHistoryTime(a.timestamp)?.getTime() ?? 0;
@@ -781,16 +893,16 @@ export function UsageManager() {
     }
   }, [usageEventPage, usageEventTotalPages]);
 
-  const usageEventActiveFilterSummary = useMemo(() => {
-    const items: string[] = [];
-    if (usageEventCategoryFilter !== 'all') items.push(`分类：${usageEventCategoryFilter === 'chat' ? '聊天' : '图像'}`);
-    if (usageEventAllowedFilter !== 'all') items.push(`结果：${usageEventAllowedFilter === 'allowed' ? '仅允许' : '仅拒绝'}`);
-    if (usageEventScopeFilter !== 'all') items.push(`场景：${usageEventScopeFilter === 'group' ? '群聊' : '私聊'}`);
-    if (usageEventActionFilter !== 'all') items.push(`动作：${getUsageEventActionLabel(usageEventActionFilter, usageEventCategoryFilter === 'all' ? undefined : usageEventCategoryFilter)}`);
-    if (usageEventReasonFilter !== 'all') items.push(`原因：${getUsageEventReasonLabel(usageEventReasonFilter)}`);
-    if (usageEventUserFilter) items.push(`QQ：${usageEventUserFilter}`);
-    if (usageEventBucketFilter) items.push(`时间桶：${formatTimeBucketLabel(usageEventBucketFilter, usageChartGranularity)}`);
-    if (usageEventSearch.trim()) items.push(`搜索：${usageEventSearch.trim()}`);
+  const usageEventActiveFilterSummary = useMemo<UsageEventActiveFilterChip[]>(() => {
+    const items: UsageEventActiveFilterChip[] = [];
+    if (usageEventCategoryFilter !== 'all') items.push({ key: 'category', label: `分类：${usageEventCategoryFilter === 'chat' ? '聊天' : '图像'}` });
+    if (usageEventAllowedFilter !== 'all') items.push({ key: 'allowed', label: `结果：${usageEventAllowedFilter === 'allowed' ? '仅允许' : '仅拒绝'}` });
+    if (usageEventScopeFilter !== 'all') items.push({ key: 'scope', label: `场景：${usageEventScopeFilter === 'group' ? '群聊' : '私聊'}` });
+    if (usageEventActionFilter !== 'all') items.push({ key: 'action', label: `动作：${getUsageEventActionLabel(usageEventActionFilter, usageEventCategoryFilter === 'all' ? undefined : usageEventCategoryFilter)}` });
+    if (usageEventReasonFilter !== 'all') items.push({ key: 'reason', label: `原因：${getUsageEventReasonLabel(usageEventReasonFilter)}` });
+    if (usageEventUserFilter) items.push({ key: 'user', label: `QQ：${usageEventUserFilter}` });
+    if (usageEventBucketFilter) items.push({ key: 'bucket', label: `时间桶：${formatTimeBucketLabel(usageEventBucketFilter, usageChartGranularity)}` });
+    if (usageEventSearch.trim()) items.push({ key: 'search', label: `搜索：${usageEventSearch.trim()}` });
     return items;
   }, [
     usageEventCategoryFilter,
@@ -1244,6 +1356,18 @@ export function UsageManager() {
     setUsageEventPage(0);
   }
 
+  function clearUsageEventFilter(key: UsageEventActiveFilterChip['key']) {
+    if (key === 'category') setUsageEventCategoryFilter('all');
+    if (key === 'allowed') setUsageEventAllowedFilter('all');
+    if (key === 'scope') setUsageEventScopeFilter('all');
+    if (key === 'action') setUsageEventActionFilter('all');
+    if (key === 'reason') setUsageEventReasonFilter('all');
+    if (key === 'user') setUsageEventUserFilter('');
+    if (key === 'bucket') setUsageEventBucketFilter('');
+    if (key === 'search') setUsageEventSearch('');
+    setUsageEventPage(0);
+  }
+
   function drillDownUsageEventsByUser(category: 'chat' | 'image', userId: string) {
     if (!userId) return;
     setUsageEventCategoryFilter(category);
@@ -1561,14 +1685,19 @@ export function UsageManager() {
             <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] px-4 py-3">
               <div className="flex flex-wrap items-center gap-2">
                 {usageEventActiveFilterSummary.length > 0 ? usageEventActiveFilterSummary.map((item) => (
-                  <span key={item} className="px-2 py-1 text-[10px] rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)]">
-                    {item}
-                  </span>
+                  <button
+                    key={item.key}
+                    onClick={() => clearUsageEventFilter(item.key)}
+                    className="px-2 py-1 text-[10px] rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+                    title="点击移除这个筛选条件"
+                  >
+                    {item.label} ×
+                  </button>
                 )) : (
                   <span className="text-xs text-[var(--text-muted)]">当前没有额外筛选。你可以点上面的图表柱子、输入关键词，或按分类/原因缩小范围。</span>
                 )}
               </div>
-              <p className="mt-2 text-[11px] text-[var(--text-muted)]">明细按时间倒序显示。点击表格里的 QQ 会锁定该用户，方便继续排查单人用量。</p>
+              <p className="mt-2 text-[11px] text-[var(--text-muted)]">明细按时间倒序显示。点击表格里的 QQ 会锁定该用户，点击上面的筛选标签可单独移除对应条件；这些筛选和粒度会自动记住，刷新后仍保留。</p>
             </div>
 
             <div className="overflow-hidden rounded-[var(--radius-sm)] border border-[var(--border-subtle)]">
@@ -1588,7 +1717,13 @@ export function UsageManager() {
 
                   <div className="max-h-[420px] overflow-y-auto divide-y divide-[var(--border-subtle)]">
                     {pagedUsageEvents.length === 0 ? (
-                      <div className="px-6 py-10 text-sm text-[var(--text-muted)] text-center">当前筛选条件下没有命中任何 usage event。可以清空筛选或换个关键词。</div>
+                      <div className="px-6 py-10 text-sm text-[var(--text-muted)] text-center">
+                        {usageEvents.events.length === 0
+                          ? '当前日志里还没有任何 usage event。先让插件真实运行一段时间，这里才会出现聊天 / 图像的统一事件。'
+                          : usageEventActiveFilterSummary.length > 0
+                            ? '当前筛选条件下没有命中任何 usage event。可以点上面的筛选标签逐个移除，或直接清空筛选。'
+                            : '当前还没有可显示的 usage event。'}
+                      </div>
                     ) : (
                       pagedUsageEvents.map((event) => (
                         <div key={event.id} className="grid grid-cols-[160px_72px_88px_88px_130px_130px_160px_240px_minmax(280px,1fr)] gap-3 px-4 py-3 text-xs items-start">
