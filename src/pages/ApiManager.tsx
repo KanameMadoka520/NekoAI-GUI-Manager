@@ -387,6 +387,7 @@ export function ApiManager() {
   const dirty = useMemo(() => JSON.stringify(state) !== original || JSON.stringify(weightState) !== originalWeights, [state, original, weightState, originalWeights]);
   const imageDirty = useMemo(() => JSON.stringify(imageState) !== imageOriginal, [imageState, imageOriginal]);
   const density = getDensityClass(settings.contentDensity);
+  const nodeCardStackGap = settings.contentDensity === 'compact' ? 'space-y-4' : settings.contentDensity === 'spacious' ? 'space-y-6' : 'space-y-5';
   const allApiKeyExpanded = nodes.length > 0 && nodes.every((_, i) => expandedCards.has(i));
   usePageDirtyState('api', dirty || imageDirty, managerMode === 'image' ? '图像节点列表存在未保存改动，离开后这些改动不会自动写回文件。' : '聊天节点列表或评分设置存在未保存改动，离开后这些改动不会自动写回文件。');
 
@@ -1167,7 +1168,7 @@ export function ApiManager() {
   }
 
   return (
-    <div className={`flex flex-col h-full ${density.pageGap}`}>
+    <div className={`flex flex-col min-h-full ${density.pageGap}`}>
       {modeSwitcher}
       <div className={`grid grid-cols-2 xl:grid-cols-5 ${density.summaryGrid}`}>
         <SummaryCard label="节点总数" value={String(nodes.length)} hint="这是你当前可以切换和测试的 API 节点总数。" />
@@ -1292,8 +1293,8 @@ export function ApiManager() {
         </p>
       </div>
 
-      <div className={`flex flex-1 min-h-0 ${density.pageGap}`}>
-      <div className="w-64 flex-shrink-0">
+      <div className={`flex items-stretch ${density.pageGap}`}>
+      <div className="w-64 flex-shrink-0 self-stretch">
         <Panel title="节点目录" subtitle="先缩小范围，再点进具体节点。这样看起来不会像一整面表单墙。" padding="sm">
           <div className={density.sectionGap}>
             <SearchBar value={search} onChange={setSearch} placeholder="搜索模型 / 备注 / 类型..." />
@@ -1441,7 +1442,7 @@ export function ApiManager() {
         </Panel>
       </div>
 
-      <div className="flex-1 min-w-0 overflow-y-auto pr-1">
+      <div className="flex-1 min-w-0 pr-1">
           {nodes.length === 0 ? (
             <div className="flex items-center justify-center h-full rounded-[var(--radius)] border border-dashed border-[var(--border-subtle)]">
               <p className="text-sm text-[var(--text-muted)]">你这里还没有任何 API 节点。先点“新增节点”，把 URL、Key 和模型名填进去，再测试它可不可用。</p>
@@ -1458,7 +1459,7 @@ export function ApiManager() {
           ) : (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={displayedIndices} strategy={verticalListSortingStrategy}>
-                <div className={density.contentGap}>
+                <div className={nodeCardStackGap}>
                   {displayedIndices.map((i) => (
                     <SortableNodeCard
                       key={i}
@@ -1875,10 +1876,23 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
   return (
     <div
       ref={(el) => { setNodeRef(el); cardRef(el); }}
-      style={{ ...style, boxShadow: 'var(--shadow-card)', background: 'var(--surface-card)' }}
-      className={`rounded-[var(--radius)] border border-[var(--border-subtle)] transition-all duration-[240ms] overflow-hidden ${densityClass.cardPadding} ${isActive ? 'ring-1 ring-[var(--accent-purple)]' : ''} ${isSelected ? 'bg-[var(--nav-active-bg)]' : ''}`}
+      style={{ ...style, boxShadow: isActive ? 'var(--shadow-panel)' : 'var(--shadow-card)', background: 'var(--surface-card)' }}
+      className={`rounded-[var(--radius)] border border-[var(--border-subtle)] hover:border-[var(--border-hover)] transition-all duration-[240ms] overflow-hidden ${densityClass.cardPadding} ${isActive ? 'ring-1 ring-[var(--accent-purple)]' : ''} ${isSelected ? 'bg-[var(--nav-active-bg)]' : ''}`}
     >
-      <div className={`flex flex-wrap items-start ${densityClass.cardGap}`}>
+      <div
+        className="h-1 rounded-full mb-4"
+        style={{
+          background: isActive
+            ? 'var(--accent-purple)'
+            : health?.level === 'risk'
+              ? 'var(--error)'
+              : health?.level === 'warning'
+                ? 'var(--warning)'
+                : 'var(--border-subtle)',
+          opacity: isActive ? 1 : 0.6,
+        }}
+      />
+      <div className={`flex flex-wrap items-start ${densityClass.cardGap} pb-3 mb-4 border-b border-[var(--border-subtle)]`}>
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <input
             type="checkbox"
