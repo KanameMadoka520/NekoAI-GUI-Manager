@@ -132,6 +132,7 @@ function App() {
   const updateSettings = useUiStore((s) => s.updateSettings);
   const addToast = useUiStore((s) => s.addToast);
   const dirtyPages = useUiStore((s) => s.dirtyPages);
+  const pageJumpRequest = useUiStore((s) => s.pageJumpRequest);
   const scale = settings.uiScale;
   const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const startupCheckStats = useMemo(() => {
@@ -166,6 +167,12 @@ function App() {
     if (phase !== 'ready') return;
     persistLastActivePage(activePage);
   }, [phase, activePage]);
+
+  useEffect(() => {
+    if (phase !== 'ready' || !pageJumpRequest) return;
+    if (pageJumpRequest.page === activePage) return;
+    handleNavigate(pageJumpRequest.page);
+  }, [phase, pageJumpRequest, activePage]);
 
   useEffect(() => {
     if (phase !== 'ready') return;

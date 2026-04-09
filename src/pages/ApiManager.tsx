@@ -329,6 +329,8 @@ function MetricBar({ label, score, weight, color, hint }: { label: string; score
 export function ApiManager() {
   const addToast = useUiStore((s) => s.addToast);
   const settings = useUiStore((s) => s.settings);
+  const pageJumpRequest = useUiStore((s) => s.pageJumpRequest);
+  const clearPageJumpRequest = useUiStore((s) => s.clearPageJumpRequest);
   const initialViewState = useMemo(() => loadApiManagerViewState(), []);
   const { state, set, reset, undo, redo, canUndo, canRedo } = useUndoRedo<NodeState>({ nodes: [], activeIndex: 0 });
   const {
@@ -367,6 +369,7 @@ export function ApiManager() {
   const [showAdvancedToolbar, setShowAdvancedToolbar] = useState(initialViewState.showAdvancedToolbar);
   const [expandedCards, setExpandedCards] = useState<Set<number>>(new Set());
   const cardRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+  const imageCardRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
   const { nodes, activeIndex } = state;
   const { nodes: imageNodes, activeIndex: activeImageIndex } = imageState;
@@ -798,6 +801,10 @@ export function ApiManager() {
     cardRefs.current.get(index)?.scrollIntoView({ behavior: 'auto', block: 'center' });
   }
 
+  function scrollToImageNode(index: number) {
+    imageCardRefs.current.get(index)?.scrollIntoView({ behavior: 'auto', block: 'center' });
+  }
+
   function toggleExpanded(index: number) {
     setExpandedCards((prev) => {
       const next = new Set(prev);
@@ -1046,6 +1053,44 @@ export function ApiManager() {
     setHealthSourceFilter('all');
   }
 
+  useEffect(() => {
+    if (!pageJumpRequest || pageJumpRequest.page !== 'api' || pageJumpRequest.kind !== 'api-node' || loading) return;
+
+    const resolveIndex = () => {
+      const targetRemark = normalizeRemark(pageJumpRequest.nodeRemark);
+      const targetModel = normalizeModel(pageJumpRequest.modelName);
+      const list = pageJumpRequest.category === 'image' ? imageNodes : nodes;
+      if (list.length === 0) return -1;
+      const exact = list.findIndex((node) =>
+        (!targetRemark || normalizeRemark(node.remark) === targetRemark)
+        && (!targetModel || normalizeModel(node.modelName) === targetModel));
+      if (exact >= 0) return exact;
+      const byRemark = targetRemark ? list.findIndex((node) => normalizeRemark(node.remark) === targetRemark) : -1;
+      if (byRemark >= 0) return byRemark;
+      const byModel = targetModel ? list.findIndex((node) => normalizeModel(node.modelName) === targetModel) : -1;
+      return byModel;
+    };
+
+    const targetIndex = resolveIndex();
+    if (targetIndex < 0) {
+      addToast('warning', `没有找到可跳转的${pageJumpRequest.category === 'image' ? '图像' : '聊天'}节点，可能该节点已被删除或重命名`);
+      clearPageJumpRequest();
+      return;
+    }
+
+    if (pageJumpRequest.category === 'image') {
+      setManagerMode('image');
+      setImageSearch('');
+      setTimeout(() => scrollToImageNode(targetIndex), 80);
+    } else {
+      setManagerMode('chat');
+      resetDirectoryFilters();
+      setTimeout(() => scrollToNode(targetIndex), 80);
+    }
+
+    clearPageJumpRequest();
+  }, [pageJumpRequest, loading, nodes, imageNodes, addToast, clearPageJumpRequest]);
+
   const modeSwitcher = (
     <Panel
       title="节点分组"
@@ -1107,6 +1152,10 @@ export function ApiManager() {
           onApplyGenerationSuffix={applyImageGenerationUrlSuffix}
           onApplyEditSuffix={applyImageEditUrlSuffix}
           filteredIndices={filteredImageIndices}
+          cardRef={(index, el) => {
+            if (el) imageCardRefs.current.set(index, el);
+            else imageCardRefs.current.delete(index);
+          }}
         />
       </div>
     );
@@ -1477,6 +1526,7 @@ function ImageApiManagerPanel({
   onUpdate,
   onApplyGenerationSuffix,
   onApplyEditSuffix,
+  cardRef,
 }: {
   density: 'compact' | 'standard' | 'spacious';
   nodes: ImageApiNode[];
@@ -1500,6 +1550,7 @@ function ImageApiManagerPanel({
   onUpdate: (index: number, field: keyof ImageApiNode, value: ImageApiNode[keyof ImageApiNode]) => void;
   onApplyGenerationSuffix: (index: number) => void;
   onApplyEditSuffix: (index: number) => void;
+  cardRef: (index: number, el: HTMLDivElement | null) => void;
 }) {
   const densityClass = getDensityClass(density);
   const [showKey, setShowKey] = useState<Set<number>>(new Set());
@@ -1573,7 +1624,12 @@ function ImageApiManagerPanel({
                   const node = nodes[index];
                   const keyVisible = showKey.has(index);
                   return (
-                    <div key={index} className={`rounded-[var(--radius)] border border-[var(--border-subtle)] ${densityClass.cardPadding}`} style={{ boxShadow: 'var(--shadow-card)', background: 'var(--surface-card)' }}>
+                    <div
+                      key={index}
+                      ref={(el) => cardRef(index, el)}
+                      className={`rounded-[var(--radius)] border border-[var(--border-subtle)] ${densityClass.cardPadding}`}
+                      style={{ boxShadow: 'var(--shadow-card)', background: 'var(--surface-card)' }}
+                    >
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-xs mono text-[var(--text-muted)]">#{index}</span>
                         <span className="text-sm font-medium text-[var(--text-primary)]">{node.modelName || 'grok-imagine-image'}</span>

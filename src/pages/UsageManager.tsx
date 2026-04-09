@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from 'recharts';
 import { StatCard } from '../components/common/StatCard';
 import { SearchBar } from '../components/common/SearchBar';
@@ -446,6 +446,9 @@ type ImageQuotaRow = {
 
 export function UsageManager() {
   const addToast = useUiStore((s) => s.addToast);
+  const pageJumpRequest = useUiStore((s) => s.pageJumpRequest);
+  const requestPageJump = useUiStore((s) => s.requestPageJump);
+  const clearPageJumpRequest = useUiStore((s) => s.clearPageJumpRequest);
   const initialViewState = useMemo(() => loadUsageManagerViewState(), []);
 
   const [groupUsage, setGroupUsage] = useState<UsageData>(() => normalizeUsage(null));
@@ -486,10 +489,14 @@ export function UsageManager() {
   const [usageEventBucketFilter, setUsageEventBucketFilter] = useState(initialViewState.usageEventBucketFilter);
   const [usageEventPage, setUsageEventPage] = useState(0);
   const [usageEventPageSize, setUsageEventPageSize] = useState<(typeof USAGE_EVENT_PAGE_SIZES)[number]>(initialViewState.usageEventPageSize);
+  const [pendingQuotaFocus, setPendingQuotaFocus] = useState<{ category: 'chat' | 'image'; userId: string } | null>(null);
+  const [highlightedQuotaKey, setHighlightedQuotaKey] = useState('');
 
   const [confirmResetGroup, setConfirmResetGroup] = useState(false);
   const [confirmDropUnknown, setConfirmDropUnknown] = useState(false);
   const [confirmResetImage, setConfirmResetImage] = useState(false);
+  const chatQuotaRowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const imageQuotaRowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const groupDirty = useMemo(() => JSON.stringify(groupUsage) !== groupOriginal, [groupUsage, groupOriginal]);
   const chatAccessDirty = useMemo(() => JSON.stringify(chatAccess) !== chatAccessOriginal, [chatAccess, chatAccessOriginal]);
@@ -739,6 +746,12 @@ export function UsageManager() {
     const q = userSearch.trim().toLowerCase();
     return imageRows.filter((row) => row.uid.toLowerCase().includes(q));
   }, [imageRows, userSearch]);
+
+  useEffect(() => {
+    if (!pageJumpRequest || pageJumpRequest.page !== 'usage' || pageJumpRequest.kind !== 'quota-user' || loading) return;
+    jumpToQuotaUser(pageJumpRequest.category, pageJumpRequest.userId);
+    clearPageJumpRequest();
+  }, [pageJumpRequest, loading, clearPageJumpRequest, chatRows, imageRows]);
 
   const groupSummary = useMemo(() => {
     const totalUsed = groupRows.reduce((sum, row) => sum + row.used, 0);
@@ -1386,6 +1399,53 @@ export function UsageManager() {
     setUsageEventPage(0);
   }
 
+  function jumpToApiNode(event: UsageEvent) {
+    if (!event.nodeRemark && !event.modelName) {
+      addToast('warning', '这条事件没有记录节点信息，暂时无法跳转到 API 节点');
+      return;
+    }
+    requestPageJump({
+      page: 'api',
+      kind: 'api-node',
+      category: event.category,
+      nodeRemark: event.nodeRemark,
+      modelName: event.modelName,
+    });
+  }
+
+  function jumpToQuotaUser(category: 'chat' | 'image', userId: string) {
+    const normalizedUserId = String(userId || '').trim();
+    if (!normalizedUserId) return;
+    const exists = category === 'chat'
+      ? chatRows.some((row) => row.uid === normalizedUserId)
+      : imageRows.some((row) => row.uid === normalizedUserId);
+    if (!exists) {
+      addToast('warning', `${normalizedUserId} 当前没有可定位的${category === 'chat' ? '聊天' : '图像'}额度行，可能这条事件只存在于日志里，还没进入当前周期统计`);
+      return;
+    }
+    if (category === 'chat') {
+      setChatUserSearch(normalizedUserId);
+    } else {
+      setUserSearch(normalizedUserId);
+    }
+    setPendingQuotaFocus({ category, userId: normalizedUserId });
+  }
+
+  useEffect(() => {
+    if (!pendingQuotaFocus) return;
+    const refMap = pendingQuotaFocus.category === 'chat' ? chatQuotaRowRefs.current : imageQuotaRowRefs.current;
+    const row = refMap.get(pendingQuotaFocus.userId);
+    if (!row) return;
+    row.scrollIntoView({ behavior: 'auto', block: 'center' });
+    const nextKey = `${pendingQuotaFocus.category}:${pendingQuotaFocus.userId}`;
+    setHighlightedQuotaKey(nextKey);
+    setPendingQuotaFocus(null);
+    const timer = setTimeout(() => {
+      setHighlightedQuotaKey((current) => (current === nextKey ? '' : current));
+    }, 2600);
+    return () => clearTimeout(timer);
+  }, [pendingQuotaFocus, filteredChatRows, filteredImageRows]);
+
   function exportUsageEvents(filteredOnly = false) {
     const payload = {
       schemaVersion: usageEvents.schemaVersion,
@@ -1748,6 +1808,12 @@ export function UsageManager() {
                             >
                               {event.userId}
                             </button>
+                            <button
+                              onClick={() => jumpToQuotaUser(event.category, event.userId)}
+                              className="text-[10px] text-left text-[var(--info)] hover:underline cursor-pointer"
+                            >
+                              查看限额位置
+                            </button>
                             {event.isMasterUser && (
                               <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(168,85,247,0.15)] text-[var(--accent-purple)]">主人</span>
                             )}
@@ -1755,8 +1821,20 @@ export function UsageManager() {
                           <span className="mono text-[var(--text-secondary)]">{buildUsageEventSceneLabel(event)}</span>
                           <span className="text-[var(--text-secondary)] break-all">{getUsageEventReasonLabel(event.reason)}</span>
                           <div className="space-y-1">
-                            <div className="text-[var(--text-primary)] break-all">{event.nodeRemark || '-'}</div>
-                            <div className="mono text-[10px] text-[var(--text-muted)] break-all">{event.modelName || '-'}</div>
+                            {event.nodeRemark || event.modelName ? (
+                              <button
+                                onClick={() => jumpToApiNode(event)}
+                                className="text-left hover:underline cursor-pointer"
+                              >
+                                <div className="text-[var(--text-primary)] break-all">{event.nodeRemark || '-'}</div>
+                                <div className="mono text-[10px] text-[var(--text-muted)] break-all">{event.modelName || '-'}</div>
+                              </button>
+                            ) : (
+                              <>
+                                <div className="text-[var(--text-primary)] break-all">-</div>
+                                <div className="mono text-[10px] text-[var(--text-muted)] break-all">-</div>
+                              </>
+                            )}
                           </div>
                           <span className="text-[var(--text-secondary)] break-all">{buildUsageEventDetailSummary(event.detail)}</span>
                         </div>
@@ -2131,7 +2209,14 @@ export function UsageManager() {
                 <div className="px-6 py-10 text-sm text-[var(--text-muted)] text-center">没有找到符合条件的聊天用户。可以先搜索，或者手动补一个聊天单独限额用户。</div>
               ) : (
                 filteredChatRows.map((row) => (
-                  <div key={row.uid} className="grid grid-cols-[180px_120px_140px_140px_140px_180px_120px] gap-3 px-4 py-3 text-sm items-center">
+                  <div
+                    key={row.uid}
+                    ref={(el) => {
+                      if (el) chatQuotaRowRefs.current.set(row.uid, el);
+                      else chatQuotaRowRefs.current.delete(row.uid);
+                    }}
+                    className={`grid grid-cols-[180px_120px_140px_140px_140px_180px_120px] gap-3 px-4 py-3 text-sm items-center transition-colors ${highlightedQuotaKey === `chat:${row.uid}` ? 'bg-[rgba(14,165,233,0.08)]' : ''}`}
+                  >
                     <span className="mono text-[var(--text-primary)]">{row.uid}</span>
                     <span className="text-xs">
                       {row.isMaster ? (
@@ -2386,7 +2471,14 @@ export function UsageManager() {
                 <div className="px-6 py-10 text-sm text-[var(--text-muted)] text-center">没有找到符合条件的 QQ。可以先搜索，或者手动补一个单独限额用户。</div>
               ) : (
                 filteredImageRows.map((row) => (
-                  <div key={row.uid} className="grid grid-cols-[180px_120px_140px_140px_140px_180px_120px] gap-3 px-4 py-3 text-sm items-center">
+                  <div
+                    key={row.uid}
+                    ref={(el) => {
+                      if (el) imageQuotaRowRefs.current.set(row.uid, el);
+                      else imageQuotaRowRefs.current.delete(row.uid);
+                    }}
+                    className={`grid grid-cols-[180px_120px_140px_140px_140px_180px_120px] gap-3 px-4 py-3 text-sm items-center transition-colors ${highlightedQuotaKey === `image:${row.uid}` ? 'bg-[rgba(251,191,36,0.10)]' : ''}`}
+                  >
                     <span className="mono text-[var(--text-primary)]">{row.uid}</span>
                     <span className="text-xs">
                       {row.isMaster ? (
