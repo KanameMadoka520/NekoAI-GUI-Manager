@@ -335,8 +335,6 @@ fn start_web_console_runtime(app: AppHandle, port: u16) -> Result<(), String> {
     std_listener
         .set_nonblocking(true)
         .map_err(|e| format!("本地 Web 控制台启动失败，无法设置 nonblocking：{}", e))?;
-    let listener = TcpListener::from_std(std_listener)
-        .map_err(|e| format!("本地 Web 控制台启动失败，无法切换到 Tokio listener：{}", e))?;
 
     {
         let state = app.state::<AppState>();
@@ -365,12 +363,13 @@ fn start_web_console_runtime(app: AppHandle, port: u16) -> Result<(), String> {
                 }
             };
 
+            let state_for_async = state_for_exit.clone();
             runtime.block_on(async move {
                 let listener = match TcpListener::from_std(std_listener) {
                     Ok(listener) => listener,
                     Err(err) => {
                         append_web_console_log(&format!("切换 Tokio listener 失败: {}", err));
-                        let state = state_for_exit.state::<AppState>();
+                        let state = state_for_async.state::<AppState>();
                         let _ = state.clear_web_console_runtime_if_port(port);
                         return;
                     }
