@@ -518,6 +518,8 @@ type ImageQuotaRow = {
   editRemaining: number | null;
 };
 
+type UsageSection = 'overview' | 'chat' | 'image';
+
 export function UsageManager() {
   const addToast = useUiStore((s) => s.addToast);
   const pageJumpRequest = useUiStore((s) => s.pageJumpRequest);
@@ -565,6 +567,7 @@ export function UsageManager() {
   const [usageEventPageSize, setUsageEventPageSize] = useState<(typeof USAGE_EVENT_PAGE_SIZES)[number]>(initialViewState.usageEventPageSize);
   const [usageEventPresetName, setUsageEventPresetName] = useState('');
   const [usageEventFilterPresets, setUsageEventFilterPresets] = useState<UsageEventFilterPreset[]>(() => loadUsageEventFilterPresets());
+  const [usageSection, setUsageSection] = useState<UsageSection>('overview');
   const [pendingQuotaFocus, setPendingQuotaFocus] = useState<{ category: 'chat' | 'image'; userId: string } | null>(null);
   const [highlightedQuotaKey, setHighlightedQuotaKey] = useState('');
 
@@ -1504,8 +1507,10 @@ export function UsageManager() {
       return;
     }
     if (category === 'chat') {
+      setUsageSection('chat');
       setChatUserSearch(normalizedUserId);
     } else {
+      setUsageSection('image');
       setUserSearch(normalizedUserId);
     }
     setPendingQuotaFocus({ category, userId: normalizedUserId });
@@ -1639,6 +1644,34 @@ export function UsageManager() {
         <SummaryCard label="图像周期" value={imageUsage.periodId || '-'} hint="生图 / 修图 12 小时周期计数。" />
       </div>
 
+      <Panel
+        title="用量分区"
+        subtitle="用量管理已拆成总览、聊天、图像三个分区，避免单页过长。跨页联动跳转到额度位置时，也会自动切到对应分区。"
+        padding="sm"
+      >
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setUsageSection('overview')}
+            className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] border cursor-pointer ${usageSection === 'overview' ? 'border-transparent bg-[var(--accent-purple)] text-white' : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+          >
+            总览与事件
+          </button>
+          <button
+            onClick={() => setUsageSection('chat')}
+            className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] border cursor-pointer ${usageSection === 'chat' ? 'border-transparent bg-[var(--accent-purple)] text-white' : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+          >
+            聊天额度与群计数
+          </button>
+          <button
+            onClick={() => setUsageSection('image')}
+            className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] border cursor-pointer ${usageSection === 'image' ? 'border-transparent bg-[var(--accent-purple)] text-white' : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+          >
+            图像额度与计数
+          </button>
+        </div>
+      </Panel>
+
+      {usageSection === 'overview' && (
       <Panel
         title="统一用量事件图表"
         subtitle="图表统一基于 usage_events.json 统计。聊天和图像都只使用真正记录下来的用量事件，不再从聊天历史反推；插件最多保留最近 10000 条事件。"
@@ -2084,7 +2117,9 @@ export function UsageManager() {
           </div>
         </div>
       </Panel>
+      )}
 
+      {usageSection === 'chat' && (
       <Panel title="群用量管理" subtitle="这里管理群聊 12 小时周期计数，同时支持直接编辑群总额度。群总额度属于聊天规则，修改后需要点击“保存聊天权限与限额规则”才会写回 runtime_config.json。" icon="⏱️">
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-3">
@@ -2227,7 +2262,9 @@ export function UsageManager() {
           </div>
         </div>
       </Panel>
+      )}
 
+      {usageSection === 'chat' && (
       <Panel title="聊天权限与限额规则" subtitle="这里管理普通聊天回复谁能用、每个 QQ 在 12 小时周期里还能聊多少次，以及群总额度。用户黑名单始终优先，主人始终不限额。" icon="💬">
         <div className="space-y-4">
           <div className="grid grid-cols-2 xl:grid-cols-6 gap-4">
@@ -2487,7 +2524,9 @@ export function UsageManager() {
           </div>
         </div>
       </Panel>
+      )}
 
+      {usageSection === 'image' && (
       <Panel title="图像权限与限额规则" subtitle="这里同时管理谁可以生图 / 修图，以及每个 QQ 在 12 小时周期里还能用多少次。黑名单始终优先，主人始终不限额。" icon="🖼️">
         <div className="space-y-4">
           <div className="grid grid-cols-2 xl:grid-cols-6 gap-4">
@@ -2744,7 +2783,9 @@ export function UsageManager() {
           </div>
         </div>
       </Panel>
+      )}
 
+      {usageSection === 'image' && (
       <Panel title="图像用量计数" subtitle="这里维护生图 / 修图在当前 12 小时周期内已经累计到多少。主人虽然无限制，但如果你手工补了主人数据，这里也会显示出来供你观察。" icon="📊">
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-3">
@@ -2864,6 +2905,7 @@ export function UsageManager() {
           </div>
         </div>
       </Panel>
+      )}
 
       <ConfirmDialog
         open={confirmResetGroup}
