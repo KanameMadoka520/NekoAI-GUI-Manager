@@ -1220,14 +1220,6 @@ export function UsageManager() {
     setNewBlacklistUserId('');
   }
 
-  function removeBlacklistUser(uid: string) {
-    if (!runtime) return;
-    setRuntime({
-      ...runtime,
-      userBlacklist: normalizeUserBlacklist((runtime.userBlacklist ?? []).filter((item) => item !== uid)),
-    });
-  }
-
   function addChatUserOverride(uid: string) {
     if (!uid.trim()) return;
     setChatQuota({
