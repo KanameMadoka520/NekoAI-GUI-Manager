@@ -151,6 +151,12 @@ function normalizeChatQuota(input: ChatQuotaConfig | null | undefined): ChatQuot
   };
 }
 
+function normalizeUserBlacklist(input: string[] | null | undefined): string[] {
+  return Array.isArray(input)
+    ? [...new Set(input.map((item) => String(item || '').trim()).filter(Boolean))]
+    : [];
+}
+
 function normalizeUsageEvents(input: UsageEventLog | UsageEvent[] | null | undefined): UsageEventLog {
   const rawEvents = Array.isArray(input)
     ? input
@@ -542,6 +548,7 @@ export function UsageManager() {
   const [chatAccessOriginal, setChatAccessOriginal] = useState('');
   const [chatQuotaOriginal, setChatQuotaOriginal] = useState('');
   const [groupLimitsOriginal, setGroupLimitsOriginal] = useState('');
+  const [blacklistOriginal, setBlacklistOriginal] = useState('');
   const [accessOriginal, setAccessOriginal] = useState('');
   const [quotaOriginal, setQuotaOriginal] = useState('');
 
@@ -554,6 +561,7 @@ export function UsageManager() {
   const [newChatWhitelistUserId, setNewChatWhitelistUserId] = useState('');
   const [newUserId, setNewUserId] = useState('');
   const [newWhitelistUserId, setNewWhitelistUserId] = useState('');
+  const [newBlacklistUserId, setNewBlacklistUserId] = useState('');
   const [usageChartGranularity, setUsageChartGranularity] = useState<'hour' | 'day' | 'week' | 'month'>(initialViewState.usageChartGranularity);
   const [usageEventSearch, setUsageEventSearch] = useState(initialViewState.usageEventSearch);
   const [usageEventCategoryFilter, setUsageEventCategoryFilter] = useState<'all' | 'chat' | 'image'>(initialViewState.usageEventCategoryFilter);
@@ -584,8 +592,10 @@ export function UsageManager() {
   const accessDirty = useMemo(() => JSON.stringify(imageAccess) !== accessOriginal, [imageAccess, accessOriginal]);
   const quotaDirty = useMemo(() => JSON.stringify(imageQuota) !== quotaOriginal, [imageQuota, quotaOriginal]);
   const groupLimitDirty = useMemo(() => JSON.stringify(runtime?.groupLimits ?? {}) !== groupLimitsOriginal, [runtime?.groupLimits, groupLimitsOriginal]);
+  const blacklistDirty = useMemo(() => JSON.stringify(normalizeUserBlacklist(runtime?.userBlacklist ?? [])) !== blacklistOriginal, [runtime?.userBlacklist, blacklistOriginal]);
   const imageRuleDirty = accessDirty || quotaDirty;
-  const chatRuleDirty = chatAccessDirty || chatQuotaDirty || groupLimitDirty;
+  const chatRuleDirty = chatAccessDirty || chatQuotaDirty || groupLimitDirty || blacklistDirty;
+  const imageRuleDirtyWithBlacklist = imageRuleDirty || blacklistDirty;
   usePageDirtyState('usage', groupDirty || imageDirty || imageRuleDirty || chatRuleDirty, '用量计数或限额规则存在未保存改动，离开后这些改动不会自动写回文件。');
 
   useEffect(() => {
@@ -665,6 +675,7 @@ export function UsageManager() {
       setChatAccessOriginal(JSON.stringify(normalizedChatAccess));
       setChatQuotaOriginal(JSON.stringify(normalizedChatQuota));
       setGroupLimitsOriginal(JSON.stringify(runtimeConfig?.groupLimits ?? {}));
+      setBlacklistOriginal(JSON.stringify(normalizeUserBlacklist(runtimeConfig?.userBlacklist ?? [])));
       setAccessOriginal(JSON.stringify(normalizedAccess));
       setQuotaOriginal(JSON.stringify(normalizedQuota));
       setRuntime(runtimeConfig ?? null);
@@ -1197,6 +1208,26 @@ export function UsageManager() {
     setNewChatWhitelistUserId('');
   }
 
+  function addBlacklistUser() {
+    const uid = newBlacklistUserId.trim();
+    if (!uid || !runtime) return;
+    const nextList = normalizeUserBlacklist([...(runtime.userBlacklist ?? []), uid]);
+    if ((runtime.userBlacklist ?? []).includes(uid)) {
+      addToast('warning', `QQ ${uid} 已在全局黑名单中`);
+      return;
+    }
+    setRuntime({ ...runtime, userBlacklist: nextList });
+    setNewBlacklistUserId('');
+  }
+
+  function removeBlacklistUser(uid: string) {
+    if (!runtime) return;
+    setRuntime({
+      ...runtime,
+      userBlacklist: normalizeUserBlacklist((runtime.userBlacklist ?? []).filter((item) => item !== uid)),
+    });
+  }
+
   function addChatUserOverride(uid: string) {
     if (!uid.trim()) return;
     setChatQuota({
@@ -1224,6 +1255,20 @@ export function UsageManager() {
     const next = { ...(chatQuota.userLimits ?? {}) };
     delete next[uid];
     setChatQuota({ ...chatQuota, userLimits: next });
+  }
+
+  function removeChatUserEntry(uid: string) {
+    removeChatUserOverride(uid);
+    removeChatUsageCount(uid);
+    setChatAccess({
+      ...chatAccess,
+      whitelistUsers: (chatAccess.whitelistUsers ?? []).filter((item) => item !== uid),
+    });
+    if ((runtime?.userBlacklist ?? []).includes(uid)) {
+      addToast('warning', `已移除聊天侧的单独条目，但 QQ ${uid} 仍在全局黑名单中，如需彻底取消拦截，请再到黑名单窗口中删除。`);
+    } else {
+      addToast('success', `已删除 QQ ${uid} 的聊天单独条目`);
+    }
   }
 
   function updateImageUsageCount(uid: string, field: 'generate' | 'edit', raw: number) {
@@ -1315,6 +1360,20 @@ export function UsageManager() {
     setImageQuota({ ...imageQuota, userLimits: next });
   }
 
+  function removeImageUserEntry(uid: string) {
+    removeUserOverride(uid);
+    removeImageUsageCount(uid);
+    setImageAccess({
+      ...imageAccess,
+      whitelistUsers: (imageAccess.whitelistUsers ?? []).filter((item) => item !== uid),
+    });
+    if ((runtime?.userBlacklist ?? []).includes(uid)) {
+      addToast('warning', `已移除图像侧的单独条目，但 QQ ${uid} 仍在全局黑名单中，如需彻底取消拦截，请再到黑名单窗口中删除。`);
+    } else {
+      addToast('success', `已删除 QQ ${uid} 的图像单独条目`);
+    }
+  }
+
   async function saveGroupUsage() {
     try {
       const next = sanitizeUsage(groupUsage);
@@ -1335,6 +1394,7 @@ export function UsageManager() {
     try {
       const normalizedAccess = normalizeChatAccess(chatAccess);
       const normalizedQuota = normalizeChatQuota(chatQuota);
+      const normalizedUserBlacklist = normalizeUserBlacklist(runtime.userBlacklist ?? []);
       const normalizedGroupLimits = Object.fromEntries(
         Object.entries(runtime.groupLimits ?? {})
           .map(([gid, raw]) => [String(gid).trim(), Math.max(0, Math.floor(Number(raw) || 0))] as const)
@@ -1342,6 +1402,7 @@ export function UsageManager() {
       );
       const nextRuntime = {
         ...runtime,
+        userBlacklist: normalizedUserBlacklist,
         chatAccess: normalizedAccess,
         chatQuota: normalizedQuota,
         groupLimits: normalizedGroupLimits,
@@ -1353,6 +1414,7 @@ export function UsageManager() {
       setChatAccessOriginal(JSON.stringify(normalizedAccess));
       setChatQuotaOriginal(JSON.stringify(normalizedQuota));
       setGroupLimitsOriginal(JSON.stringify(normalizedGroupLimits));
+      setBlacklistOriginal(JSON.stringify(normalizedUserBlacklist));
       if (chatAccessConflictUsers.length > 0) {
         addToast('warning', `聊天权限与限额规则已保存，但仍有 ${chatAccessConflictUsers.length} 个 QQ 同时出现在黑名单和聊天白名单中。实际运行时黑名单优先。`);
       } else {
@@ -1383,13 +1445,15 @@ export function UsageManager() {
     try {
       const normalizedAccess = normalizeImageAccess(imageAccess);
       const normalized = normalizeImageQuota(imageQuota);
-      const nextRuntime = { ...runtime, imageAccess: normalizedAccess, imageQuota: normalized };
+      const normalizedUserBlacklist = normalizeUserBlacklist(runtime.userBlacklist ?? []);
+      const nextRuntime = { ...runtime, userBlacklist: normalizedUserBlacklist, imageAccess: normalizedAccess, imageQuota: normalized };
       await saveConfig('runtime', nextRuntime);
       setRuntime(nextRuntime);
       setImageAccess(normalizedAccess);
       setImageQuota(normalized);
       setAccessOriginal(JSON.stringify(normalizedAccess));
       setQuotaOriginal(JSON.stringify(normalized));
+      setBlacklistOriginal(JSON.stringify(normalizedUserBlacklist));
       if (imageAccessConflictUsers.length > 0) {
         addToast('warning', `图像权限与限额规则已保存，但仍有 ${imageAccessConflictUsers.length} 个 QQ 同时出现在黑名单和图像白名单里。实际运行时黑名单优先。`);
       } else {
@@ -2270,6 +2334,7 @@ export function UsageManager() {
           <div className="grid grid-cols-2 xl:grid-cols-6 gap-4">
             <SummaryCard label="聊天权限模式" value={getChatAccessModeLabel(chatAccess.mode)} hint={chatAccess.mode === 'whitelist' ? '只有聊天白名单内的 QQ 能获得普通聊天回复。' : '沿用现有群聊/私聊规则，并额外允许做聊天个人限额。'} tone={chatAccess.mode === 'whitelist' ? 'warning' : 'neutral'} />
             <SummaryCard label="聊天白名单" value={String(chatSummary.whitelistUsers)} hint="仅 whitelist 模式生效。黑名单与主人依然优先。" />
+            <SummaryCard label="全局黑名单" value={String((runtime?.userBlacklist ?? []).length)} hint="这里的黑名单同时作用于聊天与图像，优先级最高。" tone={(runtime?.userBlacklist ?? []).length > 0 ? 'warning' : 'neutral'} />
             <SummaryCard label="聊天个人限额" value={chatQuota.enabled ? '已启用' : '未启用'} hint="关闭时，按 QQ 的聊天个人额度检查整体失效；群总额度仍独立生效。" tone={chatQuota.enabled ? 'success' : 'neutral'} />
             <SummaryCard label="默认个人额度" value={formatQuota(chatQuota.defaultLimit)} hint="0 表示普通用户默认不限额。" />
             <SummaryCard label="单独限额用户" value={String(chatSummary.overrideUsers)} hint="指定 QQ 的聊天额度会覆盖默认额度。" />
@@ -2372,6 +2437,32 @@ export function UsageManager() {
               </div>
               <p className="text-[11px] text-[var(--text-muted)]">聊天白名单只影响普通聊天回复，不影响生图 / 修图。用户黑名单始终优先。</p>
             </div>
+          </div>
+
+          <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-3">
+            <p className="text-xs font-medium text-[var(--text-primary)]">全局用户黑名单</p>
+            <TagList
+              tags={normalizeUserBlacklist(runtime?.userBlacklist ?? [])}
+              onChange={(tags) => runtime && setRuntime({ ...runtime, userBlacklist: normalizeUserBlacklist(tags) })}
+              placeholder="输入 QQ 号后回车加入全局黑名单"
+            />
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newBlacklistUserId}
+                onChange={(e) => setNewBlacklistUserId(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') addBlacklistUser(); }}
+                placeholder="再手动补一个 QQ 号"
+                className="flex-1 px-3 py-2 text-sm rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
+              />
+              <button
+                onClick={addBlacklistUser}
+                className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-white hover:opacity-90 cursor-pointer"
+              >
+                加入黑名单
+              </button>
+            </div>
+            <p className="text-[11px] text-[var(--text-muted)]">这里的黑名单是全局黑名单，会同时拦截普通聊天、生图和修图。若某个 QQ 同时在白名单里，实际运行时仍以黑名单优先。</p>
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-[repeat(2,minmax(0,220px))_minmax(0,1fr)] gap-4">
@@ -2508,6 +2599,14 @@ export function UsageManager() {
                           取消单独
                         </button>
                       )}
+                      {!row.isMaster && (
+                        <button
+                          onClick={() => removeChatUserEntry(row.uid)}
+                          className="text-xs text-[var(--text-muted)] hover:text-[var(--error)] cursor-pointer"
+                        >
+                          删除条目
+                        </button>
+                      )}
                       {row.hasStoredUsage && (
                         <button
                           onClick={() => removeChatUsageCount(row.uid)}
@@ -2532,6 +2631,7 @@ export function UsageManager() {
           <div className="grid grid-cols-2 xl:grid-cols-6 gap-4">
             <SummaryCard label="权限模式" value={getImageAccessModeLabel(imageAccess.mode)} hint={imageAccess.mode === 'whitelist' ? '只有手动加入图像白名单的 QQ 才能生图和修图。' : '只要是群友且不在黑名单中，就可以生图和修图。'} tone={imageAccess.mode === 'whitelist' ? 'warning' : 'neutral'} />
             <SummaryCard label="图像白名单" value={String(imageSummary.whitelistUsers)} hint="仅 whitelist 模式生效。黑名单和主人仍然优先于这份名单。" />
+            <SummaryCard label="全局黑名单" value={String((runtime?.userBlacklist ?? []).length)} hint="这里的黑名单同时作用于聊天与图像，优先级最高。" tone={(runtime?.userBlacklist ?? []).length > 0 ? 'warning' : 'neutral'} />
             <SummaryCard label="默认生图额度" value={formatQuota(imageQuota.defaultGenerateLimit)} hint="0 表示不限额。生图如果使用 --count，会按实际 count 累加。" />
             <SummaryCard label="默认修图额度" value={formatQuota(imageQuota.defaultEditLimit)} hint="0 表示不限额。修图每次命令默认记 1 次。" />
             <SummaryCard label="单独限额用户" value={String(Object.keys(imageQuota.userLimits ?? {}).length)} hint="指定 QQ 的额度会覆盖全局默认额度。" />
@@ -2568,8 +2668,8 @@ export function UsageManager() {
             <div className="flex-1" />
             <button
               onClick={() => void saveImageQuotaRules()}
-              disabled={!imageRuleDirty}
-              className={`px-4 py-2 text-xs rounded-[var(--radius-sm)] font-medium transition-colors cursor-pointer ${imageRuleDirty ? 'bg-[var(--accent-purple)] text-white hover:opacity-90 pulse-dirty' : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed'}`}
+              disabled={!imageRuleDirtyWithBlacklist}
+              className={`px-4 py-2 text-xs rounded-[var(--radius-sm)] font-medium transition-colors cursor-pointer ${imageRuleDirtyWithBlacklist ? 'bg-[var(--accent-purple)] text-white hover:opacity-90 pulse-dirty' : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed'}`}
             >
               💾 保存图像权限与限额规则
             </button>
@@ -2631,6 +2731,32 @@ export function UsageManager() {
               </div>
               <p className="text-[11px] text-[var(--text-muted)]">这份名单只控制生图 / 修图权限，不影响普通聊天。若同一个 QQ 同时在用户黑名单里，实际运行时仍以黑名单为准。</p>
             </div>
+          </div>
+
+          <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-3">
+            <p className="text-xs font-medium text-[var(--text-primary)]">全局用户黑名单</p>
+            <TagList
+              tags={normalizeUserBlacklist(runtime?.userBlacklist ?? [])}
+              onChange={(tags) => runtime && setRuntime({ ...runtime, userBlacklist: normalizeUserBlacklist(tags) })}
+              placeholder="输入 QQ 号后回车加入全局黑名单"
+            />
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newBlacklistUserId}
+                onChange={(e) => setNewBlacklistUserId(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') addBlacklistUser(); }}
+                placeholder="再手动补一个 QQ 号"
+                className="flex-1 px-3 py-2 text-sm rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
+              />
+              <button
+                onClick={addBlacklistUser}
+                className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-white hover:opacity-90 cursor-pointer"
+              >
+                加入黑名单
+              </button>
+            </div>
+            <p className="text-[11px] text-[var(--text-muted)]">这里的黑名单是全局黑名单，会同时拦截普通聊天、生图和修图。若某个 QQ 同时在图像白名单里，实际运行时仍以黑名单优先。</p>
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-[repeat(2,minmax(0,220px))_minmax(0,1fr)] gap-4">
@@ -2773,6 +2899,14 @@ export function UsageManager() {
                           className="text-xs text-[var(--text-muted)] hover:text-[var(--warning)] cursor-pointer"
                         >
                           取消单独
+                        </button>
+                      )}
+                      {!row.isMaster && (
+                        <button
+                          onClick={() => removeImageUserEntry(row.uid)}
+                          className="text-xs text-[var(--text-muted)] hover:text-[var(--error)] cursor-pointer"
+                        >
+                          删除条目
                         </button>
                       )}
                     </div>
