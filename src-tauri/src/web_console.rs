@@ -23,6 +23,7 @@ use std::convert::Infallible;
 use std::fs;
 use std::net::TcpListener as StdTcpListener;
 use std::path::PathBuf;
+use std::thread;
 use std::time::Duration;
 use tauri::{AppHandle, Manager, State};
 use tokio::net::TcpListener;
@@ -256,6 +257,19 @@ fn write_web_console_settings(settings: &WebConsoleSettings) -> Result<(), Strin
     fs::write(&path, content).map_err(|e| format!("Failed to write {}: {}", path.display(), e))
 }
 
+fn append_web_console_log(message: &str) {
+    let Ok(path) = web_console_settings_path() else {
+        return;
+    };
+    let log_path = path.with_file_name("web-console.log");
+    let line = format!("[{}] {}\n", chrono::Local::now().format("%Y-%m-%d %H:%M:%S"), message);
+    let _ = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(log_path)
+        .and_then(|mut f| std::io::Write::write_all(&mut f, line.as_bytes()));
+}
+
 fn current_status(state: &AppState, settings: &WebConsoleSettings) -> Result<WebConsoleStatus, String> {
     let running_port = state.get_web_console_port()?;
     let plugin_dir = state
@@ -330,32 +344,72 @@ fn start_web_console_runtime(app: AppHandle, port: u16) -> Result<(), String> {
     }
 
     let (shutdown_tx, shutdown_rx) = oneshot::channel::<()>();
-    let context = WebConsoleContext { app: app.clone() };
     let state_for_exit = app.clone();
-    let index_file = frontend_dir.join("index.html");
-    let static_service = ServeDir::new(frontend_dir).not_found_service(ServeFile::new(index_file));
+    let app_for_thread = app.clone();
 
-    let router = Router::new()
-        .route("/api/invoke/:command", post(handle_invoke))
-        .route("/events", get(handle_events))
-        .with_state(context)
-        .fallback_service(static_service);
+    let spawn_result = thread::Builder::new()
+        .name("neko-web-console".to_string())
+        .spawn(move || {
+            append_web_console_log(&format!("服务线程启动，端口={}", port));
+
+            let runtime = match tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+            {
+                Ok(rt) => rt,
+                Err(err) => {
+                    append_web_console_log(&format!("创建 Tokio runtime 失败: {}", err));
+                    let state = state_for_exit.state::<AppState>();
+                    let _ = state.clear_web_console_runtime_if_port(port);
+                    return;
+                }
+            };
+
+            runtime.block_on(async move {
+                let listener = match TcpListener::from_std(std_listener) {
+                    Ok(listener) => listener,
+                    Err(err) => {
+                        append_web_console_log(&format!("切换 Tokio listener 失败: {}", err));
+                        let state = state_for_exit.state::<AppState>();
+                        let _ = state.clear_web_console_runtime_if_port(port);
+                        return;
+                    }
+                };
+
+                let context = WebConsoleContext { app: app_for_thread.clone() };
+                let index_file = frontend_dir.join("index.html");
+                let static_service = ServeDir::new(frontend_dir).not_found_service(ServeFile::new(index_file));
+                let router = Router::new()
+                    .route("/api/invoke/:command", post(handle_invoke))
+                    .route("/events", get(handle_events))
+                    .with_state(context)
+                    .fallback_service(static_service);
+
+                let server = axum::serve(listener, router).with_graceful_shutdown(async move {
+                    let _ = shutdown_rx.await;
+                });
+
+                if let Err(err) = server.await {
+                    append_web_console_log(&format!("服务运行出错: {}", err));
+                } else {
+                    append_web_console_log("服务线程正常退出");
+                }
+            });
+
+            let state = state_for_exit.state::<AppState>();
+            let _ = state.clear_web_console_runtime_if_port(port);
+        });
+
+    if let Err(err) = spawn_result {
+        return Err(format!("本地 Web 控制台启动失败，无法创建服务线程: {}", err));
+    }
 
     {
         let state = app.state::<AppState>();
         state.set_web_console_runtime(WebConsoleRuntime { port, shutdown: shutdown_tx })?;
     }
 
-    tauri::async_runtime::spawn(async move {
-        let server = axum::serve(listener, router).with_graceful_shutdown(async move {
-            let _ = shutdown_rx.await;
-        });
-        if let Err(err) = server.await {
-            eprintln!("[NekoAI Manager] web console server exited with error: {}", err);
-        }
-        let state = state_for_exit.state::<AppState>();
-        let _ = state.clear_web_console_runtime_if_port(port);
-    });
+    append_web_console_log(&format!("服务已登记为运行中，端口={}", port));
 
     Ok(())
 }
