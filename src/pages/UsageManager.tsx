@@ -8,6 +8,7 @@ import { Panel } from '../components/common/Panel';
 import { SummaryCard } from '../components/common/SummaryCard';
 import { TagList } from '../components/common/TagList';
 import { useUiStore } from '../stores/uiStore';
+import { usePageDirtyState } from '../hooks/usePageDirtyState';
 import { getConfig, saveConfig } from '../lib/tauri-commands';
 import { downloadJsonWithTimestamp, pickJsonAndParse } from '../lib/json-transfer';
 import type { RuntimeConfig, UsageData, ImageUsageData, ImageQuotaConfig, ImageQuotaUserLimit, ImageAccessConfig, ChatAccessConfig, ChatQuotaConfig, UsageEvent, UsageEventLog } from '../lib/types';
@@ -499,6 +500,7 @@ export function UsageManager() {
   const groupLimitDirty = useMemo(() => JSON.stringify(runtime?.groupLimits ?? {}) !== groupLimitsOriginal, [runtime?.groupLimits, groupLimitsOriginal]);
   const imageRuleDirty = accessDirty || quotaDirty;
   const chatRuleDirty = chatAccessDirty || chatQuotaDirty || groupLimitDirty;
+  usePageDirtyState('usage', groupDirty || imageDirty || imageRuleDirty || chatRuleDirty, '用量计数或限额规则存在未保存改动，离开后这些改动不会自动写回文件。');
 
   useEffect(() => {
     void load();

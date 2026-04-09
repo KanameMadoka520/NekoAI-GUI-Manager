@@ -5,6 +5,7 @@ import { ConfirmDialog } from '../components/common/ConfirmDialog';
 import { Modal } from '../components/common/Modal';
 import { ImportExportActions } from '../components/common/ImportExportActions';
 import { useUiStore } from '../stores/uiStore';
+import { usePageDirtyState } from '../hooks/usePageDirtyState';
 import { getConfig, saveConfig } from '../lib/tauri-commands';
 import { downloadJsonWithTimestamp, pickJsonAndParse } from '../lib/json-transfer';
 
@@ -22,6 +23,7 @@ export function CommandManager() {
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
 
   const dirty = useMemo(() => JSON.stringify(commands) !== JSON.stringify(original), [commands, original]);
+  usePageDirtyState('commands', dirty, '命令回避列表存在未保存改动，离开后这些改动不会自动写回 commands.json。');
 
   useEffect(() => { load(); }, []);
 

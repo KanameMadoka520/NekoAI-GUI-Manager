@@ -8,6 +8,7 @@ import { Panel } from '../components/common/Panel';
 import { SummaryCard } from '../components/common/SummaryCard';
 import { PersonalityAbWorkbench } from '../components/personality/PersonalityAbWorkbench';
 import { useUiStore } from '../stores/uiStore';
+import { usePageDirtyState } from '../hooks/usePageDirtyState';
 import { getConfig, saveConfig } from '../lib/tauri-commands';
 import { downloadJsonWithTimestamp, pickJsonAndParse } from '../lib/json-transfer';
 import type { ApiNode, Personality, RuntimeConfig } from '../lib/types';
@@ -33,6 +34,7 @@ export function PersonalityManager() {
   const dirtyGroup = useMemo(() => JSON.stringify(groupList) !== origGroup, [groupList, origGroup]);
   const dirtyPrivate = useMemo(() => JSON.stringify(privateList) !== origPrivate, [privateList, origPrivate]);
   const dirty = dirtyGroup || dirtyPrivate;
+  usePageDirtyState('personality', dirty, '人格列表存在未保存改动，离开后这些改动不会自动写回人格文件。');
 
   useEffect(() => { load(); }, []);
 

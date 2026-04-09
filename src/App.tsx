@@ -7,6 +7,7 @@ import { AmbientFx } from './components/layout/AmbientFx';
 import { ToastContainer } from './components/common/Toast';
 import { Modal } from './components/common/Modal';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
+import { ConfirmDialog } from './components/common/ConfirmDialog';
 import { Setup } from './pages/Setup';
 import { useKeyboardShortcuts, shortcutList } from './hooks/useKeyboardShortcuts';
 import { useFileWatcher } from './hooks/useFileWatcher';
@@ -109,6 +110,7 @@ function PageFallback() {
 }
 
 type AppPhase = 'initializing' | 'setup' | 'ready';
+type PendingLeaveAction = { type: 'page'; page: PageId } | { type: 'change-dir' } | null;
 
 function App() {
   const [phase, setPhase] = useState<AppPhase>(() =>
@@ -122,11 +124,14 @@ function App() {
   const [startupCheck, setStartupCheck] = useState<SelfCheckReport | null>(null);
   const [showStartupCheck, setShowStartupCheck] = useState(false);
   const [startupCheckBusy, setStartupCheckBusy] = useState(false);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [pendingLeaveAction, setPendingLeaveAction] = useState<PendingLeaveAction>(null);
   const { title, subtitle } = pageTitles[activePage];
 
   const settings = useUiStore((s) => s.settings);
   const updateSettings = useUiStore((s) => s.updateSettings);
   const addToast = useUiStore((s) => s.addToast);
+  const dirtyPages = useUiStore((s) => s.dirtyPages);
   const scale = settings.uiScale;
   const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const startupCheckStats = useMemo(() => {
@@ -141,10 +146,21 @@ function App() {
     };
   }, [startupCheck]);
   const pluginDirInfo = useMemo(() => getCurrentPluginDirInfo(), [phase, refreshKey]);
+  const currentDirtyMessage = dirtyPages[activePage];
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', settings.theme);
   }, [settings.theme]);
+
+  useEffect(() => {
+    if (Object.keys(dirtyPages).length === 0) return undefined;
+    const handler = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [dirtyPages]);
 
   useEffect(() => {
     if (phase !== 'ready') return;
@@ -199,7 +215,7 @@ function App() {
   const ambientEnabled = ready && (activePage === 'dashboard' || activePage === 'ops');
 
   useKeyboardShortcuts({
-    onNavigate: ready ? setActivePage : undefined,
+    onNavigate: ready ? handleNavigate : undefined,
     onToggleHelp: ready ? toggleHelp : undefined,
   });
 
@@ -253,9 +269,39 @@ function App() {
     setPhase('ready');
   }
 
-  function handleChangeDir() {
+  function performChangeDir() {
     localStorage.removeItem('nekoai-configured');
     setPhase('setup');
+  }
+
+  function handleNavigate(page: PageId) {
+    if (page === activePage) return;
+    if (currentDirtyMessage) {
+      setPendingLeaveAction({ type: 'page', page });
+      setShowLeaveConfirm(true);
+      return;
+    }
+    setActivePage(page);
+  }
+
+  function handleChangeDir() {
+    if (currentDirtyMessage) {
+      setPendingLeaveAction({ type: 'change-dir' });
+      setShowLeaveConfirm(true);
+      return;
+    }
+    performChangeDir();
+  }
+
+  function confirmLeaveCurrentPage() {
+    const action = pendingLeaveAction;
+    setPendingLeaveAction(null);
+    if (!action) return;
+    if (action.type === 'page') {
+      setActivePage(action.page);
+      return;
+    }
+    performChangeDir();
   }
 
   function toggleSidebar() {
@@ -308,7 +354,7 @@ function App() {
         <div className="flex h-full w-full overflow-hidden">
           <Sidebar
             activePage={activePage}
-            onNavigate={setActivePage}
+            onNavigate={handleNavigate}
             onChangeDir={handleChangeDir}
             onOpenSettings={() => setShowSettings(true)}
             onToggleCollapse={toggleSidebar}
@@ -376,6 +422,19 @@ function App() {
               ))}
             </div>
           </Modal>
+
+          <ConfirmDialog
+            open={showLeaveConfirm}
+            onClose={() => {
+              setShowLeaveConfirm(false);
+              setPendingLeaveAction(null);
+            }}
+            onConfirm={confirmLeaveCurrentPage}
+            title="当前页面还有未保存改动"
+            message={currentDirtyMessage || '当前页面存在未保存改动。若继续离开，这些改动不会自动写回文件。'}
+            confirmText={pendingLeaveAction?.type === 'change-dir' ? '仍然切换目录' : '仍然离开页面'}
+            danger={false}
+          />
 
           {/* External change refresh hint */}
           <Modal

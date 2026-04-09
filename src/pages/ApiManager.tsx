@@ -17,6 +17,7 @@ import { Panel } from '../components/common/Panel';
 import { SummaryCard } from '../components/common/SummaryCard';
 import { useUiStore } from '../stores/uiStore';
 import { useUndoRedo } from '../hooks/useUndoRedo';
+import { usePageDirtyState } from '../hooks/usePageDirtyState';
 import { getConfig, saveConfig, pingApi, batchPingApis, batchPingApisStream, getApiHistoryMetrics, getApiHealthWeights, saveApiHealthWeights } from '../lib/tauri-commands';
 import { downloadJsonWithTimestamp, pickJsonAndParse } from '../lib/json-transfer';
 import type { ApiNode, ImageApiNode, RuntimeConfig, PingResult, ApiHistoryMetric, ApiHealthWeights } from '../lib/types';
@@ -380,6 +381,7 @@ export function ApiManager() {
   const imageDirty = useMemo(() => JSON.stringify(imageState) !== imageOriginal, [imageState, imageOriginal]);
   const density = getDensityClass(settings.contentDensity);
   const allApiKeyExpanded = nodes.length > 0 && nodes.every((_, i) => expandedCards.has(i));
+  usePageDirtyState('api', dirty || imageDirty, managerMode === 'image' ? '图像节点列表存在未保存改动，离开后这些改动不会自动写回文件。' : '聊天节点列表或评分设置存在未保存改动，离开后这些改动不会自动写回文件。');
 
   useEffect(() => { load(); }, []);
 

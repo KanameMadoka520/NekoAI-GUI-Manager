@@ -1,11 +1,27 @@
 import { create } from 'zustand';
 import type { HistoryFilterPreset } from '../lib/types';
+import type { PageId } from '../components/layout/Sidebar';
 
 interface Toast {
   id: string;
   type: 'success' | 'error' | 'warning';
   message: string;
 }
+
+export type PageJumpRequest =
+  | {
+    page: 'api';
+    kind: 'api-node';
+    category: 'chat' | 'image';
+    nodeRemark?: string;
+    modelName?: string;
+  }
+  | {
+    page: 'usage';
+    kind: 'quota-user';
+    category: 'chat' | 'image';
+    userId: string;
+  };
 
 export interface AppSettings {
   uiScale: number; // 0.8 – 1.5
@@ -53,6 +69,12 @@ interface UiState {
   settings: AppSettings;
   updateSettings: (patch: Partial<AppSettings>) => void;
   updateHistoryFilterPresets: (presets: HistoryFilterPreset[]) => void;
+  dirtyPages: Partial<Record<PageId, string>>;
+  setPageDirty: (page: PageId, dirty: boolean, message?: string) => void;
+  clearPageDirty: (page: PageId) => void;
+  pageJumpRequest: PageJumpRequest | null;
+  requestPageJump: (request: PageJumpRequest) => void;
+  clearPageJumpRequest: () => void;
 }
 
 export const useUiStore = create<UiState>((set) => ({
@@ -76,5 +98,21 @@ export const useUiStore = create<UiState>((set) => ({
       persistSettingsDeferred(next);
       return { settings: next };
     }),
+  dirtyPages: {},
+  setPageDirty: (page, dirty, message) =>
+    set((s) => {
+      const next = { ...s.dirtyPages };
+      if (dirty) next[page] = message || '当前页面有未保存改动';
+      else delete next[page];
+      return { dirtyPages: next };
+    }),
+  clearPageDirty: (page) =>
+    set((s) => {
+      const next = { ...s.dirtyPages };
+      delete next[page];
+      return { dirtyPages: next };
+    }),
+  pageJumpRequest: null,
+  requestPageJump: (request) => set({ pageJumpRequest: request }),
+  clearPageJumpRequest: () => set({ pageJumpRequest: null }),
 }));
-

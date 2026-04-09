@@ -8,6 +8,7 @@ import { ImportExportActions } from '../components/common/ImportExportActions';
 import { Panel } from '../components/common/Panel';
 import { SummaryCard, MiniInfo } from '../components/common/SummaryCard';
 import { useUiStore } from '../stores/uiStore';
+import { usePageDirtyState } from '../hooks/usePageDirtyState';
 import { getConfig, saveConfig } from '../lib/tauri-commands';
 import { downloadJsonWithTimestamp, pickJsonAndParse } from '../lib/json-transfer';
 import type { RuntimeConfig, RuntimeSchema, RuntimeSchemaDeprecatedField, RuntimeSchemaField } from '../lib/types';
@@ -627,6 +628,7 @@ export function ConfigEditor() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const dirty = useMemo(() => config && JSON.stringify(config) !== original, [config, original]);
+  usePageDirtyState('config', !!dirty, '运行配置存在未保存改动，离开后这些改动不会自动写回 runtime_config.json。');
   const effectiveSections = useMemo(() => {
     const schemaSections = new Map((schema?.sections ?? []).map((section) => [section.id, section]));
     return sections.map((section) => {
