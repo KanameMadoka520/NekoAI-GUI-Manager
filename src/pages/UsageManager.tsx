@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from 'recharts';
 import { StatCard } from '../components/common/StatCard';
 import { SearchBar } from '../components/common/SearchBar';
@@ -7,6 +7,8 @@ import { ImportExportActions } from '../components/common/ImportExportActions';
 import { Panel } from '../components/common/Panel';
 import { SummaryCard } from '../components/common/SummaryCard';
 import { TagList } from '../components/common/TagList';
+import { VirtualList } from '../components/common/VirtualList';
+import type { VirtualListHandle } from '../components/common/VirtualList';
 import { useUiStore } from '../stores/uiStore';
 import { usePageDirtyState } from '../hooks/usePageDirtyState';
 import { getConfig, saveConfig } from '../lib/tauri-commands';
@@ -583,8 +585,13 @@ export function UsageManager() {
   const [confirmResetGroup, setConfirmResetGroup] = useState(false);
   const [confirmDropUnknown, setConfirmDropUnknown] = useState(false);
   const [confirmResetImage, setConfirmResetImage] = useState(false);
-  const chatQuotaRowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
-  const imageQuotaRowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const groupRowsListRef = useRef<VirtualListHandle>(null);
+  const chatQuotaListRef = useRef<VirtualListHandle>(null);
+  const imageQuotaListRef = useRef<VirtualListHandle>(null);
+  const deferredGroupSearch = useDeferredValue(groupSearch);
+  const deferredChatUserSearch = useDeferredValue(chatUserSearch);
+  const deferredUserSearch = useDeferredValue(userSearch);
+  const deferredUsageEventSearch = useDeferredValue(usageEventSearch);
 
   const groupDirty = useMemo(() => JSON.stringify(groupUsage) !== groupOriginal, [groupUsage, groupOriginal]);
   const chatAccessDirty = useMemo(() => JSON.stringify(chatAccess) !== chatAccessOriginal, [chatAccess, chatAccessOriginal]);
@@ -725,10 +732,10 @@ export function UsageManager() {
   }, [runtime, groupUsage.counts]);
 
   const filteredGroupRows = useMemo(() => {
-    if (!groupSearch.trim()) return groupRows;
-    const q = groupSearch.trim().toLowerCase();
+    if (!deferredGroupSearch.trim()) return groupRows;
+    const q = deferredGroupSearch.trim().toLowerCase();
     return groupRows.filter((row) => row.gid.toLowerCase().includes(q));
-  }, [groupRows, groupSearch]);
+  }, [groupRows, deferredGroupSearch]);
 
   const chatRows = useMemo<ChatQuotaRow[]>(() => {
     const blacklist = new Set((runtime?.userBlacklist ?? []).map((item) => String(item || '').trim()).filter(Boolean));
@@ -776,10 +783,10 @@ export function UsageManager() {
   }, [runtime?.masterQQ, runtime?.userBlacklist, groupUsage.users, chatQuota, chatAccess]);
 
   const filteredChatRows = useMemo(() => {
-    if (!chatUserSearch.trim()) return chatRows;
-    const q = chatUserSearch.trim().toLowerCase();
+    if (!deferredChatUserSearch.trim()) return chatRows;
+    const q = deferredChatUserSearch.trim().toLowerCase();
     return chatRows.filter((row) => row.uid.toLowerCase().includes(q));
-  }, [chatRows, chatUserSearch]);
+  }, [chatRows, deferredChatUserSearch]);
 
   const imageRows = useMemo<ImageQuotaRow[]>(() => {
     const blacklist = new Set((runtime?.userBlacklist ?? []).map((item) => String(item || '').trim()).filter(Boolean));
@@ -837,10 +844,10 @@ export function UsageManager() {
   }, [runtime?.masterQQ, runtime?.userBlacklist, imageUsage.users, imageQuota, imageAccess]);
 
   const filteredImageRows = useMemo(() => {
-    if (!userSearch.trim()) return imageRows;
-    const q = userSearch.trim().toLowerCase();
+    if (!deferredUserSearch.trim()) return imageRows;
+    const q = deferredUserSearch.trim().toLowerCase();
     return imageRows.filter((row) => row.uid.toLowerCase().includes(q));
-  }, [imageRows, userSearch]);
+  }, [imageRows, deferredUserSearch]);
 
   useEffect(() => {
     if (!pageJumpRequest || pageJumpRequest.page !== 'usage' || pageJumpRequest.kind !== 'quota-user' || loading) return;
@@ -954,7 +961,7 @@ export function UsageManager() {
   );
 
   const filteredUsageEvents = useMemo(() => {
-    const q = usageEventSearch.trim().toLowerCase();
+    const q = deferredUsageEventSearch.trim().toLowerCase();
     return sortedUsageEvents.filter((event) => {
       if (usageEventCategoryFilter !== 'all' && event.category !== usageEventCategoryFilter) return false;
       if (usageEventAllowedFilter === 'allowed' && !event.allowed) return false;
@@ -969,7 +976,7 @@ export function UsageManager() {
     });
   }, [
     sortedUsageEvents,
-    usageEventSearch,
+    deferredUsageEventSearch,
     usageEventCategoryFilter,
     usageEventAllowedFilter,
     usageEventScopeFilter,
@@ -1575,10 +1582,11 @@ export function UsageManager() {
 
   useEffect(() => {
     if (!pendingQuotaFocus) return;
-    const refMap = pendingQuotaFocus.category === 'chat' ? chatQuotaRowRefs.current : imageQuotaRowRefs.current;
-    const row = refMap.get(pendingQuotaFocus.userId);
-    if (!row) return;
-    row.scrollIntoView({ behavior: 'auto', block: 'center' });
+    const rows = pendingQuotaFocus.category === 'chat' ? filteredChatRows : filteredImageRows;
+    const rowIndex = rows.findIndex((row) => row.uid === pendingQuotaFocus.userId);
+    if (rowIndex < 0) return;
+    const listRef = pendingQuotaFocus.category === 'chat' ? chatQuotaListRef.current : imageQuotaListRef.current;
+    listRef?.scrollToIndex(rowIndex, 'center', 'auto');
     const nextKey = `${pendingQuotaFocus.category}:${pendingQuotaFocus.userId}`;
     setHighlightedQuotaKey(nextKey);
     setPendingQuotaFocus(null);
@@ -1586,7 +1594,7 @@ export function UsageManager() {
       setHighlightedQuotaKey((current) => (current === nextKey ? '' : current));
     }, 2600);
     return () => clearTimeout(timer);
-  }, [pendingQuotaFocus, filteredChatRows, filteredImageRows]);
+  }, [pendingQuotaFocus, filteredChatRows, filteredImageRows, usageSection]);
 
   function exportUsageEvents(filteredOnly = false) {
     const payload = {
@@ -2261,61 +2269,65 @@ export function UsageManager() {
               <span className="text-right">操作</span>
             </div>
 
-            <div className="max-h-[420px] overflow-y-auto divide-y divide-[var(--border-subtle)]">
-              {filteredGroupRows.length === 0 ? (
-                <div className="px-6 py-10 text-sm text-[var(--text-muted)] text-center">没有找到符合条件的群条目。可以换个群号搜，或者先手动补一个群条目。</div>
-              ) : (
-                filteredGroupRows.map((row) => {
-                  const statusText = row.limit === undefined
-                    ? '未设限额'
-                    : row.used >= row.limit
-                      ? '已耗尽'
-                      : `剩余 ${row.remaining}`;
+            <VirtualList
+              ref={groupRowsListRef}
+              items={filteredGroupRows}
+              itemHeight={72}
+              overscan={8}
+              containerStyle={{ height: 420 }}
+              containerClassName="max-h-[420px]"
+              empty={<div className="px-6 py-10 text-sm text-[var(--text-muted)] text-center">没有找到符合条件的群条目。可以换个群号搜，或者先手动补一个群条目。</div>}
+              getKey={(row) => row.gid}
+              renderItem={(row, index) => {
+                const statusText = row.limit === undefined
+                  ? '未设限额'
+                  : row.used >= row.limit
+                    ? '已耗尽'
+                    : `剩余 ${row.remaining}`;
 
-                  const statusColor = row.limit === undefined
-                    ? 'var(--text-muted)'
-                    : row.used >= row.limit
-                      ? 'var(--error)'
-                      : 'var(--success)';
+                const statusColor = row.limit === undefined
+                  ? 'var(--text-muted)'
+                  : row.used >= row.limit
+                    ? 'var(--error)'
+                    : 'var(--success)';
 
-                  return (
-                    <div key={row.gid} className="grid grid-cols-[180px_120px_120px_140px_1fr_96px] gap-3 px-4 py-3 text-sm items-center">
-                      <span className="mono text-[var(--text-primary)]">{row.gid}</span>
-                      <span className="text-xs">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full ${row.listened ? 'bg-[rgba(0,230,118,0.15)] text-[var(--success)]' : 'bg-[var(--bg-elevated)] text-[var(--text-muted)]'}`}>
-                          {row.listened ? '监听中' : '未监听'}
-                        </span>
+                return (
+                  <div className={`grid h-full grid-cols-[180px_120px_120px_140px_1fr_96px] gap-3 px-4 py-3 text-sm items-center ${index < filteredGroupRows.length - 1 ? 'border-b border-[var(--border-subtle)]' : ''}`}>
+                    <span className="mono text-[var(--text-primary)]">{row.gid}</span>
+                    <span className="text-xs">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full ${row.listened ? 'bg-[rgba(0,230,118,0.15)] text-[var(--success)]' : 'bg-[var(--bg-elevated)] text-[var(--text-muted)]'}`}>
+                        {row.listened ? '监听中' : '未监听'}
                       </span>
-                      <input
-                        type="number"
-                        min={0}
-                        value={row.limit ?? 0}
-                        onChange={(e) => updateGroupLimit(row.gid, Number(e.target.value))}
-                        className="w-24 px-2 py-1.5 text-sm rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] mono outline-none focus:border-[var(--accent-purple)]"
-                      />
-                      <input
-                        type="number"
-                        min={0}
-                        value={row.used}
-                        onChange={(e) => updateGroupCount(row.gid, Number(e.target.value))}
-                        className="w-28 px-2 py-1.5 text-sm rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] mono outline-none focus:border-[var(--accent-purple)]"
-                      />
-                      <span style={{ color: statusColor }}>{statusText}</span>
-                      <div className="flex justify-end gap-2">
-                        {row.hasStoredCount && (
-                          <button
-                            onClick={() => removeGroupCount(row.gid)}
-                            className="text-xs text-[var(--text-muted)] hover:text-[var(--warning)] cursor-pointer"
-                          >
-                            移除计数
-                          </button>
-                        )}
-                      </div>
+                    </span>
+                    <input
+                      type="number"
+                      min={0}
+                      value={row.limit ?? 0}
+                      onChange={(e) => updateGroupLimit(row.gid, Number(e.target.value))}
+                      className="w-24 px-2 py-1.5 text-sm rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] mono outline-none focus:border-[var(--accent-purple)]"
+                    />
+                    <input
+                      type="number"
+                      min={0}
+                      value={row.used}
+                      onChange={(e) => updateGroupCount(row.gid, Number(e.target.value))}
+                      className="w-28 px-2 py-1.5 text-sm rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] mono outline-none focus:border-[var(--accent-purple)]"
+                    />
+                    <span style={{ color: statusColor }}>{statusText}</span>
+                    <div className="flex justify-end gap-2">
+                      {row.hasStoredCount && (
+                        <button
+                          onClick={() => removeGroupCount(row.gid)}
+                          className="text-xs text-[var(--text-muted)] hover:text-[var(--warning)] cursor-pointer"
+                        >
+                          移除计数
+                        </button>
+                      )}
                     </div>
-                  );
-                })
-              )}
-            </div>
+                  </div>
+                );
+              }}
+            />
           </div>
         </div>
       </Panel>
@@ -2513,106 +2525,105 @@ export function UsageManager() {
               <span className="text-right">操作</span>
             </div>
 
-            <div className="max-h-[420px] overflow-y-auto divide-y divide-[var(--border-subtle)]">
-              {filteredChatRows.length === 0 ? (
-                <div className="px-6 py-10 text-sm text-[var(--text-muted)] text-center">没有找到符合条件的聊天用户。可以先搜索，或者手动补一个聊天单独限额用户。</div>
-              ) : (
-                filteredChatRows.map((row) => (
-                  <div
-                    key={row.uid}
-                    ref={(el) => {
-                      if (el) chatQuotaRowRefs.current.set(row.uid, el);
-                      else chatQuotaRowRefs.current.delete(row.uid);
-                    }}
-                    className={`grid grid-cols-[180px_120px_140px_140px_140px_180px_120px] gap-3 px-4 py-3 text-sm items-center transition-colors ${highlightedQuotaKey === `chat:${row.uid}` ? 'bg-[rgba(14,165,233,0.08)]' : ''}`}
-                  >
-                    <span className="mono text-[var(--text-primary)]">{row.uid}</span>
-                    <span className="text-xs">
-                      {row.isMaster ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(0,230,118,0.15)] text-[var(--success)]">主人</span>
-                      ) : row.hasOverride ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(255,171,64,0.18)] text-[var(--warning)]">单独限额</span>
-                      ) : (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[var(--bg-elevated)] text-[var(--text-muted)]">全局默认</span>
-                      )}
-                    </span>
-                    <span className="text-xs">
-                      {row.isMaster ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(0,230,118,0.15)] text-[var(--success)]">主人豁免</span>
-                      ) : row.inGlobalBlacklist ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(255,82,82,0.15)] text-[var(--error)]">黑名单禁止</span>
-                      ) : chatAccess.mode === 'whitelist' ? (
-                        row.inChatWhitelist ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(255,171,64,0.18)] text-[var(--warning)]">白名单允许</span>
-                        ) : (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[var(--bg-elevated)] text-[var(--text-muted)]">未在白名单</span>
-                        )
-                      ) : (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(14,165,233,0.12)] text-[var(--info)]">黑名单模式默认可用</span>
-                      )}
-                    </span>
+            <VirtualList
+              ref={chatQuotaListRef}
+              items={filteredChatRows}
+              itemHeight={88}
+              overscan={8}
+              containerStyle={{ height: 420 }}
+              containerClassName="max-h-[420px]"
+              empty={<div className="px-6 py-10 text-sm text-[var(--text-muted)] text-center">没有找到符合条件的聊天用户。可以先搜索，或者手动补一个聊天单独限额用户。</div>}
+              getKey={(row) => row.uid}
+              renderItem={(row, index) => (
+                <div
+                  className={`grid h-full grid-cols-[180px_120px_140px_140px_140px_180px_120px] gap-3 px-4 py-3 text-sm items-center transition-colors ${highlightedQuotaKey === `chat:${row.uid}` ? 'bg-[rgba(14,165,233,0.08)]' : ''} ${index < filteredChatRows.length - 1 ? 'border-b border-[var(--border-subtle)]' : ''}`}
+                >
+                  <span className="mono text-[var(--text-primary)]">{row.uid}</span>
+                  <span className="text-xs">
                     {row.isMaster ? (
-                      <span className="text-[var(--success)]">主人无限制</span>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(0,230,118,0.15)] text-[var(--success)]">主人</span>
                     ) : row.hasOverride ? (
-                      <input
-                        type="number"
-                        min={0}
-                        value={row.limit ?? 0}
-                        onChange={(e) => updateChatUserOverride(row.uid, Number(e.target.value))}
-                        className="w-28 px-2 py-1.5 text-sm rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] mono outline-none focus:border-[var(--accent-purple)]"
-                      />
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(255,171,64,0.18)] text-[var(--warning)]">单独限额</span>
                     ) : (
-                      <span className="mono text-[var(--text-secondary)]">{formatQuota(row.limit)}</span>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[var(--bg-elevated)] text-[var(--text-muted)]">全局默认</span>
                     )}
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        min={0}
-                        value={row.used}
-                        onChange={(e) => updateChatUsageCount(row.uid, Number(e.target.value))}
-                        className="w-24 px-2 py-1.5 text-sm rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] mono outline-none focus:border-[var(--accent-purple)]"
-                      />
-                      <span className="text-[11px] text-[var(--text-muted)]">{row.isMaster ? '主人无限制' : row.remaining === null ? '不限额' : `剩余 ${row.remaining}`}</span>
-                    </div>
-                    <span className="text-[var(--text-muted)]">{row.isMaster ? '主人豁免' : row.hasOverride ? '单独规则' : row.accessStatus}</span>
-                    <div className="flex justify-end gap-2">
-                      {!row.isMaster && !row.hasOverride && (
-                        <button
-                          onClick={() => addChatUserOverride(row.uid)}
-                          className="text-xs text-[var(--text-muted)] hover:text-[var(--accent-purple)] cursor-pointer"
-                        >
-                          单独设置
-                        </button>
-                      )}
-                      {!row.isMaster && row.hasOverride && (
-                        <button
-                          onClick={() => removeChatUserOverride(row.uid)}
-                          className="text-xs text-[var(--text-muted)] hover:text-[var(--warning)] cursor-pointer"
-                        >
-                          取消单独
-                        </button>
-                      )}
-                      {!row.isMaster && (
-                        <button
-                          onClick={() => removeChatUserEntry(row.uid)}
-                          className="text-xs text-[var(--text-muted)] hover:text-[var(--error)] cursor-pointer"
-                        >
-                          删除条目
-                        </button>
-                      )}
-                      {row.hasStoredUsage && (
-                        <button
-                          onClick={() => removeChatUsageCount(row.uid)}
-                          className="text-xs text-[var(--text-muted)] hover:text-[var(--warning)] cursor-pointer"
-                        >
-                          清空计数
-                        </button>
-                      )}
-                    </div>
+                  </span>
+                  <span className="text-xs">
+                    {row.isMaster ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(0,230,118,0.15)] text-[var(--success)]">主人豁免</span>
+                    ) : row.inGlobalBlacklist ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(255,82,82,0.15)] text-[var(--error)]">黑名单禁止</span>
+                    ) : chatAccess.mode === 'whitelist' ? (
+                      row.inChatWhitelist ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(255,171,64,0.18)] text-[var(--warning)]">白名单允许</span>
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[var(--bg-elevated)] text-[var(--text-muted)]">未在白名单</span>
+                      )
+                    ) : (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(14,165,233,0.12)] text-[var(--info)]">黑名单模式默认可用</span>
+                    )}
+                  </span>
+                  {row.isMaster ? (
+                    <span className="text-[var(--success)]">主人无限制</span>
+                  ) : row.hasOverride ? (
+                    <input
+                      type="number"
+                      min={0}
+                      value={row.limit ?? 0}
+                      onChange={(e) => updateChatUserOverride(row.uid, Number(e.target.value))}
+                      className="w-28 px-2 py-1.5 text-sm rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] mono outline-none focus:border-[var(--accent-purple)]"
+                    />
+                  ) : (
+                    <span className="mono text-[var(--text-secondary)]">{formatQuota(row.limit)}</span>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={0}
+                      value={row.used}
+                      onChange={(e) => updateChatUsageCount(row.uid, Number(e.target.value))}
+                      className="w-24 px-2 py-1.5 text-sm rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] mono outline-none focus:border-[var(--accent-purple)]"
+                    />
+                    <span className="text-[11px] text-[var(--text-muted)]">{row.isMaster ? '主人无限制' : row.remaining === null ? '不限额' : `剩余 ${row.remaining}`}</span>
                   </div>
-                ))
+                  <span className="text-[var(--text-muted)]">{row.isMaster ? '主人豁免' : row.hasOverride ? '单独规则' : row.accessStatus}</span>
+                  <div className="flex justify-end gap-2">
+                    {!row.isMaster && !row.hasOverride && (
+                      <button
+                        onClick={() => addChatUserOverride(row.uid)}
+                        className="text-xs text-[var(--text-muted)] hover:text-[var(--accent-purple)] cursor-pointer"
+                      >
+                        单独设置
+                      </button>
+                    )}
+                    {!row.isMaster && row.hasOverride && (
+                      <button
+                        onClick={() => removeChatUserOverride(row.uid)}
+                        className="text-xs text-[var(--text-muted)] hover:text-[var(--warning)] cursor-pointer"
+                      >
+                        取消单独
+                      </button>
+                    )}
+                    {!row.isMaster && (
+                      <button
+                        onClick={() => removeChatUserEntry(row.uid)}
+                        className="text-xs text-[var(--text-muted)] hover:text-[var(--error)] cursor-pointer"
+                      >
+                        删除条目
+                      </button>
+                    )}
+                    {row.hasStoredUsage && (
+                      <button
+                        onClick={() => removeChatUsageCount(row.uid)}
+                        className="text-xs text-[var(--text-muted)] hover:text-[var(--warning)] cursor-pointer"
+                      >
+                        清空计数
+                      </button>
+                    )}
+                  </div>
+                </div>
               )}
-            </div>
+            />
           </div>
         </div>
       </Panel>
@@ -2812,18 +2823,18 @@ export function UsageManager() {
               <span className="text-right">操作</span>
             </div>
 
-            <div className="max-h-[420px] overflow-y-auto divide-y divide-[var(--border-subtle)]">
-              {filteredImageRows.length === 0 ? (
-                <div className="px-6 py-10 text-sm text-[var(--text-muted)] text-center">没有找到符合条件的 QQ。可以先搜索，或者手动补一个单独限额用户。</div>
-              ) : (
-                filteredImageRows.map((row) => (
+            <VirtualList
+              ref={imageQuotaListRef}
+              items={filteredImageRows}
+              itemHeight={88}
+              overscan={8}
+              containerStyle={{ height: 420 }}
+              containerClassName="max-h-[420px]"
+              empty={<div className="px-6 py-10 text-sm text-[var(--text-muted)] text-center">没有找到符合条件的 QQ。可以先搜索，或者手动补一个单独限额用户。</div>}
+              getKey={(row) => row.uid}
+              renderItem={(row, index) => (
                   <div
-                    key={row.uid}
-                    ref={(el) => {
-                      if (el) imageQuotaRowRefs.current.set(row.uid, el);
-                      else imageQuotaRowRefs.current.delete(row.uid);
-                    }}
-                    className={`grid grid-cols-[180px_120px_140px_140px_140px_180px_120px] gap-3 px-4 py-3 text-sm items-center transition-colors ${highlightedQuotaKey === `image:${row.uid}` ? 'bg-[rgba(251,191,36,0.10)]' : ''}`}
+                    className={`grid h-full grid-cols-[180px_120px_140px_140px_140px_180px_120px] gap-3 px-4 py-3 text-sm items-center transition-colors ${highlightedQuotaKey === `image:${row.uid}` ? 'bg-[rgba(251,191,36,0.10)]' : ''} ${index < filteredImageRows.length - 1 ? 'border-b border-[var(--border-subtle)]' : ''}`}
                   >
                     <span className="mono text-[var(--text-primary)]">{row.uid}</span>
                     <span className="text-xs">
@@ -2904,9 +2915,8 @@ export function UsageManager() {
                       )}
                     </div>
                   </div>
-                ))
               )}
-            </div>
+            />
           </div>
         </div>
       </Panel>
@@ -2983,52 +2993,55 @@ export function UsageManager() {
               <span className="text-right">操作</span>
             </div>
 
-            <div className="max-h-[420px] overflow-y-auto divide-y divide-[var(--border-subtle)]">
-              {filteredImageRows.length === 0 ? (
-                <div className="px-6 py-10 text-sm text-[var(--text-muted)] text-center">没有找到符合条件的 QQ 统计条目。</div>
-              ) : (
-                filteredImageRows.map((row) => (
-                  <div key={row.uid} className="grid grid-cols-[180px_120px_120px_140px_140px_120px_120px] gap-3 px-4 py-3 text-sm items-center">
-                    <span className="mono text-[var(--text-primary)]">{row.uid}</span>
-                    <span className="text-xs">
-                      {row.isMaster ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(0,230,118,0.15)] text-[var(--success)]">主人</span>
-                      ) : row.hasOverride ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(255,171,64,0.18)] text-[var(--warning)]">单独限额</span>
-                      ) : (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[var(--bg-elevated)] text-[var(--text-muted)]">全局默认</span>
-                      )}
-                    </span>
-                    <input
-                      type="number"
-                      min={0}
-                      value={row.generateUsed}
-                      onChange={(e) => updateImageUsageCount(row.uid, 'generate', Number(e.target.value))}
-                      className="w-24 px-2 py-1.5 text-sm rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] mono outline-none focus:border-[var(--accent-purple)]"
-                    />
-                    <input
-                      type="number"
-                      min={0}
-                      value={row.editUsed}
-                      onChange={(e) => updateImageUsageCount(row.uid, 'edit', Number(e.target.value))}
-                      className="w-24 px-2 py-1.5 text-sm rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] mono outline-none focus:border-[var(--accent-purple)]"
-                    />
-                    <span className="mono text-[var(--text-secondary)]">{row.isMaster ? '主人无限制' : row.generateRemaining === null ? '不限额' : row.generateRemaining}</span>
-                    <span className="mono text-[var(--text-secondary)]">{row.isMaster ? '主人无限制' : row.editRemaining === null ? '不限额' : row.editRemaining}</span>
-                    <div className="flex justify-end gap-2">
-                      {row.hasStoredUsage && (
-                        <button
-                          onClick={() => removeImageUsageCount(row.uid)}
-                          className="text-xs text-[var(--text-muted)] hover:text-[var(--warning)] cursor-pointer"
-                        >
-                          清空计数
-                        </button>
-                      )}
-                    </div>
+            <VirtualList
+              items={filteredImageRows}
+              itemHeight={76}
+              overscan={8}
+              containerStyle={{ height: 420 }}
+              containerClassName="max-h-[420px]"
+              empty={<div className="px-6 py-10 text-sm text-[var(--text-muted)] text-center">没有找到符合条件的 QQ 统计条目。</div>}
+              getKey={(row) => row.uid}
+              renderItem={(row, index) => (
+                <div className={`grid h-full grid-cols-[180px_120px_120px_140px_140px_120px_120px] gap-3 px-4 py-3 text-sm items-center ${index < filteredImageRows.length - 1 ? 'border-b border-[var(--border-subtle)]' : ''}`}>
+                  <span className="mono text-[var(--text-primary)]">{row.uid}</span>
+                  <span className="text-xs">
+                    {row.isMaster ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(0,230,118,0.15)] text-[var(--success)]">主人</span>
+                    ) : row.hasOverride ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(255,171,64,0.18)] text-[var(--warning)]">单独限额</span>
+                    ) : (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[var(--bg-elevated)] text-[var(--text-muted)]">全局默认</span>
+                    )}
+                  </span>
+                  <input
+                    type="number"
+                    min={0}
+                    value={row.generateUsed}
+                    onChange={(e) => updateImageUsageCount(row.uid, 'generate', Number(e.target.value))}
+                    className="w-24 px-2 py-1.5 text-sm rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] mono outline-none focus:border-[var(--accent-purple)]"
+                  />
+                  <input
+                    type="number"
+                    min={0}
+                    value={row.editUsed}
+                    onChange={(e) => updateImageUsageCount(row.uid, 'edit', Number(e.target.value))}
+                    className="w-24 px-2 py-1.5 text-sm rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] mono outline-none focus:border-[var(--accent-purple)]"
+                  />
+                  <span className="mono text-[var(--text-secondary)]">{row.isMaster ? '主人无限制' : row.generateRemaining === null ? '不限额' : row.generateRemaining}</span>
+                  <span className="mono text-[var(--text-secondary)]">{row.isMaster ? '主人无限制' : row.editRemaining === null ? '不限额' : row.editRemaining}</span>
+                  <div className="flex justify-end gap-2">
+                    {row.hasStoredUsage && (
+                      <button
+                        onClick={() => removeImageUsageCount(row.uid)}
+                        className="text-xs text-[var(--text-muted)] hover:text-[var(--warning)] cursor-pointer"
+                      >
+                        清空计数
+                      </button>
+                    )}
                   </div>
-                ))
+                </div>
               )}
-            </div>
+            />
           </div>
         </div>
       </Panel>

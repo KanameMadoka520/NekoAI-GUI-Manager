@@ -6,6 +6,7 @@ import { Modal } from '../components/common/Modal';
 import { ImportExportActions } from '../components/common/ImportExportActions';
 import { Panel } from '../components/common/Panel';
 import { SummaryCard } from '../components/common/SummaryCard';
+import { VirtualList } from '../components/common/VirtualList';
 import { useUiStore } from '../stores/uiStore';
 import { listHistoryFiles, getHistoryFile, searchAllHistory, exportHistory, importHistoryFile } from '../lib/tauri-commands';
 import { downloadTextWithTimestamp, pickJsonAndParse } from '../lib/json-transfer';
@@ -530,30 +531,38 @@ export function HistoryViewer() {
     <div className="flex gap-4 h-full">
       <Panel title="历史文件" subtitle="先挑一个历史文件，再决定是看原始对话、查错误，还是做全局搜索。" icon="🗂" padding="sm">
         <div className="text-xs text-[var(--text-muted)] mb-3">{files.length} 个文件</div>
-        <div className="max-h-[calc(100vh-280px)] overflow-y-auto space-y-0.5">
-          {files.map((f) => {
-            const isDay = isDayTime(f.modified);
+        <VirtualList
+          items={files}
+          itemHeight={52}
+          overscan={10}
+          containerStyle={{ height: 'calc(100vh - 280px)' }}
+          containerClassName="max-h-[calc(100vh-280px)]"
+          empty={<div className="px-2 py-6 text-xs text-[var(--text-muted)]">当前还没有历史文件。</div>}
+          getKey={(file) => file.filename}
+          renderItem={(file, index) => {
+            const isDay = isDayTime(file.modified);
             return (
-              <button
-                key={f.filename}
-                onClick={() => loadFile(f.filename)}
-                className={`w-full text-left px-2.5 py-2 rounded-[var(--radius-sm)] text-xs transition-colors cursor-pointer
-                  ${activeFile === f.filename
-                    ? 'bg-[var(--nav-active-bg)] text-[var(--accent-purple)]'
-                    : 'text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)]'
-                  }`}
-              >
-                <div className="flex items-center gap-1.5">
-                  <span>{isDay ? '☀' : '🌙'}</span>
-                  <span className="flex-1 truncate mono">{f.filename.replace(/^history_/, '').replace(/\.json$/, '')}</span>
-                </div>
-                <div className="text-[10px] text-[var(--text-muted)] mt-0.5 pl-5">
-                  {formatBytes(f.size)}
-                </div>
-              </button>
+              <div className={`${index < files.length - 1 ? 'pb-0.5' : ''}`}>
+                <button
+                  onClick={() => loadFile(file.filename)}
+                  className={`w-full text-left px-2.5 py-2 rounded-[var(--radius-sm)] text-xs transition-colors cursor-pointer
+                    ${activeFile === file.filename
+                      ? 'bg-[var(--nav-active-bg)] text-[var(--accent-purple)]'
+                      : 'text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)]'
+                    }`}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span>{isDay ? '☀' : '🌙'}</span>
+                    <span className="flex-1 truncate mono">{file.filename.replace(/^history_/, '').replace(/\.json$/, '')}</span>
+                  </div>
+                  <div className="text-[10px] text-[var(--text-muted)] mt-0.5 pl-5">
+                    {formatBytes(file.size)}
+                  </div>
+                </button>
+              </div>
             );
-          })}
-        </div>
+          }}
+        />
       </Panel>
 
       {/* Center: Content */}

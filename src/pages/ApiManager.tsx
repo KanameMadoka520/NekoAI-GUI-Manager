@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef, memo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useDeferredValue, useRef, memo } from 'react';
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor,
   useSensor, useSensors,
@@ -14,6 +14,7 @@ import { ConfirmDialog } from '../components/common/ConfirmDialog';
 import { ImportExportActions } from '../components/common/ImportExportActions';
 import { Panel } from '../components/common/Panel';
 import { SummaryCard } from '../components/common/SummaryCard';
+import { VirtualList } from '../components/common/VirtualList';
 import { useUiStore } from '../stores/uiStore';
 import { useUndoRedo } from '../hooks/useUndoRedo';
 import { usePageDirtyState } from '../hooks/usePageDirtyState';
@@ -57,6 +58,10 @@ type ApiManagerViewState = {
   showAdvancedToolbar: boolean;
   showNodeHealthPanels: boolean;
 };
+
+type DirectoryListItem =
+  | { kind: 'group'; key: string; provider: string; count: number }
+  | { kind: 'node'; key: string; index: number };
 
 const API_MANAGER_VIEW_STORAGE_KEY = 'nekoai-api-manager-view';
 const DEFAULT_API_MANAGER_VIEW_STATE: ApiManagerViewState = {
@@ -374,6 +379,8 @@ export function ApiManager() {
   const [expandedCards, setExpandedCards] = useState<Set<number>>(new Set());
   const cardRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const imageCardRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+  const deferredSearch = useDeferredValue(search);
+  const deferredImageSearch = useDeferredValue(imageSearch);
 
   const { nodes, activeIndex } = state;
   const { nodes: imageNodes, activeIndex: activeImageIndex } = imageState;
@@ -851,8 +858,8 @@ export function ApiManager() {
   }
 
   const filteredImageIndices = useMemo(() => {
-    if (!imageSearch.trim()) return imageNodes.map((_, i) => i);
-    const q = imageSearch.toLowerCase();
+    if (!deferredImageSearch.trim()) return imageNodes.map((_, i) => i);
+    const q = deferredImageSearch.toLowerCase();
     return imageNodes
       .map((n, i) => ({ n, i }))
       .filter(({ n }) =>
@@ -863,7 +870,7 @@ export function ApiManager() {
         n.editUrl.toLowerCase().includes(q)
       )
       .map(({ i }) => i);
-  }, [imageNodes, imageSearch]);
+  }, [imageNodes, deferredImageSearch]);
 
   const duplicates = useMemo(() => {
     const seen = new Map<string, number[]>();
@@ -878,8 +885,8 @@ export function ApiManager() {
   }, [nodes]);
 
   const filteredIndices = useMemo(() => {
-    if (!search.trim()) return nodes.map((_, i) => i);
-    const q = search.toLowerCase();
+    if (!deferredSearch.trim()) return nodes.map((_, i) => i);
+    const q = deferredSearch.toLowerCase();
     return nodes
       .map((n, i) => ({ n, i }))
       .filter(({ n }) =>
@@ -889,7 +896,7 @@ export function ApiManager() {
         formatAiTypeLabel(n.aiType).toLowerCase().includes(q)
       )
       .map(({ i }) => i);
-  }, [nodes, search]);
+  }, [nodes, deferredSearch]);
 
   const nodeHealthMap = useMemo(() => {
     const map = new Map<number, NodeHealth>();
@@ -1026,6 +1033,17 @@ export function ApiManager() {
     });
     return groups;
   }, [displayedIndices, nodes]);
+
+  const directoryItems = useMemo<DirectoryListItem[]>(() => {
+    const items: DirectoryListItem[] = [];
+    Array.from(grouped.entries()).forEach(([provider, indices]) => {
+      items.push({ kind: 'group', key: `group:${provider}`, provider, count: indices.length });
+      indices.forEach((index) => {
+        items.push({ kind: 'node', key: `node:${index}`, index });
+      });
+    });
+    return items;
+  }, [grouped]);
 
   const summary = useMemo(() => {
     const healthy = nodes.filter((_, i) => nodeHealthMap.get(i)?.level === 'healthy').length;
@@ -1396,49 +1414,57 @@ export function ApiManager() {
             </div>
           </div>
 
-          <div className="mt-4 max-h-[calc(100vh-320px)] overflow-y-auto p-1 space-y-2">
-            {Array.from(grouped.entries()).map(([provider, indices]) => (
-              <div key={provider} className="space-y-1">
-                <div className="flex items-center justify-between px-2 pt-1">
-                  <p className="text-[10px] uppercase text-[var(--text-muted)]">{provider}</p>
-                  <span className="text-[10px] text-[var(--text-muted)]">{indices.length}</span>
-                </div>
-                {indices.map((i) => {
-                  const n = nodes[i];
-                  const ping = pingResults.get(i);
-                  const health = nodeHealthMap.get(i);
-                  const levelMeta = getLevelMeta(health?.level);
-                  return (
-                    <button
-                      key={i}
-                      onClick={() => scrollToNode(i)}
-                      className={`w-full flex items-center gap-2 rounded-[var(--radius-sm)] px-2.5 py-2 text-left transition-colors cursor-pointer ${i === activeIndex ? 'bg-[var(--nav-active-bg)] text-[var(--accent-purple)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)]'}`}
-                    >
-                      <span className="mono text-[10px] text-[var(--text-muted)] w-6 text-right">#{i}</span>
-                      <span className="flex-1 min-w-0">
-                        <span className="block truncate text-xs text-[var(--text-primary)]">{n.modelName || '(空)'}</span>
-                        <span className="block truncate text-[10px] text-[var(--text-muted)]">{n.remark || '还没写备注'}</span>
-                      </span>
-                      <span
-                        className="text-[10px] px-1.5 py-0.5 rounded whitespace-nowrap"
-                        style={{ background: levelMeta.bg, color: levelMeta.color }}
-                        title={health ? `健康分 ${health.score} 分；来源：${getHealthSourceLabel(health.source)}（${getHealthSourceHint(health.source)}）${health.reason ? `；${health.reason}` : ''}` : '无数据'}
-                      >
-                        {formatHealthBadge(health)}
-                      </span>
-                      {ping && (
-                        <span
-                          className="w-2 h-2 rounded-full flex-shrink-0"
-                          style={{ background: ping.pass ? 'var(--success)' : 'var(--error)' }}
-                          title={ping.pass ? `${ping.latency_ms}ms` : ping.error || `HTTP ${ping.status}`}
-                        />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            ))}
-          </div>
+          <VirtualList
+            items={directoryItems}
+            itemHeight={48}
+            overscan={10}
+            containerStyle={{ height: 'calc(100vh - 320px)', marginTop: 16, padding: 4 }}
+            containerClassName="max-h-[calc(100vh-320px)]"
+            empty={<div className="px-3 py-6 text-xs text-[var(--text-muted)]">当前没有可显示的聊天节点。</div>}
+            getKey={(item) => item.key}
+            renderItem={(item) => {
+              if (item.kind === 'group') {
+                return (
+                  <div className="flex h-full items-center justify-between px-2">
+                    <p className="text-[10px] uppercase text-[var(--text-muted)]">{item.provider}</p>
+                    <span className="text-[10px] text-[var(--text-muted)]">{item.count}</span>
+                  </div>
+                );
+              }
+
+              const node = nodes[item.index];
+              const ping = pingResults.get(item.index);
+              const health = nodeHealthMap.get(item.index);
+              const levelMeta = getLevelMeta(health?.level);
+
+              return (
+                <button
+                  onClick={() => scrollToNode(item.index)}
+                  className={`w-full flex h-full items-center gap-2 rounded-[var(--radius-sm)] px-2.5 py-2 text-left transition-colors cursor-pointer ${item.index === activeIndex ? 'bg-[var(--nav-active-bg)] text-[var(--accent-purple)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)]'}`}
+                >
+                  <span className="mono text-[10px] text-[var(--text-muted)] w-6 text-right">#{item.index}</span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block truncate text-xs text-[var(--text-primary)]">{node.modelName || '(空)'}</span>
+                    <span className="block truncate text-[10px] text-[var(--text-muted)]">{node.remark || '还没写备注'}</span>
+                  </span>
+                  <span
+                    className="text-[10px] px-1.5 py-0.5 rounded whitespace-nowrap"
+                    style={{ background: levelMeta.bg, color: levelMeta.color }}
+                    title={health ? `健康分 ${health.score} 分；来源：${getHealthSourceLabel(health.source)}（${getHealthSourceHint(health.source)}）${health.reason ? `；${health.reason}` : ''}` : '无数据'}
+                  >
+                    {formatHealthBadge(health)}
+                  </span>
+                  {ping && (
+                    <span
+                      className="w-2 h-2 rounded-full flex-shrink-0"
+                      style={{ background: ping.pass ? 'var(--success)' : 'var(--error)' }}
+                      title={ping.pass ? `${ping.latency_ms}ms` : ping.error || `HTTP ${ping.status}`}
+                    />
+                  )}
+                </button>
+              );
+            }}
+          />
         </Panel>
       </div>
 

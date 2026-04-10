@@ -7,6 +7,7 @@ import { ToastContainer } from './components/common/Toast';
 import { Modal } from './components/common/Modal';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { ConfirmDialog } from './components/common/ConfirmDialog';
+import { DeferredMount } from './components/common/DeferredMount';
 import { Setup } from './pages/Setup';
 import { useKeyboardShortcuts, shortcutList } from './hooks/useKeyboardShortcuts';
 import { useFileWatcher } from './hooks/useFileWatcher';
@@ -527,16 +528,56 @@ function App() {
             />
             <div className="flex-1 overflow-y-auto p-6">
               <Suspense fallback={<PageFallback />}>
-                {activePage === 'dashboard' && <Dashboard key={refreshKey} />}
-                {activePage === 'commands' && <CommandManager key={refreshKey} />}
-                {activePage === 'personality' && <PersonalityManager key={refreshKey} />}
-                {activePage === 'evaluation' && <EvaluationLab key={refreshKey} />}
-                {activePage === 'memory' && <MemoryViewer key={refreshKey} />}
-                {activePage === 'config' && <ConfigEditor key={refreshKey} />}
-                {activePage === 'api' && <ApiManager key={refreshKey} />}
-                {activePage === 'history' && <HistoryViewer key={refreshKey} />}
-                {activePage === 'usage' && <UsageManager key={refreshKey} />}
-                {activePage === 'ops' && <OpsCenter key={refreshKey} />}
+                {activePage === 'dashboard' && (
+                  <DeferredMount key={`dashboard-${refreshKey}`} fallback={<PageFallback />}>
+                    <Dashboard key={refreshKey} />
+                  </DeferredMount>
+                )}
+                {activePage === 'commands' && (
+                  <DeferredMount key={`commands-${refreshKey}`} fallback={<PageFallback />}>
+                    <CommandManager key={refreshKey} />
+                  </DeferredMount>
+                )}
+                {activePage === 'personality' && (
+                  <DeferredMount key={`personality-${refreshKey}`} fallback={<PageFallback />}>
+                    <PersonalityManager key={refreshKey} />
+                  </DeferredMount>
+                )}
+                {activePage === 'evaluation' && (
+                  <DeferredMount key={`evaluation-${refreshKey}`} fallback={<PageFallback />}>
+                    <EvaluationLab key={refreshKey} />
+                  </DeferredMount>
+                )}
+                {activePage === 'memory' && (
+                  <DeferredMount key={`memory-${refreshKey}`} fallback={<PageFallback />}>
+                    <MemoryViewer key={refreshKey} />
+                  </DeferredMount>
+                )}
+                {activePage === 'config' && (
+                  <DeferredMount key={`config-${refreshKey}`} fallback={<PageFallback />}>
+                    <ConfigEditor key={refreshKey} />
+                  </DeferredMount>
+                )}
+                {activePage === 'api' && (
+                  <DeferredMount key={`api-${refreshKey}`} fallback={<PageFallback />}>
+                    <ApiManager key={refreshKey} />
+                  </DeferredMount>
+                )}
+                {activePage === 'history' && (
+                  <DeferredMount key={`history-${refreshKey}`} fallback={<PageFallback />}>
+                    <HistoryViewer key={refreshKey} />
+                  </DeferredMount>
+                )}
+                {activePage === 'usage' && (
+                  <DeferredMount key={`usage-${refreshKey}`} fallback={<PageFallback />}>
+                    <UsageManager key={refreshKey} />
+                  </DeferredMount>
+                )}
+                {activePage === 'ops' && (
+                  <DeferredMount key={`ops-${refreshKey}`} fallback={<PageFallback />}>
+                    <OpsCenter key={refreshKey} />
+                  </DeferredMount>
+                )}
               </Suspense>
             </div>
             <ToastContainer />
