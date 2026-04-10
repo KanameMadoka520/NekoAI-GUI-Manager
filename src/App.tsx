@@ -81,6 +81,11 @@ const themeOptions = [
   { label: '羊皮纸', value: 'parchment' as const },
 ];
 
+const renderModeOptions = [
+  { label: '标准渲染', value: 'standard' as const },
+  { label: '低性能', value: 'lite' as const },
+];
+
 const densityOptions = [
   { label: '轻', value: 'low' as const },
   { label: '中', value: 'medium' as const },
@@ -139,6 +144,7 @@ function App() {
   const dirtyPages = useUiStore((s) => s.dirtyPages);
   const pageJumpRequest = useUiStore((s) => s.pageJumpRequest);
   const scale = settings.uiScale;
+  const lowPerformanceMode = settings.renderMode === 'lite';
   const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const startupCheckStats = useMemo(() => {
     if (!startupCheck) {
@@ -164,6 +170,10 @@ function App() {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', settings.theme);
   }, [settings.theme]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-render-mode', settings.renderMode);
+  }, [settings.renderMode]);
 
   useEffect(() => {
     if (Object.keys(dirtyPages).length === 0) return undefined;
@@ -271,7 +281,7 @@ function App() {
   }, [showWebConsolePanel, phase, loadWebConsole]);
 
   const ready = phase === 'ready';
-  const ambientEnabled = ready && (activePage === 'dashboard' || activePage === 'ops');
+  const ambientEnabled = ready && !lowPerformanceMode && (activePage === 'dashboard' || activePage === 'ops');
   const scaledViewportHeight = runningInTauri
     ? `calc((100vh - ${CUSTOM_TITLEBAR_HEIGHT_PX}px) / ${scale})`
     : `calc(100vh / ${scale})`;
@@ -753,6 +763,30 @@ function App() {
           <Modal open={showSettings} onClose={() => setShowSettings(false)} title="显示设置" width="420px">
             <div className="space-y-5">
               <div>
+                <label className="text-sm text-[var(--text-secondary)] mb-3 block">渲染方案</label>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {renderModeOptions.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => updateSettings({ renderMode: opt.value })}
+                      className={`py-2 text-sm rounded-[var(--radius-sm)] font-medium border cursor-pointer
+                        ${settings.renderMode === opt.value
+                          ? 'bg-[var(--accent-purple)] text-white border-transparent'
+                          : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
+                        }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] text-[var(--text-muted)] mt-2">
+                  低性能模式会关闭背景动画、界面过渡、模糊和图表动画，更适合核显或远程桌面环境。
+                </p>
+              </div>
+
+              <div className="border-t border-[var(--border-subtle)]" />
+
+              <div>
                 <label className="text-sm text-[var(--text-secondary)] mb-3 block">主题</label>
                 <div className="grid grid-cols-3 gap-1.5">
                   {themeOptions.map((opt) => (
@@ -880,7 +914,7 @@ function App() {
                   <span>📂</span> 重新选择插件目录
                 </button>
                 <button
-                  onClick={() => updateSettings({ uiScale: 1.0, theme: 'light', sidebarCollapsed: false, sidebarWidth: 224, ambientDensity: 'medium', ambientStyle: 'auto', contentDensity: 'standard' })}
+                  onClick={() => updateSettings({ uiScale: 1.0, theme: 'light', renderMode: 'standard', sidebarCollapsed: false, sidebarWidth: 224, ambientDensity: 'medium', ambientStyle: 'auto', contentDensity: 'standard' })}
                   className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-[var(--radius-sm)] text-sm text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] cursor-pointer"
                 >
                   <span>↩</span> 恢复默认设置

@@ -26,6 +26,7 @@ export type PageJumpRequest =
 export interface AppSettings {
   uiScale: number; // 0.8 – 1.5
   theme: 'light' | 'dark' | 'parchment';
+  renderMode: 'standard' | 'lite';
   sidebarCollapsed: boolean;
   sidebarWidth: number;
   ambientDensity: 'low' | 'medium' | 'high';
@@ -37,6 +38,7 @@ export interface AppSettings {
 const defaultSettings: AppSettings = {
   uiScale: 1,
   theme: 'light',
+  renderMode: 'standard',
   sidebarCollapsed: false,
   sidebarWidth: 224,
   ambientDensity: 'medium',

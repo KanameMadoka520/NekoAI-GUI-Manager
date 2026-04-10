@@ -528,6 +528,7 @@ type UsageSection = 'overview' | 'chat' | 'image';
 
 export function UsageManager() {
   const addToast = useUiStore((s) => s.addToast);
+  const lowPerformanceMode = useUiStore((s) => s.settings.renderMode === 'lite');
   const pageJumpRequest = useUiStore((s) => s.pageJumpRequest);
   const requestPageJump = useUiStore((s) => s.requestPageJump);
   const clearPageJumpRequest = useUiStore((s) => s.clearPageJumpRequest);
@@ -1779,7 +1780,7 @@ export function UsageManager() {
                       <XAxis dataKey="name" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={56} />
                       <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} allowDecimals={false} />
                       <Tooltip cursor={{ fill: 'rgba(255,255,255,0.03)' }} contentStyle={{ background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: 12, color: 'var(--text-primary)' }} />
-                      <Bar dataKey="count" radius={[8, 8, 0, 0]} cursor="pointer" onClick={(data) => drillDownUsageEventsByUser('chat', String(data?.name || ''))}>
+                      <Bar dataKey="count" radius={[8, 8, 0, 0]} cursor="pointer" isAnimationActive={!lowPerformanceMode} onClick={(data) => drillDownUsageEventsByUser('chat', String(data?.name || ''))}>
                         {chatTopUsersChartData.map((entry, index) => (
                           <Cell key={`${entry.name}-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                         ))}
@@ -1805,7 +1806,7 @@ export function UsageManager() {
                       <XAxis dataKey="label" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} interval="preserveStartEnd" minTickGap={18} />
                       <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} allowDecimals={false} />
                       <Tooltip cursor={{ fill: 'rgba(255,255,255,0.03)' }} contentStyle={{ background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: 12, color: 'var(--text-primary)' }} />
-                      <Bar dataKey="count" fill="var(--chart-3)" radius={[8, 8, 0, 0]} cursor="pointer" onClick={(data) => drillDownUsageEventsByBucket('chat', extractChartPayloadString(data, 'bucket'))} />
+                      <Bar dataKey="count" fill="var(--chart-3)" radius={[8, 8, 0, 0]} cursor="pointer" isAnimationActive={!lowPerformanceMode} onClick={(data) => drillDownUsageEventsByBucket('chat', extractChartPayloadString(data, 'bucket'))} />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
@@ -1829,7 +1830,7 @@ export function UsageManager() {
                       <XAxis dataKey="name" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={56} />
                       <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} allowDecimals={false} />
                       <Tooltip cursor={{ fill: 'rgba(255,255,255,0.03)' }} contentStyle={{ background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: 12, color: 'var(--text-primary)' }} />
-                      <Bar dataKey="count" radius={[8, 8, 0, 0]} cursor="pointer" onClick={(data) => drillDownUsageEventsByUser('image', String(data?.name || ''))}>
+                      <Bar dataKey="count" radius={[8, 8, 0, 0]} cursor="pointer" isAnimationActive={!lowPerformanceMode} onClick={(data) => drillDownUsageEventsByUser('image', String(data?.name || ''))}>
                         {imageTopUsersChartData.map((entry, index) => (
                           <Cell key={`${entry.name}-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                         ))}
@@ -1855,7 +1856,7 @@ export function UsageManager() {
                       <XAxis dataKey="label" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} interval="preserveStartEnd" minTickGap={18} />
                       <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} allowDecimals={false} />
                       <Tooltip cursor={{ fill: 'rgba(255,255,255,0.03)' }} contentStyle={{ background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: 12, color: 'var(--text-primary)' }} />
-                      <Bar dataKey="count" fill="var(--chart-5)" radius={[8, 8, 0, 0]} cursor="pointer" onClick={(data) => drillDownUsageEventsByBucket('image', extractChartPayloadString(data, 'bucket'))} />
+                      <Bar dataKey="count" fill="var(--chart-5)" radius={[8, 8, 0, 0]} cursor="pointer" isAnimationActive={!lowPerformanceMode} onClick={(data) => drillDownUsageEventsByBucket('image', extractChartPayloadString(data, 'bucket'))} />
                     </BarChart>
                   </ResponsiveContainer>
                 )}

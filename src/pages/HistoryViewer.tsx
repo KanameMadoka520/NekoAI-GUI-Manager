@@ -133,6 +133,7 @@ export function HistoryViewer() {
   const addToast = useUiStore((s) => s.addToast);
   const historyFilterPresets = useUiStore((s) => s.settings.historyFilterPresets);
   const updateHistoryFilterPresets = useUiStore((s) => s.updateHistoryFilterPresets);
+  const lowPerformanceMode = useUiStore((s) => s.settings.renderMode === 'lite');
   const [loading, setLoading] = useState(true);
   const [files, setFiles] = useState<HistoryFileMeta[]>([]);
   const [activeFile, setActiveFile] = useState<string | null>(null);
@@ -926,7 +927,7 @@ export function HistoryViewer() {
                       labelStyle={{ color: 'var(--text-primary)' }}
                       formatter={(value, name) => [value, name === 'count' ? '调用数' : '错误数']}
                     />
-                    <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+                    <Bar dataKey="count" radius={[0, 4, 4, 0]} isAnimationActive={!lowPerformanceMode}>
                       {stats.models.map((m, i) => (
                         <Cell key={i} fill={m.color} />
                       ))}
@@ -954,6 +955,7 @@ export function HistoryViewer() {
                         outerRadius={70}
                         label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
                         labelLine={false}
+                        isAnimationActive={!lowPerformanceMode}
                       >
                         {stats.errorCategories.map((_, i) => (
                           <Cell key={i} fill={ERROR_COLORS[i % ERROR_COLORS.length]} />
@@ -1005,9 +1007,9 @@ export function HistoryViewer() {
           )}
 
           {/* User ranking */}
-          <ChartSection title="用户排行" data={stats.users} />
+          <ChartSection title="用户排行" data={stats.users} lowPerformanceMode={lowPerformanceMode} />
           {/* Node distribution */}
-          <ChartSection title="节点分布" data={stats.nodes} />
+          <ChartSection title="节点分布" data={stats.nodes} lowPerformanceMode={lowPerformanceMode} />
           {/* Hourly distribution */}
           <div>
             <h4 className="text-sm font-medium text-[var(--text-primary)] mb-3">小时分布 (24h)</h4>
@@ -1021,7 +1023,7 @@ export function HistoryViewer() {
                     labelStyle={{ color: 'var(--text-primary)' }}
                     itemStyle={{ color: 'var(--accent-purple)' }}
                   />
-                  <Bar dataKey="count" radius={[3, 3, 0, 0]}>
+                  <Bar dataKey="count" radius={[3, 3, 0, 0]} isAnimationActive={!lowPerformanceMode}>
                     {stats.hours.map((_, i) => (
                       <Cell key={i} fill={i >= 6 && i < 18 ? 'var(--chart-5)' : 'var(--border-hover)'} />
                     ))}
@@ -1037,7 +1039,7 @@ export function HistoryViewer() {
 }
 
 // ===== Chart helper =====
-function ChartSection({ title, data }: { title: string; data: { name: string; count: number }[] }) {
+function ChartSection({ title, data, lowPerformanceMode }: { title: string; data: { name: string; count: number }[]; lowPerformanceMode: boolean }) {
   if (data.length === 0) return null;
   return (
     <div>
@@ -1052,7 +1054,7 @@ function ChartSection({ title, data }: { title: string; data: { name: string; co
               labelStyle={{ color: 'var(--text-primary)' }}
               itemStyle={{ color: 'var(--accent-purple)' }}
             />
-            <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+            <Bar dataKey="count" radius={[0, 4, 4, 0]} isAnimationActive={!lowPerformanceMode}>
               {data.map((_, i) => (
                 <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
               ))}
