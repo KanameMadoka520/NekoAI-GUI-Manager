@@ -42,6 +42,7 @@ const pageTitles: Record<PageId, { title: string; subtitle: string }> = {
 
 const APP_LAST_PAGE_STORAGE_KEY = 'nekoai-last-page';
 const VALID_PAGE_IDS: PageId[] = ['dashboard', 'api', 'config', 'personality', 'evaluation', 'memory', 'history', 'usage', 'commands', 'ops'];
+const CUSTOM_TITLEBAR_HEIGHT_PX = 36;
 
 function loadLastActivePage(): PageId {
   const raw = localStorage.getItem(APP_LAST_PAGE_STORAGE_KEY);
@@ -271,6 +272,9 @@ function App() {
 
   const ready = phase === 'ready';
   const ambientEnabled = ready && (activePage === 'dashboard' || activePage === 'ops');
+  const scaledViewportHeight = runningInTauri
+    ? `calc((100vh - ${CUSTOM_TITLEBAR_HEIGHT_PX}px) / ${scale})`
+    : `calc(100vh / ${scale})`;
 
   useKeyboardShortcuts({
     onNavigate: ready ? handleNavigate : undefined,
@@ -889,16 +893,8 @@ function App() {
     );
   }
 
-  // Scaling wrapper: transform + inverse-size to fit the viewport exactly
   return (
-    <div
-      style={{
-        width: `${100 / scale}vw`,
-        height: `${100 / scale}vh`,
-        transform: `scale(${scale})`,
-        transformOrigin: 'top left',
-      }}
-    >
+    <div className="h-screen w-screen overflow-hidden">
       <div className="relative h-full w-full overflow-hidden">
         <AmbientFx sidebarCollapsed={settings.sidebarCollapsed} sidebarWidth={settings.sidebarWidth} theme={settings.theme} density={settings.ambientDensity} stylePreset={settings.ambientStyle} enabled={ambientEnabled} />
         <div className="relative z-10 h-full w-full flex flex-col">
@@ -908,7 +904,18 @@ function App() {
             </Suspense>
           )}
           <div className="flex-1 overflow-hidden">
-            {content}
+            <div
+              style={{
+                width: `calc(100vw / ${scale})`,
+                height: scaledViewportHeight,
+                transform: `scale(${scale})`,
+                transformOrigin: 'top left',
+              }}
+            >
+              <div className="h-full w-full overflow-hidden">
+                {content}
+              </div>
+            </div>
           </div>
         </div>
       </div>

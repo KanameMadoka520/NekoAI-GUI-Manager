@@ -53,10 +53,6 @@ export function CustomTitlebar({ title }: CustomTitlebarProps) {
     try { await appWindow.close(); } catch (e) { console.error(e); }
   }
 
-  async function startDrag() {
-    try { await appWindow.startDragging(); } catch (e) { console.error(e); }
-  }
-
   return (
     <div
       className="h-9 flex items-center justify-between border-b border-[var(--border-subtle)] select-none"
@@ -69,7 +65,6 @@ export function CustomTitlebar({ title }: CustomTitlebarProps) {
       <div
         data-tauri-drag-region
         className="px-3 text-xs text-[var(--text-secondary)] font-medium tracking-wide flex-1 h-full flex items-center"
-        onMouseDown={startDrag}
       >
         {title}
       </div>
