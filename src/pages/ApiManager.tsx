@@ -14,6 +14,7 @@ import { ConfirmDialog } from '../components/common/ConfirmDialog';
 import { ImportExportActions } from '../components/common/ImportExportActions';
 import { Panel } from '../components/common/Panel';
 import { SummaryCard } from '../components/common/SummaryCard';
+import { DeferredVisibleBlock } from '../components/common/DeferredVisibleBlock';
 import { VirtualList } from '../components/common/VirtualList';
 import { useUiStore } from '../stores/uiStore';
 import { useUndoRedo } from '../hooks/useUndoRedo';
@@ -330,6 +331,21 @@ function MetricBar({ label, score, weight, color, hint }: { label: string; score
         <div className="h-full rounded" style={{ width: `${value}%`, background: color }} />
       </div>
       {hint ? <p className="text-[10px] text-[var(--text-muted)]">{hint}</p> : null}
+    </div>
+  );
+}
+
+function DeferredCardPlaceholder({
+  title,
+  subtitle,
+}: {
+  title: string;
+  subtitle: string;
+}) {
+  return (
+    <div className="mt-4 rounded-[var(--radius-sm)] border border-dashed border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-4 py-3">
+      <p className="text-xs text-[var(--text-primary)]">{title}</p>
+      <p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">{subtitle}</p>
     </div>
   );
 }
@@ -1689,123 +1705,133 @@ function ImageApiManagerPanel({
 
                       <div className="mt-1 text-[11px] text-[var(--text-muted)]">{node.remark || '还没写备注'}</div>
 
-                      <div className="mt-4 grid gap-3 xl:grid-cols-2">
-                        <div>
-                          <label className="text-[10px] text-[var(--text-muted)] mb-1 block">备注</label>
-                          <input
-                            value={node.remark}
-                            onChange={(e) => onUpdate(index, 'remark', e.target.value)}
-                            className="w-full px-2.5 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
-                            placeholder="写一个你自己看得懂的备注"
+                      <DeferredVisibleBlock
+                        forceMount={index === activeIndex || keyVisible}
+                        placeholder={(
+                          <DeferredCardPlaceholder
+                            title="图像节点表单将在滚动到附近时再挂载"
+                            subtitle="离当前视口较远的图像节点会先延迟挂载表单，减少大量图像节点同时展开时的输入框渲染压力。设为活跃或展开 Key 后会立即加载。"
                           />
-                        </div>
-                        <div>
-                          <label className="text-[10px] text-[var(--text-muted)] mb-1 block">图像模型</label>
-                          <input
-                            value={node.modelName}
-                            onChange={(e) => onUpdate(index, 'modelName', e.target.value)}
-                            className="w-full px-2.5 py-2 text-xs mono rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
-                            placeholder="grok-imagine-image"
-                          />
-                          {String(node.modelName || '').trim().toLowerCase() === 'grok-imagine-image-pro' ? (
-                            <p className="mt-1 text-[10px] leading-relaxed text-[var(--warning)]">
-                              当前已知 `grok-imagine-image-pro` 可能阶段性返回 500 / 503。插件现在会在这种“模型暂时不可用”的场景下，自动回退到 `grok-imagine-image` 再重试一次，并在日志与完成提示里明确写出回退情况。
-                            </p>
-                          ) : (
-                            <p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">
-                              若你填写 `grok-imagine-image-pro`，当 xAI 返回“模型暂时不可用 / 服务不可用 / 内部生成失败”时，插件会自动回退到 `grok-imagine-image` 再重试一次。
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="xl:col-span-2">
-                          <label className="text-[10px] text-[var(--text-muted)] mb-1 block">生图 URL</label>
-                          <div className="flex gap-2">
+                        )}
+                      >
+                        <div className="mt-4 grid gap-3 xl:grid-cols-2">
+                          <div>
+                            <label className="text-[10px] text-[var(--text-muted)] mb-1 block">备注</label>
                             <input
-                              value={node.generationUrl}
-                              onChange={(e) => onUpdate(index, 'generationUrl', e.target.value)}
-                              className="flex-1 px-2.5 py-2 text-xs mono rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
-                              placeholder="先填基础地址，需要时点右侧按钮补常见后缀"
+                              value={node.remark}
+                              onChange={(e) => onUpdate(index, 'remark', e.target.value)}
+                              className="w-full px-2.5 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
+                              placeholder="写一个你自己看得懂的备注"
                             />
-                            <button
-                              type="button"
-                              onClick={() => onApplyGenerationSuffix(index)}
-                              className="px-2.5 py-2 text-[11px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-purple)] cursor-pointer whitespace-nowrap"
-                            >
-                              补 /v1/images/generations
-                            </button>
                           </div>
-                        </div>
-
-                        <div className="xl:col-span-2">
-                          <label className="text-[10px] text-[var(--text-muted)] mb-1 block">修图 URL</label>
-                          <div className="flex gap-2">
+                          <div>
+                            <label className="text-[10px] text-[var(--text-muted)] mb-1 block">图像模型</label>
                             <input
-                              value={node.editUrl}
-                              onChange={(e) => onUpdate(index, 'editUrl', e.target.value)}
-                              className="flex-1 px-2.5 py-2 text-xs mono rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
-                              placeholder="先填基础地址，需要时点右侧按钮补常见后缀"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => onApplyEditSuffix(index)}
-                              className="px-2.5 py-2 text-[11px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-purple)] cursor-pointer whitespace-nowrap"
-                            >
-                              补 /v1/images/edits
-                            </button>
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="text-[10px] text-[var(--text-muted)] mb-1 block">默认宽高比</label>
-                          <select
-                            value={node.aspectRatio || ''}
-                            onChange={(e) => onUpdate(index, 'aspectRatio', e.target.value)}
-                            className="w-full px-2.5 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)] cursor-pointer"
-                          >
-                            {IMAGE_ASPECT_RATIO_OPTIONS.map((option) => (
-                              <option key={option.value || 'default'} value={option.value}>
-                                {option.label}
-                              </option>
-                            ))}
-                          </select>
-                          <p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">
-                            `空白` 不等于 `auto`。`空白` 表示这个图像节点不会主动传 `aspect_ratio`，如果命令里也没写 `--ratio`，就完全交给 xAI 自己决定。
-                            `auto` 表示会显式传 `aspect_ratio=auto` 给 xAI，让它自动挑一个合适比例。命令里如果手动写 `--ratio 16:9`，冒号请使用英文冒号 `:`
-                          </p>
-                        </div>
-
-                        <div>
-                          <label className="text-[10px] text-[var(--text-muted)] mb-1 block">默认分辨率</label>
-                          <select
-                            value={node.resolution || ''}
-                            onChange={(e) => onUpdate(index, 'resolution', e.target.value)}
-                            className="w-full px-2.5 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)] cursor-pointer"
-                          >
-                            {IMAGE_RESOLUTION_OPTIONS.map((option) => (
-                              <option key={option.value || 'default'} value={option.value}>
-                                {option.label}
-                              </option>
-                            ))}
-                          </select>
-                          <p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">
-                            `空白` 表示这个图像节点不会主动传 `resolution`，如果命令里也没写 `--resolution`，就完全交给 xAI 自己决定。
-                            当前内置清晰度预设是 `1k（标准清晰度）` 和 `2k（高清清晰度）`。
-                          </p>
-                        </div>
-
-                        {keyVisible ? (
-                          <div className="xl:col-span-2">
-                            <label className="text-[10px] text-[var(--text-muted)] mb-1 block">API Key</label>
-                            <input
-                              value={node.apiKey}
-                              onChange={(e) => onUpdate(index, 'apiKey', e.target.value)}
+                              value={node.modelName}
+                              onChange={(e) => onUpdate(index, 'modelName', e.target.value)}
                               className="w-full px-2.5 py-2 text-xs mono rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
-                              placeholder="xai-..."
+                              placeholder="grok-imagine-image"
                             />
+                            {String(node.modelName || '').trim().toLowerCase() === 'grok-imagine-image-pro' ? (
+                              <p className="mt-1 text-[10px] leading-relaxed text-[var(--warning)]">
+                                当前已知 `grok-imagine-image-pro` 可能阶段性返回 500 / 503。插件现在会在这种“模型暂时不可用”的场景下，自动回退到 `grok-imagine-image` 再重试一次，并在日志与完成提示里明确写出回退情况。
+                              </p>
+                            ) : (
+                              <p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">
+                                若你填写 `grok-imagine-image-pro`，当 xAI 返回“模型暂时不可用 / 服务不可用 / 内部生成失败”时，插件会自动回退到 `grok-imagine-image` 再重试一次。
+                              </p>
+                            )}
                           </div>
-                        ) : null}
-                      </div>
+
+                          <div className="xl:col-span-2">
+                            <label className="text-[10px] text-[var(--text-muted)] mb-1 block">生图 URL</label>
+                            <div className="flex gap-2">
+                              <input
+                                value={node.generationUrl}
+                                onChange={(e) => onUpdate(index, 'generationUrl', e.target.value)}
+                                className="flex-1 px-2.5 py-2 text-xs mono rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
+                                placeholder="先填基础地址，需要时点右侧按钮补常见后缀"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => onApplyGenerationSuffix(index)}
+                                className="px-2.5 py-2 text-[11px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-purple)] cursor-pointer whitespace-nowrap"
+                              >
+                                补 /v1/images/generations
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="xl:col-span-2">
+                            <label className="text-[10px] text-[var(--text-muted)] mb-1 block">修图 URL</label>
+                            <div className="flex gap-2">
+                              <input
+                                value={node.editUrl}
+                                onChange={(e) => onUpdate(index, 'editUrl', e.target.value)}
+                                className="flex-1 px-2.5 py-2 text-xs mono rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
+                                placeholder="先填基础地址，需要时点右侧按钮补常见后缀"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => onApplyEditSuffix(index)}
+                                className="px-2.5 py-2 text-[11px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-purple)] cursor-pointer whitespace-nowrap"
+                              >
+                                补 /v1/images/edits
+                              </button>
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] text-[var(--text-muted)] mb-1 block">默认宽高比</label>
+                            <select
+                              value={node.aspectRatio || ''}
+                              onChange={(e) => onUpdate(index, 'aspectRatio', e.target.value)}
+                              className="w-full px-2.5 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)] cursor-pointer"
+                            >
+                              {IMAGE_ASPECT_RATIO_OPTIONS.map((option) => (
+                                <option key={option.value || 'default'} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
+                            <p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">
+                              `空白` 不等于 `auto`。`空白` 表示这个图像节点不会主动传 `aspect_ratio`，如果命令里也没写 `--ratio`，就完全交给 xAI 自己决定。
+                              `auto` 表示会显式传 `aspect_ratio=auto` 给 xAI，让它自动挑一个合适比例。命令里如果手动写 `--ratio 16:9`，冒号请使用英文冒号 `:`
+                            </p>
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] text-[var(--text-muted)] mb-1 block">默认分辨率</label>
+                            <select
+                              value={node.resolution || ''}
+                              onChange={(e) => onUpdate(index, 'resolution', e.target.value)}
+                              className="w-full px-2.5 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)] cursor-pointer"
+                            >
+                              {IMAGE_RESOLUTION_OPTIONS.map((option) => (
+                                <option key={option.value || 'default'} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
+                            <p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">
+                              `空白` 表示这个图像节点不会主动传 `resolution`，如果命令里也没写 `--resolution`，就完全交给 xAI 自己决定。
+                              当前内置清晰度预设是 `1k（标准清晰度）` 和 `2k（高清清晰度）`。
+                            </p>
+                          </div>
+
+                          {keyVisible ? (
+                            <div className="xl:col-span-2">
+                              <label className="text-[10px] text-[var(--text-muted)] mb-1 block">API Key</label>
+                              <input
+                                value={node.apiKey}
+                                onChange={(e) => onUpdate(index, 'apiKey', e.target.value)}
+                                className="w-full px-2.5 py-2 text-xs mono rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
+                                placeholder="xai-..."
+                              />
+                            </div>
+                          ) : null}
+                        </div>
+                      </DeferredVisibleBlock>
 
                       <div className="mt-4 flex flex-wrap items-center gap-1.5">
                         <button
@@ -1983,124 +2009,134 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
         </div>
       </div>
 
-      <div className={`mt-4 grid gap-3 ${showHealthPanel ? 'xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]' : 'grid-cols-1'}`}>
-        <div className="space-y-3">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <label className="text-[10px] text-[var(--text-muted)] mb-1 block">接口类型</label>
-              <select
-                value={node.aiType}
-                onChange={(e) => onUpdate(index, 'aiType', e.target.value)}
-                className="w-full px-2.5 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)] cursor-pointer"
-              >
-                <option value="openai">openai (completions)</option>
-                <option value="responses">openai-response</option>
-                <option value="anthropic">Anthropic</option>
-                <option value="gemini">Gemini</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-[10px] text-[var(--text-muted)] mb-1 block">备注</label>
-              <input
-                value={node.remark}
-                onChange={(e) => onUpdate(index, 'remark', e.target.value)}
-                className="w-full px-2.5 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
-                placeholder="写一个你自己看得懂的备注"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="text-[10px] text-[var(--text-muted)] mb-1 block">API URL</label>
-            <div className="flex gap-2">
-              <input
-                value={node.apiUrl}
-                onChange={(e) => onUpdate(index, 'apiUrl', e.target.value)}
-                className={`flex-1 px-2.5 py-2 text-xs mono rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)] ${!node.apiUrl ? 'border-[var(--error)]' : 'border-[var(--border-subtle)]'}`}
-                placeholder="先填基础地址，需要时点右侧按钮补常见后缀"
-              />
-              <button
-                type="button"
-                onClick={() => onApplyDefaultUrlSuffix(index)}
-                className="px-2.5 py-2 text-[11px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-purple)] cursor-pointer whitespace-nowrap"
-                title="只会补这类接口的常见默认后缀，不会覆盖你自己写的自定义路径"
-              >
-                {getDefaultSuffixActionLabel(node.aiType, node.modelName)}
-              </button>
-            </div>
-            <p className="mt-1 text-[10px] text-[var(--text-muted)]">
-              {getDefaultSuffixHint(node.aiType, node.modelName)}。URL 仍然完全由你决定，按钮只做辅助补全。
-            </p>
-          </div>
-
-          <div>
-            <label className="text-[10px] text-[var(--text-muted)] mb-1 block">模型名称</label>
-            <input
-              value={node.modelName}
-              onChange={(e) => onUpdate(index, 'modelName', e.target.value)}
-              className={`w-full px-2.5 py-2 text-xs mono rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)] ${!node.modelName ? 'border-[var(--error)]' : 'border-[var(--border-subtle)]'}`}
-              placeholder="gpt-4"
-            />
-          </div>
-
-          <div className={`rounded-[var(--radius-sm)] border p-3 ${node.aiType === 'responses' ? 'border-[var(--border-subtle)] bg-[var(--bg-elevated)]' : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)] opacity-65'}`}>
-            <label className="flex items-start gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={node.xaiWebSearchEnabled === true}
-                disabled={node.aiType !== 'responses'}
-                onChange={(e) => onUpdate(index, 'xaiWebSearchEnabled', e.target.checked)}
-                className="mt-0.5 accent-[var(--accent-purple)] cursor-pointer disabled:cursor-not-allowed"
-              />
-              <span className="min-w-0">
-                <span className="block text-xs text-[var(--text-primary)]">启用 xAI Web Search</span>
-                <span className="block mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">
-                  仅在 `openai-response` 下生效，只支持 xAI 官方 API + Grok 模型。若你的 URL 来自第三方兼容站、中转站，或模型不是 Grok，请保持关闭。
-                </span>
-              </span>
-            </label>
-          </div>
-
-          {isExpanded && (
-            <div>
-              <label className="text-[10px] text-[var(--text-muted)] mb-1 block">API Key</label>
-              <div className="flex gap-1.5">
-                <input
-                  type={showKey ? 'text' : 'password'}
-                  value={node.apiKey}
-                  onChange={(e) => onUpdate(index, 'apiKey', e.target.value)}
-                  className="flex-1 px-2.5 py-2 text-xs mono rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
-                  placeholder="sk-..."
-                />
-                <button
-                  onClick={() => onToggleKey(index)}
-                  className="px-2.5 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
-                  title={showKey ? '隐藏' : '显示'}
+      <DeferredVisibleBlock
+        forceMount={isActive || isExpanded || isDragging}
+        placeholder={(
+          <DeferredCardPlaceholder
+            title="编辑表单将在滚动到附近时再挂载"
+            subtitle="为了减轻长节点列表的渲染压力，离当前视口较远的节点会先延迟挂载输入框和健康面板。滚动到这里、设为活跃或展开 Key 区域后会自动加载。"
+          />
+        )}
+      >
+        <div className={`mt-4 grid gap-3 ${showHealthPanel ? 'xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]' : 'grid-cols-1'}`}>
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="text-[10px] text-[var(--text-muted)] mb-1 block">接口类型</label>
+                <select
+                  value={node.aiType}
+                  onChange={(e) => onUpdate(index, 'aiType', e.target.value)}
+                  className="w-full px-2.5 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)] cursor-pointer"
                 >
-                  {showKey ? '🙈' : '👁'}
-                </button>
+                  <option value="openai">openai (completions)</option>
+                  <option value="responses">openai-response</option>
+                  <option value="anthropic">Anthropic</option>
+                  <option value="gemini">Gemini</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] text-[var(--text-muted)] mb-1 block">备注</label>
+                <input
+                  value={node.remark}
+                  onChange={(e) => onUpdate(index, 'remark', e.target.value)}
+                  className="w-full px-2.5 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
+                  placeholder="写一个你自己看得懂的备注"
+                />
               </div>
             </div>
-          )}
-        </div>
 
-        {showHealthPanel && (
-        <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-3">
-          <div>
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-xs font-medium text-[var(--text-primary)]">节点健康</p>
-              <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: levelMeta.bg, color: levelMeta.color }} title={`来源: ${getHealthSourceLabel(health?.source)}${health?.reason ? `；${health.reason}` : ''}`}>{formatHealthBadge(health)}</span>
+            <div>
+              <label className="text-[10px] text-[var(--text-muted)] mb-1 block">API URL</label>
+              <div className="flex gap-2">
+                <input
+                  value={node.apiUrl}
+                  onChange={(e) => onUpdate(index, 'apiUrl', e.target.value)}
+                  className={`flex-1 px-2.5 py-2 text-xs mono rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)] ${!node.apiUrl ? 'border-[var(--error)]' : 'border-[var(--border-subtle)]'}`}
+                  placeholder="先填基础地址，需要时点右侧按钮补常见后缀"
+                />
+                <button
+                  type="button"
+                  onClick={() => onApplyDefaultUrlSuffix(index)}
+                  className="px-2.5 py-2 text-[11px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-purple)] cursor-pointer whitespace-nowrap"
+                  title="只会补这类接口的常见默认后缀，不会覆盖你自己写的自定义路径"
+                >
+                  {getDefaultSuffixActionLabel(node.aiType, node.modelName)}
+                </button>
+              </div>
+              <p className="mt-1 text-[10px] text-[var(--text-muted)]">
+                {getDefaultSuffixHint(node.aiType, node.modelName)}。URL 仍然完全由你决定，按钮只做辅助补全。
+              </p>
             </div>
-            <p className="text-[10px] text-[var(--text-muted)] mt-1">{health?.reason ?? '暂无评分解释'}{health?.source !== 'none' ? `（当前来源：${getHealthSourceLabel(health?.source)}）` : ''}</p>
+
+            <div>
+              <label className="text-[10px] text-[var(--text-muted)] mb-1 block">模型名称</label>
+              <input
+                value={node.modelName}
+                onChange={(e) => onUpdate(index, 'modelName', e.target.value)}
+                className={`w-full px-2.5 py-2 text-xs mono rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)] ${!node.modelName ? 'border-[var(--error)]' : 'border-[var(--border-subtle)]'}`}
+                placeholder="gpt-4"
+              />
+            </div>
+
+            <div className={`rounded-[var(--radius-sm)] border p-3 ${node.aiType === 'responses' ? 'border-[var(--border-subtle)] bg-[var(--bg-elevated)]' : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)] opacity-65'}`}>
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={node.xaiWebSearchEnabled === true}
+                  disabled={node.aiType !== 'responses'}
+                  onChange={(e) => onUpdate(index, 'xaiWebSearchEnabled', e.target.checked)}
+                  className="mt-0.5 accent-[var(--accent-purple)] cursor-pointer disabled:cursor-not-allowed"
+                />
+                <span className="min-w-0">
+                  <span className="block text-xs text-[var(--text-primary)]">启用 xAI Web Search</span>
+                  <span className="block mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">
+                    仅在 `openai-response` 下生效，只支持 xAI 官方 API + Grok 模型。若你的 URL 来自第三方兼容站、中转站，或模型不是 Grok，请保持关闭。
+                  </span>
+                </span>
+              </label>
+            </div>
+
+            {isExpanded && (
+              <div>
+                <label className="text-[10px] text-[var(--text-muted)] mb-1 block">API Key</label>
+                <div className="flex gap-1.5">
+                  <input
+                    type={showKey ? 'text' : 'password'}
+                    value={node.apiKey}
+                    onChange={(e) => onUpdate(index, 'apiKey', e.target.value)}
+                    className="flex-1 px-2.5 py-2 text-xs mono rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
+                    placeholder="sk-..."
+                  />
+                  <button
+                    onClick={() => onToggleKey(index)}
+                    className="px-2.5 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
+                    title={showKey ? '隐藏' : '显示'}
+                  >
+                    {showKey ? '🙈' : '👁'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
-          <MetricBar label="实时" score={health?.liveScore} weight={health?.liveWeight ?? 0} color="var(--accent-purple)" hint={pingResult?.pass ? `最近测试 ${pingResult.latency_ms}ms` : pingResult?.error || undefined} />
-          <MetricBar label="历史" score={health?.historyScore} weight={health?.historyWeight ?? 0} color="var(--info)" />
-          <MetricBar label="超时" score={health?.timeoutScore} weight={health?.timeoutWeight ?? 0} color="var(--warning)" hint={health?.timeoutScore !== null && (health?.timeoutScore ?? 0) < 80 ? '超时占比偏高' : undefined} />
-          <MetricBar label="抖动" score={health?.jitterScore} weight={health?.jitterWeight ?? 0} color="var(--success)" hint={health?.jitterScore !== null && (health?.jitterScore ?? 0) < 80 ? '响应波动偏大' : undefined} />
+          {showHealthPanel && (
+          <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-3">
+            <div>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-medium text-[var(--text-primary)]">节点健康</p>
+                <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: levelMeta.bg, color: levelMeta.color }} title={`来源: ${getHealthSourceLabel(health?.source)}${health?.reason ? `；${health.reason}` : ''}`}>{formatHealthBadge(health)}</span>
+              </div>
+              <p className="text-[10px] text-[var(--text-muted)] mt-1">{health?.reason ?? '暂无评分解释'}{health?.source !== 'none' ? `（当前来源：${getHealthSourceLabel(health?.source)}）` : ''}</p>
+            </div>
+
+            <MetricBar label="实时" score={health?.liveScore} weight={health?.liveWeight ?? 0} color="var(--accent-purple)" hint={pingResult?.pass ? `最近测试 ${pingResult.latency_ms}ms` : pingResult?.error || undefined} />
+            <MetricBar label="历史" score={health?.historyScore} weight={health?.historyWeight ?? 0} color="var(--info)" />
+            <MetricBar label="超时" score={health?.timeoutScore} weight={health?.timeoutWeight ?? 0} color="var(--warning)" hint={health?.timeoutScore !== null && (health?.timeoutScore ?? 0) < 80 ? '超时占比偏高' : undefined} />
+            <MetricBar label="抖动" score={health?.jitterScore} weight={health?.jitterWeight ?? 0} color="var(--success)" hint={health?.jitterScore !== null && (health?.jitterScore ?? 0) < 80 ? '响应波动偏大' : undefined} />
+          </div>
+          )}
         </div>
-        )}
-      </div>
+      </DeferredVisibleBlock>
 
       <div className="mt-4 flex flex-wrap items-center gap-1.5">
         <button onClick={() => onTest(index)} disabled={isPinging}

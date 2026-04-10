@@ -265,6 +265,12 @@ const CHART_COLORS = [
   'var(--chart-5)',
   'var(--chart-6)',
 ];
+const CLAMP_TWO_LINES_STYLE = {
+  display: '-webkit-box',
+  WebkitLineClamp: 2,
+  WebkitBoxOrient: 'vertical',
+  overflow: 'hidden',
+} as const;
 
 const USAGE_EVENT_RETENTION_LIMIT = 10000;
 const USAGE_EVENT_PAGE_SIZES = [50, 100, 200] as const;
@@ -2063,8 +2069,13 @@ export function UsageManager() {
                     <span>明细</span>
                   </div>
 
-                  <div className="max-h-[420px] overflow-y-auto divide-y divide-[var(--border-subtle)]">
-                    {pagedUsageEvents.length === 0 ? (
+                  <VirtualList
+                    items={pagedUsageEvents}
+                    itemHeight={112}
+                    overscan={8}
+                    containerStyle={{ height: 420 }}
+                    containerClassName="max-h-[420px]"
+                    empty={(
                       <div className="px-6 py-10 text-sm text-[var(--text-muted)] text-center">
                         {usageEvents.events.length === 0
                           ? '当前日志里还没有任何 usage event。先让插件真实运行一段时间，这里才会出现聊天 / 图像的统一事件。'
@@ -2072,61 +2083,68 @@ export function UsageManager() {
                             ? '当前筛选条件下没有命中任何 usage event。可以点上面的筛选标签逐个移除，或直接清空筛选。'
                             : '当前还没有可显示的 usage event。'}
                       </div>
-                    ) : (
-                      pagedUsageEvents.map((event) => (
-                        <div key={event.id} className="grid grid-cols-[160px_72px_88px_88px_130px_130px_160px_240px_minmax(280px,1fr)] gap-3 px-4 py-3 text-xs items-start">
-                          <span className="mono text-[var(--text-secondary)]">{formatUsageEventTime(event.timestamp)}</span>
-                          <span>
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full ${event.category === 'image' ? 'bg-[rgba(251,191,36,0.15)] text-[var(--warning)]' : 'bg-[rgba(14,165,233,0.15)] text-[var(--info)]'}`}>
-                              {getUsageEventCategoryLabel(event.category)}
-                            </span>
-                          </span>
-                          <span>
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full ${event.allowed ? 'bg-[rgba(0,230,118,0.15)] text-[var(--success)]' : 'bg-[rgba(255,82,82,0.15)] text-[var(--error)]'}`}>
-                              {event.allowed ? '允许' : '拒绝'}
-                            </span>
-                          </span>
-                          <span className="text-[var(--text-primary)]">{getUsageEventActionLabel(event.action, event.category)}</span>
-                          <div className="space-y-1">
-                            <button
-                              onClick={() => drillDownUsageEventsByUser(event.category, event.userId)}
-                              className="mono text-left text-[var(--accent-purple)] hover:underline cursor-pointer"
-                            >
-                              {event.userId}
-                            </button>
-                            <button
-                              onClick={() => jumpToQuotaUser(event.category, event.userId)}
-                              className="text-[10px] text-left text-[var(--info)] hover:underline cursor-pointer"
-                            >
-                              查看限额位置
-                            </button>
-                            {event.isMasterUser && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(168,85,247,0.15)] text-[var(--accent-purple)]">主人</span>
-                            )}
-                          </div>
-                          <span className="mono text-[var(--text-secondary)]">{buildUsageEventSceneLabel(event)}</span>
-                          <span className="text-[var(--text-secondary)] break-all">{getUsageEventReasonLabel(event.reason)}</span>
-                          <div className="space-y-1">
-                            {event.nodeRemark || event.modelName ? (
-                              <button
-                                onClick={() => jumpToApiNode(event)}
-                                className="text-left hover:underline cursor-pointer"
-                              >
-                                <div className="text-[var(--text-primary)] break-all">{event.nodeRemark || '-'}</div>
-                                <div className="mono text-[10px] text-[var(--text-muted)] break-all">{event.modelName || '-'}</div>
-                              </button>
-                            ) : (
-                              <>
-                                <div className="text-[var(--text-primary)] break-all">-</div>
-                                <div className="mono text-[10px] text-[var(--text-muted)] break-all">-</div>
-                              </>
-                            )}
-                          </div>
-                          <span className="text-[var(--text-secondary)] break-all">{buildUsageEventDetailSummary(event.detail)}</span>
-                        </div>
-                      ))
                     )}
-                  </div>
+                    getKey={(event) => event.id}
+                    renderItem={(event, index) => (
+                      <div className={`grid h-full grid-cols-[160px_72px_88px_88px_130px_130px_160px_240px_minmax(280px,1fr)] gap-3 px-4 py-3 text-xs items-start ${index < pagedUsageEvents.length - 1 ? 'border-b border-[var(--border-subtle)]' : ''}`}>
+                        <span className="mono text-[var(--text-secondary)]">{formatUsageEventTime(event.timestamp)}</span>
+                        <span>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full ${event.category === 'image' ? 'bg-[rgba(251,191,36,0.15)] text-[var(--warning)]' : 'bg-[rgba(14,165,233,0.15)] text-[var(--info)]'}`}>
+                            {getUsageEventCategoryLabel(event.category)}
+                          </span>
+                        </span>
+                        <span>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full ${event.allowed ? 'bg-[rgba(0,230,118,0.15)] text-[var(--success)]' : 'bg-[rgba(255,82,82,0.15)] text-[var(--error)]'}`}>
+                            {event.allowed ? '允许' : '拒绝'}
+                          </span>
+                        </span>
+                        <span style={CLAMP_TWO_LINES_STYLE} className="text-[var(--text-primary)]">{getUsageEventActionLabel(event.action, event.category)}</span>
+                        <div className="space-y-1">
+                          <button
+                            onClick={() => drillDownUsageEventsByUser(event.category, event.userId)}
+                            className="mono text-left text-[var(--accent-purple)] hover:underline cursor-pointer"
+                          >
+                            {event.userId}
+                          </button>
+                          <button
+                            onClick={() => jumpToQuotaUser(event.category, event.userId)}
+                            className="text-[10px] text-left text-[var(--info)] hover:underline cursor-pointer"
+                          >
+                            查看限额位置
+                          </button>
+                          {event.isMasterUser && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(168,85,247,0.15)] text-[var(--accent-purple)]">主人</span>
+                          )}
+                        </div>
+                        <span style={CLAMP_TWO_LINES_STYLE} className="mono text-[var(--text-secondary)]">{buildUsageEventSceneLabel(event)}</span>
+                        <span style={CLAMP_TWO_LINES_STYLE} className="text-[var(--text-secondary)] break-all">{getUsageEventReasonLabel(event.reason)}</span>
+                        <div className="space-y-1 min-w-0">
+                          {event.nodeRemark || event.modelName ? (
+                            <button
+                              onClick={() => jumpToApiNode(event)}
+                              className="text-left hover:underline cursor-pointer min-w-0"
+                              title={`${event.nodeRemark || '-'} / ${event.modelName || '-'}`}
+                            >
+                              <div style={CLAMP_TWO_LINES_STYLE} className="text-[var(--text-primary)] break-all">{event.nodeRemark || '-'}</div>
+                              <div style={CLAMP_TWO_LINES_STYLE} className="mono text-[10px] text-[var(--text-muted)] break-all">{event.modelName || '-'}</div>
+                            </button>
+                          ) : (
+                            <>
+                              <div className="text-[var(--text-primary)] break-all">-</div>
+                              <div className="mono text-[10px] text-[var(--text-muted)] break-all">-</div>
+                            </>
+                          )}
+                        </div>
+                        <span
+                          style={CLAMP_TWO_LINES_STYLE}
+                          className="text-[var(--text-secondary)] break-all"
+                          title={buildUsageEventDetailSummary(event.detail)}
+                        >
+                          {buildUsageEventDetailSummary(event.detail)}
+                        </span>
+                      </div>
+                    )}
+                  />
                 </div>
               </div>
 
