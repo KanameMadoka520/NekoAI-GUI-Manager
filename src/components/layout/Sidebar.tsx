@@ -37,13 +37,27 @@ export function Sidebar({ activePage, onNavigate, onChangeDir, onOpenSettings, o
   const [clock, setClock] = useState('');
 
   useEffect(() => {
+    let timer: number | null = null;
+
     const update = () => {
       const now = new Date();
-      setClock(now.toLocaleTimeString('zh-CN', { hour12: false }));
+      setClock(now.toLocaleTimeString('zh-CN', { hour12: false, hour: '2-digit', minute: '2-digit' }));
     };
+
+    const scheduleNext = () => {
+      const now = Date.now();
+      const delay = 60000 - (now % 60000) + 120;
+      timer = window.setTimeout(() => {
+        update();
+        scheduleNext();
+      }, delay);
+    };
+
     update();
-    const id = setInterval(update, 1000);
-    return () => clearInterval(id);
+    scheduleNext();
+    return () => {
+      if (timer !== null) window.clearTimeout(timer);
+    };
   }, []);
 
   return (
@@ -81,7 +95,7 @@ export function Sidebar({ activePage, onNavigate, onChangeDir, onOpenSettings, o
                 ? 'bg-[var(--nav-active-bg)] text-[var(--accent-purple)] font-semibold border border-[var(--border-strong)]'
                 : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] border border-transparent'
               }`}
-            style={{ transition: 'all 0.2s var(--ease-spring)' }}
+            style={{ transition: 'background-color 0.18s var(--ease-spring), color 0.18s var(--ease-spring), border-color 0.18s var(--ease-spring), opacity 0.18s var(--ease-spring)' }}
           >
             {activePage === item.id && !collapsed && (
               <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-4 bg-[var(--accent-purple)]" />

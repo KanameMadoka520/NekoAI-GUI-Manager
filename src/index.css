@@ -267,19 +267,23 @@
   will-change: auto !important;
 }
 
-:root[data-render-mode='lite'] .perf-panel,
-:root[data-render-mode='lite'] .perf-summary-card,
-:root[data-render-mode='lite'] .perf-stat-card {
+.perf-panel-viewport,
+.perf-summary-card,
+.perf-stat-card {
   content-visibility: auto;
   contain: layout paint style;
 }
 
-:root[data-render-mode='lite'] .perf-panel {
+.perf-panel-viewport {
+  contain-intrinsic-size: 440px;
+}
+
+:root[data-render-mode='lite'] .perf-panel-viewport {
   contain-intrinsic-size: 640px;
 }
 
-:root[data-render-mode='lite'] .perf-summary-card,
-:root[data-render-mode='lite'] .perf-stat-card {
+.perf-summary-card,
+.perf-stat-card {
   contain-intrinsic-size: 120px;
 }
 
@@ -332,10 +336,16 @@ textarea:focus {
 
 /* Buttons: spring transition */
 button {
-  transition: all 0.3s var(--ease-spring);
+  transition-property: background-color, border-color, color, opacity, box-shadow, transform;
+  transition-duration: 0.2s;
+  transition-timing-function: var(--ease-spring);
 }
 button:active {
-  transform: scale(0.96);
+  transform: scale(0.985);
+}
+
+:root[data-render-mode='lite'] button:active {
+  transform: none !important;
 }
 
 /* ===== Animations ===== */

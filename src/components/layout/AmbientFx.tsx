@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 type ThemeName = 'light' | 'dark' | 'parchment';
 
@@ -152,7 +152,28 @@ export function AmbientFx({
   stylePreset = 'auto',
   enabled = true,
 }: AmbientFxProps) {
-  if (!enabled) return null;
+  const [active, setActive] = useState(() => {
+    if (typeof document === 'undefined') return true;
+    return document.visibilityState === 'visible' && document.hasFocus();
+  });
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return undefined;
+    const sync = () => {
+      setActive(document.visibilityState === 'visible' && document.hasFocus());
+    };
+    sync();
+    window.addEventListener('focus', sync);
+    window.addEventListener('blur', sync);
+    document.addEventListener('visibilitychange', sync);
+    return () => {
+      window.removeEventListener('focus', sync);
+      window.removeEventListener('blur', sync);
+      document.removeEventListener('visibilitychange', sync);
+    };
+  }, []);
+
+  if (!enabled || !active) return null;
   const baseScale = 0.7;
   const densityScale = (density === 'low' ? 0.65 : density === 'high' ? 1.35 : 1) * baseScale;
   const sidebarPct = sidebarCollapsed
