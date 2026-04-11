@@ -134,6 +134,7 @@ function App() {
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [pendingLeaveAction, setPendingLeaveAction] = useState<PendingLeaveAction>(null);
   const [webConsoleStatus, setWebConsoleStatus] = useState<WebConsoleStatus | null>(null);
+  const [webConsoleHostDraft, setWebConsoleHostDraft] = useState('127.0.0.1');
   const [webConsolePortDraft, setWebConsolePortDraft] = useState('32191');
   const [webConsoleBusy, setWebConsoleBusy] = useState(false);
   const { title, subtitle } = pageTitles[activePage];
@@ -160,13 +161,21 @@ function App() {
   }, [startupCheck]);
   const pluginDirInfo = useMemo(() => getCurrentPluginDirInfo(), [phase, refreshKey]);
   const currentDirtyMessage = dirtyPages[activePage];
+  const webConsoleHostNormalized = useMemo(() => webConsoleHostDraft.trim() || '127.0.0.1', [webConsoleHostDraft]);
+  const webConsoleBrowserHostPreview = useMemo(
+    () => (webConsoleHostNormalized === '0.0.0.0' ? '127.0.0.1' : webConsoleHostNormalized),
+    [webConsoleHostNormalized],
+  );
   const webConsoleUrlPreview = useMemo(() => {
     const port = webConsolePortDraft.trim() || '32191';
-    return `http://127.0.0.1:${port}/`;
-  }, [webConsolePortDraft]);
+    return `http://${webConsoleBrowserHostPreview}:${port}/`;
+  }, [webConsoleBrowserHostPreview, webConsolePortDraft]);
   const webConsolePortParsed = useMemo(() => Number.parseInt(webConsolePortDraft.trim(), 10), [webConsolePortDraft]);
   const webConsoleRunning = webConsoleStatus?.running === true;
-  const webConsolePortChangedWhileRunning = webConsoleRunning && Number.isFinite(webConsolePortParsed) && webConsoleStatus?.port !== webConsolePortParsed;
+  const webConsoleConfigChangedWhileRunning = webConsoleRunning && (
+    (Number.isFinite(webConsolePortParsed) && webConsoleStatus?.port !== webConsolePortParsed)
+    || (webConsoleStatus?.host?.trim() || '127.0.0.1') !== webConsoleHostNormalized
+  );
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', settings.theme);
@@ -270,6 +279,7 @@ function App() {
     try {
       const status = await getWebConsoleStatus();
       setWebConsoleStatus(status);
+      setWebConsoleHostDraft(status.host || '127.0.0.1');
       setWebConsolePortDraft(String(status.port || 32191));
     } catch (e: any) {
       addToast('error', `加载本地 Web 控制台状态失败: ${e?.message ?? e}`);
@@ -350,17 +360,22 @@ function App() {
       addToast('warning', '本地 Web 控制台端口必须是 1024 到 65535 之间的整数');
       return;
     }
+    if (!webConsoleHostNormalized) {
+      addToast('warning', '本地 Web 控制台监听地址不能为空');
+      return;
+    }
 
     setWebConsoleBusy(true);
     try {
-      const shouldEnable = !webConsoleRunning || webConsolePortChangedWhileRunning;
-      await saveWebConsoleSettings({ enabled: shouldEnable, port: parsedPort });
+      const shouldEnable = !webConsoleRunning || webConsoleConfigChangedWhileRunning;
+      await saveWebConsoleSettings({ enabled: shouldEnable, host: webConsoleHostNormalized, port: parsedPort });
       await new Promise((resolve) => window.setTimeout(resolve, 180));
       const status = await getWebConsoleStatus();
       setWebConsoleStatus(status);
+      setWebConsoleHostDraft(status.host || '127.0.0.1');
       setWebConsolePortDraft(String(status.port));
       if (shouldEnable && status.enabled && status.running) {
-        addToast('success', webConsolePortChangedWhileRunning ? `本地 Web 控制台已切换到新端口：${status.url}` : `本地 Web 控制台已启动：${status.url}`);
+        addToast('success', webConsoleConfigChangedWhileRunning ? `本地 Web 控制台已切换到新地址：${status.url}` : `本地 Web 控制台已启动：${status.url}`);
         await openWebConsoleExternally(status.url);
       } else if (shouldEnable) {
         addToast('error', '本地 Web 控制台未能稳定启动，请先点“刷新状态”再看是否仍为未运行');
@@ -720,7 +735,7 @@ function App() {
                   <div>
                     <h3 className="text-sm font-semibold text-[var(--text-primary)]">控制台状态</h3>
                     <p className="text-[11px] text-[var(--text-muted)] mt-1 leading-relaxed">
-                      这里只管理本机 `127.0.0.1` 的浏览器控制台，不对外开放。建议只在你确实需要同时开浏览器操作时启用。
+                      这里可以配置本地 Web 服务的监听地址。`127.0.0.1` 仅本机可访问，`0.0.0.0` 会监听全部网卡，适合你要让同局域网内其他设备也能进来。
                     </p>
                   </div>
                   <span className={`inline-flex items-center px-2.5 py-1 rounded border text-xs ${webConsoleRunning ? 'border-[rgba(0,230,118,0.35)] text-[var(--success)] bg-[rgba(0,230,118,0.08)]' : 'border-[var(--border-subtle)] text-[var(--text-muted)] bg-[var(--surface-card)]'}`}>
@@ -729,6 +744,36 @@ function App() {
                 </div>
 
                 <div className="grid grid-cols-[120px_1fr] gap-3 items-center">
+                  <span className="text-xs text-[var(--text-secondary)]">监听地址</span>
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={webConsoleHostDraft}
+                        onChange={(e) => setWebConsoleHostDraft(e.target.value)}
+                        className="flex-1 px-3 py-2 text-sm mono rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
+                        placeholder="127.0.0.1"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setWebConsoleHostDraft('127.0.0.1')}
+                        className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer whitespace-nowrap"
+                      >
+                        填 127.0.0.1
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setWebConsoleHostDraft('0.0.0.0')}
+                        className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer whitespace-nowrap"
+                      >
+                        填 0.0.0.0
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+                      `127.0.0.1` 只允许当前电脑访问。`0.0.0.0` 表示监听当前电脑所有网卡，其他设备需要用你的局域网 IP 访问，不要直接拿 `0.0.0.0` 当外部访问地址。
+                    </p>
+                  </div>
+
                   <span className="text-xs text-[var(--text-secondary)]">监听端口</span>
                   <input
                     type="number"
@@ -739,7 +784,7 @@ function App() {
                     className="w-full px-3 py-2 text-sm mono rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
                   />
 
-                  <span className="text-xs text-[var(--text-secondary)]">访问地址</span>
+                  <span className="text-xs text-[var(--text-secondary)]">本机访问</span>
                   <div className="px-3 py-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] text-xs mono break-all text-[var(--text-secondary)]">
                     {webConsoleStatus?.url ?? webConsoleUrlPreview}
                   </div>
@@ -747,9 +792,15 @@ function App() {
                   <span className="text-xs text-[var(--text-secondary)]">当前说明</span>
                   <div className="flex flex-wrap gap-2 text-[11px] text-[var(--text-secondary)]">
                     <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--surface-card)]">默认冷门端口：32191</span>
-                    {webConsolePortChangedWhileRunning && (
+                    <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--surface-card)]">当前监听：{webConsoleHostNormalized}:{webConsolePortDraft.trim() || '32191'}</span>
+                    {webConsoleConfigChangedWhileRunning && (
                       <span className="px-2 py-1 rounded border border-[rgba(255,171,64,0.35)] text-[var(--warning)] bg-[rgba(255,171,64,0.08)]">
-                        你修改了端口，下一次按钮操作会重启服务到新端口
+                        你修改了监听地址或端口，下一次按钮操作会按新配置重启服务
+                      </span>
+                    )}
+                    {webConsoleHostNormalized === '0.0.0.0' && (
+                      <span className="px-2 py-1 rounded border border-[rgba(14,165,233,0.35)] text-[var(--info)] bg-[rgba(14,165,233,0.08)]">
+                        当前是全网卡监听。本机浏览器建议访问 {webConsoleUrlPreview}，其他设备请改用这台电脑的局域网 IP
                       </span>
                     )}
                     {webConsoleStatus?.pluginDir && (
@@ -765,14 +816,14 @@ function App() {
                 <button
                   onClick={handleToggleWebConsole}
                   disabled={webConsoleBusy}
-                  className={`px-4 py-2 text-sm rounded-[var(--radius-sm)] text-white disabled:opacity-60 cursor-pointer ${webConsoleRunning && !webConsolePortChangedWhileRunning ? 'bg-[var(--error)] hover:opacity-90' : 'bg-[var(--accent-purple)] hover:opacity-90'}`}
+                  className={`px-4 py-2 text-sm rounded-[var(--radius-sm)] text-white disabled:opacity-60 cursor-pointer ${webConsoleRunning && !webConsoleConfigChangedWhileRunning ? 'bg-[var(--error)] hover:opacity-90' : 'bg-[var(--accent-purple)] hover:opacity-90'}`}
                 >
                   {webConsoleBusy
                     ? '处理中...'
-                    : webConsoleRunning && !webConsolePortChangedWhileRunning
+                    : webConsoleRunning && !webConsoleConfigChangedWhileRunning
                       ? '关闭服务'
-                      : webConsoleRunning && webConsolePortChangedWhileRunning
-                        ? '应用新端口并重启'
+                      : webConsoleRunning && webConsoleConfigChangedWhileRunning
+                        ? '应用新地址并重启'
                         : '开启并打开浏览器'}
                 </button>
                 <button

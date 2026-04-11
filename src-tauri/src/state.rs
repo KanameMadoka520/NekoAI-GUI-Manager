@@ -4,6 +4,7 @@ use std::sync::Mutex;
 use tokio::sync::oneshot;
 
 pub struct WebConsoleRuntime {
+    pub host: String,
     pub port: u16,
     pub shutdown: oneshot::Sender<()>,
 }
@@ -51,13 +52,13 @@ impl AppState {
         Ok(())
     }
 
-    pub fn get_web_console_port(&self) -> Result<Option<u16>, String> {
+    pub fn get_web_console_binding(&self) -> Result<Option<(String, u16)>, String> {
         Ok(self
             .web_console
             .lock()
             .map_err(|e| format!("Lock error: {}", e))?
             .as_ref()
-            .map(|runtime| runtime.port))
+            .map(|runtime| (runtime.host.clone(), runtime.port)))
     }
 
     pub fn set_web_console_runtime(&self, runtime: WebConsoleRuntime) -> Result<(), String> {
@@ -71,9 +72,13 @@ impl AppState {
         Ok(lock.take())
     }
 
-    pub fn clear_web_console_runtime_if_port(&self, port: u16) -> Result<(), String> {
+    pub fn clear_web_console_runtime_if_binding(&self, host: &str, port: u16) -> Result<(), String> {
         let mut lock = self.web_console.lock().map_err(|e| format!("Lock error: {}", e))?;
-        if lock.as_ref().map(|runtime| runtime.port) == Some(port) {
+        if lock
+            .as_ref()
+            .map(|runtime| runtime.port == port && runtime.host == host)
+            .unwrap_or(false)
+        {
             *lock = None;
         }
         Ok(())

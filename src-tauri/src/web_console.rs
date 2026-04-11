@@ -30,13 +30,18 @@ use tokio::net::TcpListener;
 use tokio::sync::oneshot;
 use tower_http::services::{ServeDir, ServeFile};
 
-const WEB_CONSOLE_HOST: &str = "127.0.0.1";
+const DEFAULT_WEB_CONSOLE_HOST: &str = "127.0.0.1";
+const LOCAL_BROWSER_HOST: &str = "127.0.0.1";
 const DEFAULT_WEB_CONSOLE_PORT: u16 = 32191;
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct WebConsoleSettings {
+    #[serde(default)]
     pub enabled: bool,
+    #[serde(default = "default_web_console_host")]
+    pub host: String,
+    #[serde(default = "default_web_console_port")]
     pub port: u16,
 }
 
@@ -54,6 +59,14 @@ pub struct WebConsoleStatus {
 #[derive(Clone)]
 struct WebConsoleContext {
     app: AppHandle,
+}
+
+fn default_web_console_host() -> String {
+    DEFAULT_WEB_CONSOLE_HOST.to_string()
+}
+
+fn default_web_console_port() -> u16 {
+    DEFAULT_WEB_CONSOLE_PORT
 }
 
 #[derive(Deserialize)]
@@ -207,6 +220,7 @@ struct EnvParams {
 fn default_web_console_settings() -> WebConsoleSettings {
     WebConsoleSettings {
         enabled: false,
+        host: default_web_console_host(),
         port: DEFAULT_WEB_CONSOLE_PORT,
     }
 }
@@ -227,9 +241,41 @@ fn normalize_port(port: u16) -> u16 {
     }
 }
 
+fn normalize_host(host: String) -> String {
+    let trimmed = host.trim();
+    if trimmed.is_empty() {
+        return DEFAULT_WEB_CONSOLE_HOST.to_string();
+    }
+    trimmed.to_string()
+}
+
+fn format_http_host(host: &str) -> String {
+    if host.contains(':') && !host.starts_with('[') && !host.ends_with(']') {
+        format!("[{}]", host)
+    } else {
+        host.to_string()
+    }
+}
+
+fn browser_access_host(host: &str) -> String {
+    let normalized = host.trim();
+    if normalized == "0.0.0.0" {
+        return LOCAL_BROWSER_HOST.to_string();
+    }
+    if normalized.is_empty() {
+        return DEFAULT_WEB_CONSOLE_HOST.to_string();
+    }
+    normalized.to_string()
+}
+
+fn build_browser_url(host: &str, port: u16) -> String {
+    format!("http://{}:{}/", format_http_host(&browser_access_host(host)), port)
+}
+
 fn normalize_settings(settings: WebConsoleSettings) -> WebConsoleSettings {
     WebConsoleSettings {
         enabled: settings.enabled,
+        host: normalize_host(settings.host),
         port: normalize_port(settings.port),
     }
 }
@@ -271,17 +317,20 @@ fn append_web_console_log(message: &str) {
 }
 
 fn current_status(state: &AppState, settings: &WebConsoleSettings) -> Result<WebConsoleStatus, String> {
-    let running_port = state.get_web_console_port()?;
+    let running_binding = state.get_web_console_binding()?;
+    let running = running_binding.is_some();
     let plugin_dir = state
         .get_plugin_dir_optional()?
         .map(|path| path.to_string_lossy().to_string());
+    let (host, port) = running_binding
+        .unwrap_or_else(|| (settings.host.clone(), settings.port));
 
     Ok(WebConsoleStatus {
         enabled: settings.enabled,
-        running: running_port.is_some(),
-        host: WEB_CONSOLE_HOST.to_string(),
-        port: running_port.unwrap_or(settings.port),
-        url: format!("http://{}:{}/", WEB_CONSOLE_HOST, running_port.unwrap_or(settings.port)),
+        running,
+        host,
+        port,
+        url: build_browser_url(&host, port),
         plugin_dir,
     })
 }
@@ -319,19 +368,20 @@ fn stop_web_console_runtime(state: &AppState) -> Result<(), String> {
     Ok(())
 }
 
-fn start_web_console_runtime(app: AppHandle, port: u16) -> Result<(), String> {
-    let current_port = {
+fn start_web_console_runtime(app: AppHandle, host: String, port: u16) -> Result<(), String> {
+    let normalized_host = normalize_host(host);
+    let current_binding = {
         let state = app.state::<AppState>();
-        state.get_web_console_port()?
+        state.get_web_console_binding()?
     };
 
-    if current_port == Some(port) {
+    if current_binding.as_ref() == Some(&(normalized_host.clone(), port)) {
         return Ok(());
     }
 
     let frontend_dir = resolve_frontend_dir(&app)?;
-    let std_listener = StdTcpListener::bind((WEB_CONSOLE_HOST, port))
-        .map_err(|e| format!("本地 Web 控制台启动失败，端口 {} 可能已被占用：{}", port, e))?;
+    let std_listener = StdTcpListener::bind((normalized_host.as_str(), port))
+        .map_err(|e| format!("本地 Web 控制台启动失败，地址 {}:{} 可能不可用或已被占用：{}", normalized_host, port, e))?;
     std_listener
         .set_nonblocking(true)
         .map_err(|e| format!("本地 Web 控制台启动失败，无法设置 nonblocking：{}", e))?;
@@ -344,11 +394,14 @@ fn start_web_console_runtime(app: AppHandle, port: u16) -> Result<(), String> {
     let (shutdown_tx, shutdown_rx) = oneshot::channel::<()>();
     let state_for_exit = app.clone();
     let app_for_thread = app.clone();
+    let host_for_thread = normalized_host.clone();
+    let host_for_async = normalized_host.clone();
+    let host_for_exit_cleanup = normalized_host.clone();
 
     let spawn_result = thread::Builder::new()
         .name("neko-web-console".to_string())
         .spawn(move || {
-            append_web_console_log(&format!("服务线程启动，端口={}", port));
+            append_web_console_log(&format!("服务线程启动，地址={}:{}, 本机访问={}", host_for_thread, port, build_browser_url(&host_for_thread, port)));
 
             let runtime = match tokio::runtime::Builder::new_current_thread()
                 .enable_all()
@@ -358,7 +411,7 @@ fn start_web_console_runtime(app: AppHandle, port: u16) -> Result<(), String> {
                 Err(err) => {
                     append_web_console_log(&format!("创建 Tokio runtime 失败: {}", err));
                     let state = state_for_exit.state::<AppState>();
-                    let _ = state.clear_web_console_runtime_if_port(port);
+                    let _ = state.clear_web_console_runtime_if_binding(&host_for_exit_cleanup, port);
                     return;
                 }
             };
@@ -370,7 +423,7 @@ fn start_web_console_runtime(app: AppHandle, port: u16) -> Result<(), String> {
                     Err(err) => {
                         append_web_console_log(&format!("切换 Tokio listener 失败: {}", err));
                         let state = state_for_async.state::<AppState>();
-                        let _ = state.clear_web_console_runtime_if_port(port);
+                        let _ = state.clear_web_console_runtime_if_binding(&host_for_async, port);
                         return;
                     }
                 };
@@ -396,7 +449,7 @@ fn start_web_console_runtime(app: AppHandle, port: u16) -> Result<(), String> {
             });
 
             let state = state_for_exit.state::<AppState>();
-            let _ = state.clear_web_console_runtime_if_port(port);
+            let _ = state.clear_web_console_runtime_if_binding(&host_for_exit_cleanup, port);
         });
 
     if let Err(err) = spawn_result {
@@ -405,10 +458,14 @@ fn start_web_console_runtime(app: AppHandle, port: u16) -> Result<(), String> {
 
     {
         let state = app.state::<AppState>();
-        state.set_web_console_runtime(WebConsoleRuntime { port, shutdown: shutdown_tx })?;
+        state.set_web_console_runtime(WebConsoleRuntime {
+            host: normalized_host.clone(),
+            port,
+            shutdown: shutdown_tx,
+        })?;
     }
 
-    append_web_console_log(&format!("服务已登记为运行中，端口={}", port));
+    append_web_console_log(&format!("服务已登记为运行中，地址={}:{}, 本机访问={}", normalized_host, port, build_browser_url(&normalized_host, port)));
 
     Ok(())
 }
@@ -422,7 +479,7 @@ fn apply_web_console_settings(app: AppHandle, settings: WebConsoleSettings) -> R
     let normalized = normalize_settings(settings);
 
     if normalized.enabled {
-        start_web_console_runtime(app.clone(), normalized.port)?;
+        start_web_console_runtime(app.clone(), normalized.host.clone(), normalized.port)?;
     } else {
         let state = app.state::<AppState>();
         stop_web_console_runtime(state.inner())?;
@@ -718,7 +775,7 @@ struct SaveWebConsoleSettingsParams {
 pub fn bootstrap_web_console(app: &AppHandle) -> Result<(), String> {
     let settings = load_web_console_settings()?;
     if settings.enabled {
-        if let Err(err) = start_web_console_runtime(app.clone(), settings.port) {
+        if let Err(err) = start_web_console_runtime(app.clone(), settings.host.clone(), settings.port) {
             eprintln!("[NekoAI Manager] failed to bootstrap web console: {}", err);
         }
     }

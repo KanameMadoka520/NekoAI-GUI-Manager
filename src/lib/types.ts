@@ -492,6 +492,7 @@ export interface ManagerContext {
 
 export interface WebConsoleSettings {
   enabled: boolean;
+  host: string;
   port: number;
 }
 
