@@ -58,6 +58,7 @@ type ApiManagerViewState = {
   healthSourceFilter: 'all' | 'live' | 'history' | 'mixed' | 'none';
   showAdvancedToolbar: boolean;
   showNodeHealthPanels: boolean;
+  focusActiveNodeOnly: boolean;
 };
 
 type DirectoryListItem =
@@ -74,6 +75,7 @@ const DEFAULT_API_MANAGER_VIEW_STATE: ApiManagerViewState = {
   healthSourceFilter: 'all',
   showAdvancedToolbar: false,
   showNodeHealthPanels: false,
+  focusActiveNodeOnly: false,
 };
 
 function clampScore(v: number) {
@@ -268,6 +270,7 @@ function loadApiManagerViewState(): ApiManagerViewState {
         : 'all',
       showAdvancedToolbar: parsed.showAdvancedToolbar === true,
       showNodeHealthPanels: parsed.showNodeHealthPanels === true,
+      focusActiveNodeOnly: parsed.focusActiveNodeOnly === true,
     };
   } catch {
     return DEFAULT_API_MANAGER_VIEW_STATE;
@@ -392,6 +395,7 @@ export function ApiManager() {
   const [weightJitter, setWeightJitter] = useState(20);
   const [showAdvancedToolbar, setShowAdvancedToolbar] = useState(initialViewState.showAdvancedToolbar);
   const [showNodeHealthPanels, setShowNodeHealthPanels] = useState(initialViewState.showNodeHealthPanels);
+  const [focusActiveNodeOnly, setFocusActiveNodeOnly] = useState(initialViewState.focusActiveNodeOnly);
   const [expandedCards, setExpandedCards] = useState<Set<number>>(new Set());
   const cardRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const imageCardRefs = useRef<Map<number, HTMLDivElement>>(new Map());
@@ -426,8 +430,9 @@ export function ApiManager() {
       healthSourceFilter,
       showAdvancedToolbar,
       showNodeHealthPanels,
+      focusActiveNodeOnly,
     });
-  }, [managerMode, search, imageSearch, healthSort, healthFilter, healthSourceFilter, showAdvancedToolbar, showNodeHealthPanels]);
+  }, [managerMode, search, imageSearch, healthSort, healthFilter, healthSourceFilter, showAdvancedToolbar, showNodeHealthPanels, focusActiveNodeOnly]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -1030,14 +1035,21 @@ export function ApiManager() {
     return arr;
   }, [filteredIndices, healthFilter, healthSourceFilter, healthSort, nodeHealthMap]);
 
+  const visibleNodeIndices = useMemo(() => {
+    if (!focusActiveNodeOnly) return displayedIndices;
+    if (!nodes[activeIndex]) return [];
+    return displayedIndices.includes(activeIndex) ? [activeIndex] : [];
+  }, [focusActiveNodeOnly, displayedIndices, nodes, activeIndex]);
+
   const activeDirectoryFilters = useMemo(() => {
     const items: string[] = [];
     if (search.trim()) items.push(`搜索：${search.trim()}`);
     if (healthSort !== 'none') items.push(`排序：${healthSort === 'desc' ? '健康分高到低' : '健康分低到高'}`);
     if (healthFilter !== 'all') items.push(`等级：${healthFilter === 'healthy' ? '健康' : healthFilter === 'warning' ? '警告' : '风险'}`);
     if (healthSourceFilter !== 'all') items.push(`来源：${getHealthSourceLabel(healthSourceFilter)}`);
+    if (focusActiveNodeOnly) items.push('右侧：仅活跃节点');
     return items;
-  }, [search, healthSort, healthFilter, healthSourceFilter]);
+  }, [search, healthSort, healthFilter, healthSourceFilter, focusActiveNodeOnly]);
 
   const grouped = useMemo(() => {
     const groups = new Map<string, number[]>();
@@ -1241,6 +1253,14 @@ export function ApiManager() {
           >
             {showNodeHealthPanels ? '收起节点健康栏' : '展开节点健康栏'}
           </button>
+          <button
+            onClick={() => setFocusActiveNodeOnly((v) => !v)}
+            disabled={nodes.length === 0}
+            className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] transition-colors ${nodes.length === 0 ? 'bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed opacity-60' : focusActiveNodeOnly ? 'bg-[var(--nav-active-bg)] text-[var(--accent-purple)] cursor-pointer' : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer'}`}
+            title="开启后右侧只完整渲染当前活跃节点，适合弱机环境下聚焦编辑"
+          >
+            {focusActiveNodeOnly ? '退出聚焦编辑' : '聚焦编辑活跃节点'}
+          </button>
           <div className="flex-1" />
           <div className="flex items-center gap-2">
             <button onClick={undo} disabled={!canUndo}
@@ -1382,8 +1402,8 @@ export function ApiManager() {
 
             <div className="grid grid-cols-2 gap-2">
               <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2">
-                <p className="text-[10px] text-[var(--text-muted)]">当前显示</p>
-                <p className="text-sm font-medium text-[var(--text-primary)]">{displayedIndices.length}/{nodes.length}</p>
+                <p className="text-[10px] text-[var(--text-muted)]">目录 / 右侧</p>
+                <p className="text-sm font-medium text-[var(--text-primary)]">{displayedIndices.length}/{visibleNodeIndices.length}</p>
               </div>
               <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2">
                 <p className="text-[10px] text-[var(--text-muted)]">风险节点</p>
@@ -1489,10 +1509,14 @@ export function ApiManager() {
             <div className="flex items-center justify-center h-full rounded-[var(--radius)] border border-dashed border-[var(--border-subtle)]">
               <p className="text-sm text-[var(--text-muted)]">你这里还没有任何 API 节点。先点“新增节点”，把 URL、Key 和模型名填进去，再测试它可不可用。</p>
             </div>
-          ) : displayedIndices.length === 0 ? (
+          ) : visibleNodeIndices.length === 0 ? (
             <div className="flex items-center justify-center h-full rounded-[var(--radius)] border border-dashed border-[var(--border-subtle)]">
               <div className="px-6 text-center">
-                <p className="text-sm text-[var(--text-muted)]">当前筛选条件下没有匹配节点。可以清掉搜索词，或者放宽健康等级 / 来源筛选再试一次。</p>
+                <p className="text-sm text-[var(--text-muted)]">
+                  {focusActiveNodeOnly
+                    ? '聚焦编辑模式下，右侧只显示当前活跃节点；但当前活跃节点不在目录筛选结果里。可以先在左侧点别的节点，或放宽筛选条件。'
+                    : '当前筛选条件下没有匹配节点。可以清掉搜索词，或者放宽健康等级 / 来源筛选再试一次。'}
+                </p>
                 {activeDirectoryFilters.length > 0 && (
                   <p className="mt-2 text-[11px] text-[var(--text-muted)]">当前条件：{activeDirectoryFilters.join(' / ')}</p>
                 )}
@@ -1500,9 +1524,9 @@ export function ApiManager() {
             </div>
           ) : (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-              <SortableContext items={displayedIndices} strategy={verticalListSortingStrategy}>
+              <SortableContext items={visibleNodeIndices} strategy={verticalListSortingStrategy}>
                 <div className={nodeCardStackGap}>
-                  {displayedIndices.map((i) => (
+                  {visibleNodeIndices.map((i) => (
                     <SortableNodeCard
                       key={i}
                       id={i}
