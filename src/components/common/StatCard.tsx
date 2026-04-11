@@ -8,7 +8,7 @@ interface StatCardProps {
 export function StatCard({ label, value, color = 'var(--accent-purple)', icon }: StatCardProps) {
   return (
     <div
-      className="relative rounded-[var(--radius)] p-5 flex flex-col gap-2 overflow-hidden transition-all duration-200 border border-[var(--border-subtle)]"
+      className="perf-stat-card relative rounded-[var(--radius)] p-5 flex flex-col gap-2 overflow-hidden transition-all duration-200 border border-[var(--border-subtle)]"
       style={{ background: 'var(--surface-card)', boxShadow: 'var(--shadow-card)' }}
     >
       {/* Accent left bar */}

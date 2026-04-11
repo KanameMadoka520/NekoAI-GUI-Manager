@@ -9,7 +9,7 @@ export function Panel({ title, subtitle, icon, children, padding = 'md' }: {
 }) {
   return (
     <div
-      className={`rounded-[var(--radius)] overflow-hidden border border-[var(--border-subtle)] ${padding === 'sm' ? 'p-5' : 'p-6'}`}
+      className={`perf-panel rounded-[var(--radius)] overflow-hidden border border-[var(--border-subtle)] ${padding === 'sm' ? 'p-5' : 'p-6'}`}
       style={{ background: 'var(--surface-card)', boxShadow: 'var(--shadow-card)' }}
     >
       <div className="mb-4 pb-3 border-b border-[var(--border-subtle)]">

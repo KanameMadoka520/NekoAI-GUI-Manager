@@ -267,6 +267,22 @@
   will-change: auto !important;
 }
 
+:root[data-render-mode='lite'] .perf-panel,
+:root[data-render-mode='lite'] .perf-summary-card,
+:root[data-render-mode='lite'] .perf-stat-card {
+  content-visibility: auto;
+  contain: layout paint style;
+}
+
+:root[data-render-mode='lite'] .perf-panel {
+  contain-intrinsic-size: 640px;
+}
+
+:root[data-render-mode='lite'] .perf-summary-card,
+:root[data-render-mode='lite'] .perf-stat-card {
+  contain-intrinsic-size: 120px;
+}
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {

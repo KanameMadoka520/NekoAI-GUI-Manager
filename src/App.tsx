@@ -1034,8 +1034,12 @@ function App() {
               style={{
                 width: `calc(100vw / ${scale})`,
                 height: scaledViewportHeight,
-                transform: `scale(${scale})`,
-                transformOrigin: 'top left',
+                ...(lowPerformanceMode
+                  ? { zoom: scale as unknown as string | number }
+                  : {
+                      transform: `scale(${scale})`,
+                      transformOrigin: 'top left',
+                    }),
               }}
             >
               <div className="h-full w-full overflow-hidden">
