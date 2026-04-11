@@ -417,8 +417,8 @@ fn session_expiry_epoch(settings: &WebConsoleSettings) -> i64 {
 }
 
 fn epoch_to_iso(epoch: i64) -> Option<String> {
-    chrono::NaiveDateTime::from_timestamp_opt(epoch, 0)
-        .map(|naive| chrono::DateTime::<chrono::Utc>::from_utc(naive, chrono::Utc).to_rfc3339())
+    chrono::DateTime::<chrono::Utc>::from_timestamp(epoch, 0)
+        .map(|dt| dt.to_rfc3339())
 }
 
 fn load_web_console_settings() -> Result<WebConsoleSettings, String> {
