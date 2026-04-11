@@ -3,6 +3,7 @@ import { Panel } from '../components/common/Panel';
 import { SearchBar } from '../components/common/SearchBar';
 import { SummaryCard } from '../components/common/SummaryCard';
 import { ConfirmDialog } from '../components/common/ConfirmDialog';
+import { DeferredVisibleBlock } from '../components/common/DeferredVisibleBlock';
 import { useUiStore } from '../stores/uiStore';
 import { listenCompat } from '../lib/runtime-bridge';
 import {
@@ -72,6 +73,7 @@ function totalScore(run: PersonalityEvalRunRecord) {
 export function EvaluationLab() {
   const addToast = useUiStore((s) => s.addToast);
   const settings = useUiStore((s) => s.settings);
+  const lowPerformanceMode = settings.renderMode === 'lite';
 
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<PersonalityEvalMode>('group');
@@ -95,6 +97,11 @@ export function EvaluationLab() {
   const [busy, setBusy] = useState<string | null>(null);
   const [progress, setProgress] = useState<EvalProgressEvent | null>(null);
   const [runningSessionId, setRunningSessionId] = useState('');
+  const [showConfigDetails, setShowConfigDetails] = useState(true);
+  const [showCaseDetails, setShowCaseDetails] = useState(!lowPerformanceMode);
+  const [showHistoryDetails, setShowHistoryDetails] = useState(!lowPerformanceMode);
+  const [showScoreDetails, setShowScoreDetails] = useState(!lowPerformanceMode);
+  const [showStatsDetails, setShowStatsDetails] = useState(!lowPerformanceMode);
 
   useEffect(() => {
     void loadAll();
@@ -142,6 +149,14 @@ export function EvaluationLab() {
       return next.length >= 2 ? next : defaultCandidateIndexes(list);
     });
   }, [mode, groupList, privateList]);
+
+  useEffect(() => {
+    if (!lowPerformanceMode) return;
+    setShowCaseDetails(false);
+    setShowHistoryDetails(false);
+    setShowScoreDetails(false);
+    setShowStatsDetails(false);
+  }, [lowPerformanceMode]);
 
   async function loadAll() {
     setLoading(true);
@@ -406,64 +421,82 @@ export function EvaluationLab() {
 
       <div className={`grid grid-cols-1 xl:grid-cols-2 ${densityClass}`}>
         <Panel title="实验配置" subtitle="先把“谁参赛”“用什么模型”“拿什么问题去比”这三件事定下来。." icon="🧪">
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <button onClick={() => setMode('group')} className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] border cursor-pointer ${mode === 'group' ? 'bg-[var(--nav-active-bg)] text-[var(--accent-purple)] border-[var(--accent-purple)]' : 'bg-[var(--bg-elevated)] border-[var(--border-subtle)] text-[var(--text-secondary)]'}`}>比较群聊人格</button>
-              <button onClick={() => setMode('private')} className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] border cursor-pointer ${mode === 'private' ? 'bg-[var(--nav-active-bg)] text-[var(--accent-purple)] border-[var(--accent-purple)]' : 'bg-[var(--bg-elevated)] border-[var(--border-subtle)] text-[var(--text-secondary)]'}`}>比较私聊人格</button>
-              <label className="ml-auto text-xs text-[var(--text-secondary)] flex items-center gap-2">
-                每组跑几轮
-                <input type="number" min={1} max={5} value={rounds} onChange={(e) => setRounds(Math.max(1, Math.min(5, Number(e.target.value) || 1)))} className="w-20 px-2 py-1.5 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] text-[var(--text-primary)]" />
-              </label>
-            </div>
-
-            <div>
-              <p className="text-xs text-[var(--text-muted)] mb-2">要拿来比较的人格（至少选 2 个）</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
-                {personalityList.map((item, index) => (
-                  <label key={`${mode}-${index}`} className="flex items-start gap-2 px-3 py-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] cursor-pointer">
-                    <input type="checkbox" checked={selectedCandidateIndexes.includes(index)} onChange={() => toggleIndex(index, selectedCandidateIndexes, setSelectedCandidateIndexes)} />
-                    <div className="min-w-0">
-                      <p className="text-sm text-[var(--text-primary)] truncate">#{index} {item.remark}</p>
-                      <p className="text-[11px] text-[var(--text-muted)] line-clamp-2">{item.prompt || '（空提示词）'}</p>
-                    </div>
+          <EvalToggleRow
+            expanded={showConfigDetails}
+            onToggle={() => setShowConfigDetails((value) => !value)}
+            collapsedText={`模式 ${mode === 'group' ? '群聊' : '私聊'}，已选人格 ${selectedCandidates.length}，已选 API ${selectedApis.length}，轮次 ${rounds}`}
+          />
+          {showConfigDetails && (
+            <DeferredVisibleBlock placeholder={<EvalCollapsedHint text="滚动到这里附近时再挂载实验配置详情。" />}>
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <button onClick={() => setMode('group')} className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] border cursor-pointer ${mode === 'group' ? 'bg-[var(--nav-active-bg)] text-[var(--accent-purple)] border-[var(--accent-purple)]' : 'bg-[var(--bg-elevated)] border-[var(--border-subtle)] text-[var(--text-secondary)]'}`}>比较群聊人格</button>
+                  <button onClick={() => setMode('private')} className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] border cursor-pointer ${mode === 'private' ? 'bg-[var(--nav-active-bg)] text-[var(--accent-purple)] border-[var(--accent-purple)]' : 'bg-[var(--bg-elevated)] border-[var(--border-subtle)] text-[var(--text-secondary)]'}`}>比较私聊人格</button>
+                  <label className="ml-auto text-xs text-[var(--text-secondary)] flex items-center gap-2">
+                    每组跑几轮
+                    <input type="number" min={1} max={5} value={rounds} onChange={(e) => setRounds(Math.max(1, Math.min(5, Number(e.target.value) || 1)))} className="w-20 px-2 py-1.5 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] text-[var(--text-primary)]" />
                   </label>
-                ))}
-              </div>
-            </div>
+                </div>
 
-            <div>
-              <p className="text-xs text-[var(--text-muted)] mb-2">要参加评测的 API 节点（这里是固定节点，不会自动切路由）</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
-                {apiNodes.map((item) => (
-                  <label key={item.index} className="flex items-start gap-2 px-3 py-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] cursor-pointer">
-                    <input type="checkbox" checked={selectedApiIndexes.includes(item.index)} onChange={() => toggleIndex(item.index, selectedApiIndexes, setSelectedApiIndexes)} />
-                    <div className="min-w-0">
-                      <p className="text-sm text-[var(--text-primary)] truncate">#{item.index} {item.remark}</p>
-                      <p className="text-[11px] text-[var(--text-muted)] truncate">{item.modelName} / {item.aiType}</p>
-                    </div>
-                  </label>
-                ))}
+                <div>
+                  <p className="text-xs text-[var(--text-muted)] mb-2">要拿来比较的人格（至少选 2 个）</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
+                    {personalityList.map((item, index) => (
+                      <label key={`${mode}-${index}`} className="flex items-start gap-2 px-3 py-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] cursor-pointer">
+                        <input type="checkbox" checked={selectedCandidateIndexes.includes(index)} onChange={() => toggleIndex(index, selectedCandidateIndexes, setSelectedCandidateIndexes)} />
+                        <div className="min-w-0">
+                          <p className="text-sm text-[var(--text-primary)] truncate">#{index} {item.remark}</p>
+                          <p className="text-[11px] text-[var(--text-muted)] line-clamp-2">{item.prompt || '（空提示词）'}</p>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-xs text-[var(--text-muted)] mb-2">要参加评测的 API 节点（这里是固定节点，不会自动切路由）</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
+                    {apiNodes.map((item) => (
+                      <label key={item.index} className="flex items-start gap-2 px-3 py-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] cursor-pointer">
+                        <input type="checkbox" checked={selectedApiIndexes.includes(item.index)} onChange={() => toggleIndex(item.index, selectedApiIndexes, setSelectedApiIndexes)} />
+                        <div className="min-w-0">
+                          <p className="text-sm text-[var(--text-primary)] truncate">#{item.index} {item.remark}</p>
+                          <p className="text-[11px] text-[var(--text-muted)] truncate">{item.modelName} / {item.aiType}</p>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
+            </DeferredVisibleBlock>
+          )}
         </Panel>
 
         <Panel title="测试用例集" subtitle="这里决定你拿什么问题去比较人格。问题设计得越清楚，结论就越稳定。." icon="📝">
-          <div className="space-y-3">
-            {cases.map((item) => (
-              <div key={item.id} className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-2">
-                <div className="flex gap-2">
-                  <input value={item.name} onChange={(e) => updateCase(item.id, { name: e.target.value })} placeholder="用例名称" className="flex-1 px-3 py-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] text-sm text-[var(--text-primary)]" />
-                  <button onClick={() => duplicateCase(item.id)} className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] cursor-pointer">复制一份</button>
-                  <button onClick={() => setCases((items) => items.length <= 1 ? items : items.filter((x) => x.id !== item.id))} className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[rgba(255,82,82,0.12)] text-[var(--error)] cursor-pointer">删掉</button>
-                </div>
-                <input value={item.tags.join(', ')} onChange={(e) => updateCase(item.id, { tags: e.target.value.split(',').map((x) => x.trim()).filter(Boolean) })} placeholder="标签，用逗号分隔，方便以后筛选" className="w-full px-3 py-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] text-sm text-[var(--text-primary)]" />
-                <textarea value={item.contextText ?? ''} onChange={(e) => updateCase(item.id, { contextText: e.target.value })} placeholder="补充上下文（可选）。适合放人物关系、前文摘要或任务背景。" rows={3} className="w-full px-3 py-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] text-sm text-[var(--text-primary)] resize-y" />
-                <textarea value={item.latestUserMessage} onChange={(e) => updateCase(item.id, { latestUserMessage: e.target.value })} placeholder="用户最后一句会说什么（必填）。尽量写成你真的会拿去问机器人的话。" rows={3} className="w-full px-3 py-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] text-sm text-[var(--text-primary)] resize-y" />
+          <EvalToggleRow
+            expanded={showCaseDetails}
+            onToggle={() => setShowCaseDetails((value) => !value)}
+            collapsedText={`当前共有 ${cases.length} 个测试用例。低性能模式下这一整块默认收起，避免一进页就先挂满多组文本框。`}
+          />
+          {showCaseDetails && (
+            <DeferredVisibleBlock placeholder={<EvalCollapsedHint text="滚动到这里附近时再挂载测试用例编辑区。" />}>
+              <div className="space-y-3">
+                {cases.map((item) => (
+                  <div key={item.id} className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-2">
+                    <div className="flex gap-2">
+                      <input value={item.name} onChange={(e) => updateCase(item.id, { name: e.target.value })} placeholder="用例名称" className="flex-1 px-3 py-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] text-sm text-[var(--text-primary)]" />
+                      <button onClick={() => duplicateCase(item.id)} className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] cursor-pointer">复制一份</button>
+                      <button onClick={() => setCases((items) => items.length <= 1 ? items : items.filter((x) => x.id !== item.id))} className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[rgba(255,82,82,0.12)] text-[var(--error)] cursor-pointer">删掉</button>
+                    </div>
+                    <input value={item.tags.join(', ')} onChange={(e) => updateCase(item.id, { tags: e.target.value.split(',').map((x) => x.trim()).filter(Boolean) })} placeholder="标签，用逗号分隔，方便以后筛选" className="w-full px-3 py-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] text-sm text-[var(--text-primary)]" />
+                    <textarea value={item.contextText ?? ''} onChange={(e) => updateCase(item.id, { contextText: e.target.value })} placeholder="补充上下文（可选）。适合放人物关系、前文摘要或任务背景。" rows={3} className="w-full px-3 py-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] text-sm text-[var(--text-primary)] resize-y" />
+                    <textarea value={item.latestUserMessage} onChange={(e) => updateCase(item.id, { latestUserMessage: e.target.value })} placeholder="用户最后一句会说什么（必填）。尽量写成你真的会拿去问机器人的话。" rows={3} className="w-full px-3 py-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] text-sm text-[var(--text-primary)] resize-y" />
+                  </div>
+                ))}
+                <button onClick={() => setCases((items) => [...items, makeCase()])} className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-white cursor-pointer">+ 新增一个用例</button>
               </div>
-            ))}
-            <button onClick={() => setCases((items) => [...items, makeCase()])} className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-white cursor-pointer">+ 新增一个用例</button>
-          </div>
+            </DeferredVisibleBlock>
+          )}
         </Panel>
       </div>
 
@@ -508,122 +541,149 @@ export function EvaluationLab() {
         </Panel>
 
         <Panel title="实验记录" subtitle="这里存的是你做过的评测。可以回看、继续补评分，或者删掉不需要的实验。." icon="🗂️">
-          <div className="space-y-3">
-            <SearchBar value={historySearch} onChange={setHistorySearch} placeholder="搜索实验 ID 或模式..." />
-            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-              {filteredHistory.length === 0 ? (
-                <p className="text-sm text-[var(--text-muted)]">你还没有做过实验。先把左边配置好，跑一次之后，这里就会出现记录。</p>
-              ) : filteredHistory.map((item) => (
-                <div key={item.id} className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-sm text-[var(--text-primary)] truncate">{item.id}</p>
-                      <p className="text-[11px] text-[var(--text-muted)] mt-1">{item.mode} · API {item.apiCount} · 人格 {item.candidateCount} · 用例 {item.caseCount}</p>
-                      <p className="text-[11px] text-[var(--text-muted)]">任务 {item.totalRuns} · 已评分 {item.scoredRuns} · {formatTime(item.createdAt)}</p>
+          <EvalToggleRow
+            expanded={showHistoryDetails}
+            onToggle={() => setShowHistoryDetails((value) => !value)}
+            collapsedText={`当前实验记录 ${filteredHistory.length} 条。需要回看或删除时再展开，避免默认就挂载完整记录列表。`}
+          />
+          {showHistoryDetails && (
+            <DeferredVisibleBlock placeholder={<EvalCollapsedHint text="滚动到这里附近时再挂载实验记录列表。" />}>
+              <div className="space-y-3">
+                <SearchBar value={historySearch} onChange={setHistorySearch} placeholder="搜索实验 ID 或模式..." />
+                <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                  {filteredHistory.length === 0 ? (
+                    <p className="text-sm text-[var(--text-muted)]">你还没有做过实验。先把左边配置好，跑一次之后，这里就会出现记录。</p>
+                  ) : filteredHistory.map((item) => (
+                    <div key={item.id} className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm text-[var(--text-primary)] truncate">{item.id}</p>
+                          <p className="text-[11px] text-[var(--text-muted)] mt-1">{item.mode} · API {item.apiCount} · 人格 {item.candidateCount} · 用例 {item.caseCount}</p>
+                          <p className="text-[11px] text-[var(--text-muted)]">任务 {item.totalRuns} · 已评分 {item.scoredRuns} · {formatTime(item.createdAt)}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => void loadExperiment(item.id)} className="px-3 py-1.5 text-xs rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] cursor-pointer">打开</button>
+                          <button onClick={() => setDeleteTarget(item)} className="px-3 py-1.5 text-xs rounded-[var(--radius-sm)] bg-[rgba(255,82,82,0.12)] text-[var(--error)] cursor-pointer">删掉</button>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => void loadExperiment(item.id)} className="px-3 py-1.5 text-xs rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] cursor-pointer">打开</button>
-                      <button onClick={() => setDeleteTarget(item)} className="px-3 py-1.5 text-xs rounded-[var(--radius-sm)] bg-[rgba(255,82,82,0.12)] text-[var(--error)] cursor-pointer">删掉</button>
-                    </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
+              </div>
+            </DeferredVisibleBlock>
+          )}
         </Panel>
       </div>
 
       <div className={`grid grid-cols-1 xl:grid-cols-[0.95fr_1.05fr] ${densityClass}`}>
         <Panel title="评分与结果" subtitle="先选一条结果，再按维度打分。保存后，这条评分会直接写回实验记录。." icon="⭐">
-          {!activeExperiment ? (
-            <p className="text-sm text-[var(--text-muted)]">先从右侧选一个实验打开，这里才会出现可评分的结果列表。</p>
-          ) : (
-            <div className="space-y-3">
-              <SearchBar value={runSearch} onChange={setRunSearch} placeholder="搜索人格 / API / 用例 / 输出内容..." />
-              <div className="grid grid-cols-1 lg:grid-cols-[0.9fr_1.1fr] gap-3">
-                <div className="space-y-2 max-h-[520px] overflow-y-auto pr-1">
-                  {filteredRuns.map((run) => {
-                    const caseItem = activeExperiment.cases.find((item) => item.id === run.caseId);
-                    const isActive = runKeyString(run) === runKeyString(activeRun ?? run);
-                    return (
-                      <button
-                        key={runKeyString(run)}
-                        onClick={() => setSelectedRunKey(runKeyString(run))}
-                        className={`w-full text-left rounded-[var(--radius-sm)] border p-3 cursor-pointer ${isActive ? 'border-[var(--accent-purple)] bg-[var(--nav-active-bg)]' : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)]'}`}
-                      >
-                        <p className="text-sm text-[var(--text-primary)] truncate">{run.candidate.remark} @ {run.apiNode.remark}</p>
-                        <p className="text-[11px] text-[var(--text-muted)] mt-1">{caseItem?.name ?? run.caseId} · 第 {run.round} 轮 · {run.result.ok ? '成功' : '失败'}</p>
-                      </button>
-                    );
-                  })}
-                </div>
+          <EvalToggleRow
+            expanded={showScoreDetails}
+            onToggle={() => setShowScoreDetails((value) => !value)}
+            collapsedText={activeExperiment ? `当前实验共有 ${filteredRuns.length} 条运行记录。评分区展开后才会加载左侧长列表和右侧打分表单。` : '先打开一个实验，再展开这里评分。'}
+          />
+          {showScoreDetails && (
+            <DeferredVisibleBlock placeholder={<EvalCollapsedHint text="滚动到这里附近时再挂载评分列表与打分表单。" />}>
+              {!activeExperiment ? (
+                <p className="text-sm text-[var(--text-muted)]">先从右侧选一个实验打开，这里才会出现可评分的结果列表。</p>
+              ) : (
+                <div className="space-y-3">
+                  <SearchBar value={runSearch} onChange={setRunSearch} placeholder="搜索人格 / API / 用例 / 输出内容..." />
+                  <div className="grid grid-cols-1 lg:grid-cols-[0.9fr_1.1fr] gap-3">
+                    <div className="space-y-2 max-h-[520px] overflow-y-auto pr-1">
+                      {filteredRuns.map((run) => {
+                        const caseItem = activeExperiment.cases.find((item) => item.id === run.caseId);
+                        const isActive = runKeyString(run) === runKeyString(activeRun ?? run);
+                        return (
+                          <button
+                            key={runKeyString(run)}
+                            onClick={() => setSelectedRunKey(runKeyString(run))}
+                            className={`w-full text-left rounded-[var(--radius-sm)] border p-3 cursor-pointer ${isActive ? 'border-[var(--accent-purple)] bg-[var(--nav-active-bg)]' : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)]'}`}
+                          >
+                            <p className="text-sm text-[var(--text-primary)] truncate">{run.candidate.remark} @ {run.apiNode.remark}</p>
+                            <p className="text-[11px] text-[var(--text-muted)] mt-1">{caseItem?.name ?? run.caseId} · 第 {run.round} 轮 · {run.result.ok ? '成功' : '失败'}</p>
+                          </button>
+                        );
+                      })}
+                    </div>
 
-                <div>
-                  {activeRun ? (
-                    <RunScoreEditor
-                      run={activeRun}
-                      caseName={activeExperiment.cases.find((item) => item.id === activeRun.caseId)?.name ?? activeRun.caseId}
-                      onSave={saveScore}
-                    />
-                  ) : (
-                    <p className="text-sm text-[var(--text-muted)]">没有匹配的运行记录。可以换个关键词，或者先清空搜索再看全部结果。</p>
-                  )}
+                    <div>
+                      {activeRun ? (
+                        <RunScoreEditor
+                          run={activeRun}
+                          caseName={activeExperiment.cases.find((item) => item.id === activeRun.caseId)?.name ?? activeRun.caseId}
+                          onSave={saveScore}
+                        />
+                      ) : (
+                        <p className="text-sm text-[var(--text-muted)]">没有匹配的运行记录。可以换个关键词，或者先清空搜索再看全部结果。</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+              )}
+            </DeferredVisibleBlock>
           )}
         </Panel>
 
         <Panel title="统计摘要" subtitle="这里不是学术报告，而是帮你快速看出谁更稳、谁更像人、哪组组合更强。只统计已经打过分的结果。" icon="📈">
-          {!activeExperiment ? (
-            <p className="text-sm text-[var(--text-muted)]">先打开一个实验，再给几条结果打分，这里才会开始出现有意义的统计。</p>
-          ) : (
-            <div className="space-y-4">
-              <div>
-                <h4 className="text-sm font-semibold text-[var(--text-primary)] mb-2">按人格</h4>
-                <div className="space-y-2">
-                  {stats.byCandidate.length === 0 ? <p className="text-sm text-[var(--text-muted)]">暂无已评分结果。</p> : stats.byCandidate.map((item) => (
-                    <div key={item.label} className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2 flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-sm text-[var(--text-primary)] truncate">{item.label}</p>
-                        <p className="text-[11px] text-[var(--text-muted)]">样本 {item.count} · 胜场 {item.wins}</p>
-                      </div>
-                      <span className="text-sm font-semibold text-[var(--accent-purple)]">{item.avg.toFixed(2)}</span>
+          <EvalToggleRow
+            expanded={showStatsDetails}
+            onToggle={() => setShowStatsDetails((value) => !value)}
+            collapsedText={activeExperiment ? `已评分统计：人格 ${stats.byCandidate.length} 条，API ${stats.byApi.length} 条，组合 ${stats.byCombo.length} 条。` : '先打开并评分一个实验，再展开这里看统计。'}
+          />
+          {showStatsDetails && (
+            <DeferredVisibleBlock placeholder={<EvalCollapsedHint text="滚动到这里附近时再挂载统计摘要。" />}>
+              {!activeExperiment ? (
+                <p className="text-sm text-[var(--text-muted)]">先打开一个实验，再给几条结果打分，这里才会开始出现有意义的统计。</p>
+              ) : (
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="text-sm font-semibold text-[var(--text-primary)] mb-2">按人格</h4>
+                    <div className="space-y-2">
+                      {stats.byCandidate.length === 0 ? <p className="text-sm text-[var(--text-muted)]">暂无已评分结果。</p> : stats.byCandidate.map((item) => (
+                        <div key={item.label} className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2 flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm text-[var(--text-primary)] truncate">{item.label}</p>
+                            <p className="text-[11px] text-[var(--text-muted)]">样本 {item.count} · 胜场 {item.wins}</p>
+                          </div>
+                          <span className="text-sm font-semibold text-[var(--accent-purple)]">{item.avg.toFixed(2)}</span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </div>
+                  </div>
 
-              <div>
-                <h4 className="text-sm font-semibold text-[var(--text-primary)] mb-2">按 API</h4>
-                <div className="space-y-2">
-                  {stats.byApi.length === 0 ? <p className="text-sm text-[var(--text-muted)]">暂无已评分结果。</p> : stats.byApi.map((item) => (
-                    <div key={item.label} className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2 flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-sm text-[var(--text-primary)] truncate">{item.label}</p>
-                        <p className="text-[11px] text-[var(--text-muted)]">样本 {item.count}</p>
-                      </div>
-                      <span className="text-sm font-semibold text-[var(--accent-purple)]">{item.avg.toFixed(2)}</span>
+                  <div>
+                    <h4 className="text-sm font-semibold text-[var(--text-primary)] mb-2">按 API</h4>
+                    <div className="space-y-2">
+                      {stats.byApi.length === 0 ? <p className="text-sm text-[var(--text-muted)]">暂无已评分结果。</p> : stats.byApi.map((item) => (
+                        <div key={item.label} className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2 flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm text-[var(--text-primary)] truncate">{item.label}</p>
+                            <p className="text-[11px] text-[var(--text-muted)]">样本 {item.count}</p>
+                          </div>
+                          <span className="text-sm font-semibold text-[var(--accent-purple)]">{item.avg.toFixed(2)}</span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </div>
+                  </div>
 
-              <div>
-                <h4 className="text-sm font-semibold text-[var(--text-primary)] mb-2">人格 × API 组合</h4>
-                <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                  {stats.byCombo.length === 0 ? <p className="text-sm text-[var(--text-muted)]">暂无已评分结果。</p> : stats.byCombo.map((item) => (
-                    <div key={item.label} className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2 flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-sm text-[var(--text-primary)] truncate">{item.label}</p>
-                        <p className="text-[11px] text-[var(--text-muted)]">样本 {item.count}</p>
-                      </div>
-                      <span className="text-sm font-semibold text-[var(--accent-purple)]">{item.avg.toFixed(2)}</span>
+                  <div>
+                    <h4 className="text-sm font-semibold text-[var(--text-primary)] mb-2">人格 × API 组合</h4>
+                    <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                      {stats.byCombo.length === 0 ? <p className="text-sm text-[var(--text-muted)]">暂无已评分结果。</p> : stats.byCombo.map((item) => (
+                        <div key={item.label} className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2 flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm text-[var(--text-primary)] truncate">{item.label}</p>
+                            <p className="text-[11px] text-[var(--text-muted)]">样本 {item.count}</p>
+                          </div>
+                          <span className="text-sm font-semibold text-[var(--accent-purple)]">{item.avg.toFixed(2)}</span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  </div>
                 </div>
-              </div>
-            </div>
+              )}
+            </DeferredVisibleBlock>
           )}
         </Panel>
       </div>
@@ -721,6 +781,36 @@ function RunScoreEditor({
           {saving ? '保存中...' : '保存评分'}
         </button>
       </div>
+    </div>
+  );
+}
+
+function EvalToggleRow({
+  expanded,
+  onToggle,
+  collapsedText,
+}: {
+  expanded: boolean;
+  onToggle: () => void;
+  collapsedText: string;
+}) {
+  return (
+    <div className="mb-3 flex flex-wrap items-center gap-2">
+      <button
+        onClick={onToggle}
+        className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] border cursor-pointer ${expanded ? 'bg-[var(--nav-active-bg)] text-[var(--accent-purple)] border-[var(--accent-purple)]' : 'bg-[var(--bg-elevated)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+      >
+        {expanded ? '收起明细' : '展开明细'}
+      </button>
+      {!expanded && <span className="text-[11px] leading-relaxed text-[var(--text-muted)]">{collapsedText}</span>}
+    </div>
+  );
+}
+
+function EvalCollapsedHint({ text }: { text: string }) {
+  return (
+    <div className="rounded-[var(--radius-sm)] border border-dashed border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-4 py-3">
+      <p className="text-[11px] leading-relaxed text-[var(--text-muted)]">{text}</p>
     </div>
   );
 }

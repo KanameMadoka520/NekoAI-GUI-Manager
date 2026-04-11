@@ -1,5 +1,4 @@
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from 'recharts';
+import { lazy, Suspense, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { StatCard } from '../components/common/StatCard';
 import { SearchBar } from '../components/common/SearchBar';
 import { ConfirmDialog } from '../components/common/ConfirmDialog';
@@ -14,6 +13,8 @@ import { usePageDirtyState } from '../hooks/usePageDirtyState';
 import { getConfig, saveConfig } from '../lib/tauri-commands';
 import { downloadJsonWithTimestamp, pickJsonAndParse } from '../lib/json-transfer';
 import type { RuntimeConfig, UsageData, ImageUsageData, ImageQuotaConfig, ImageQuotaUserLimit, ImageAccessConfig, ChatAccessConfig, ChatQuotaConfig, UsageEvent, UsageEventLog } from '../lib/types';
+
+const UsageOverviewCharts = lazy(() => import('../components/charts/UsageOverviewCharts').then((m) => ({ default: m.UsageOverviewCharts })));
 
 function getCurrentPeriodId() {
   const now = new Date();
@@ -192,15 +193,6 @@ function normalizeUsageEvents(input: UsageEventLog | UsageEvent[] | null | undef
   };
 }
 
-function extractChartPayloadString(input: unknown, key: string) {
-  if (!input || typeof input !== 'object') return '';
-  const payload = 'payload' in input && input.payload && typeof input.payload === 'object'
-    ? input.payload as Record<string, unknown>
-    : null;
-  const value = payload?.[key];
-  return typeof value === 'string' ? value : '';
-}
-
 function getImageAccessModeLabel(mode: ImageAccessConfig['mode']) {
   return mode === 'whitelist' ? '白名单模式' : '黑名单模式';
 }
@@ -257,14 +249,6 @@ function bucketHistoryEntry(date: Date, granularity: 'hour' | 'day' | 'week' | '
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 }
 
-const CHART_COLORS = [
-  'var(--chart-1)',
-  'var(--chart-2)',
-  'var(--chart-3)',
-  'var(--chart-4)',
-  'var(--chart-5)',
-  'var(--chart-6)',
-];
 const CLAMP_TWO_LINES_STYLE = {
   display: '-webkit-box',
   WebkitLineClamp: 2,
@@ -1798,107 +1782,28 @@ export function UsageManager() {
           </div>
 
           {showOverviewCharts ? (
-            <>
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3">
-                  <p className="text-sm font-medium text-[var(--text-primary)] mb-1">聊天用量 Top 10 用户</p>
-                  <p className="text-[11px] text-[var(--text-muted)] mb-3">基于 usage event 的允许事件聚合，按实际聊天用量统计。点击柱子可联动下方事件明细。</p>
-                  <div className="h-[260px]">
-                    {usageEventsLoading ? (
-                      <div className="h-full flex items-center justify-center text-sm text-[var(--text-muted)]">正在读取统一用量事件日志...</div>
-                    ) : chatTopUsersChartData.length === 0 ? (
-                      <div className="h-full flex items-center justify-center text-sm text-[var(--text-muted)]">当前没有可用的聊天用量事件。</div>
-                    ) : (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={chatTopUsersChartData} margin={{ top: 12, right: 12, left: 0, bottom: 18 }}>
-                          <CartesianGrid stroke="var(--border-subtle)" strokeDasharray="3 3" />
-                          <XAxis dataKey="name" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={56} />
-                          <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} allowDecimals={false} />
-                          <Tooltip cursor={{ fill: 'rgba(255,255,255,0.03)' }} contentStyle={{ background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: 12, color: 'var(--text-primary)' }} />
-                          <Bar dataKey="count" radius={[8, 8, 0, 0]} cursor="pointer" isAnimationActive={!lowPerformanceMode} onClick={(data) => drillDownUsageEventsByUser('chat', String(data?.name || ''))}>
-                            {chatTopUsersChartData.map((entry, index) => (
-                              <Cell key={`${entry.name}-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                    )}
-                  </div>
+            <Suspense
+              fallback={(
+                <div className="rounded-[var(--radius-sm)] border border-dashed border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-4 py-6">
+                  <p className="text-sm text-[var(--text-primary)]">正在加载图表模块…</p>
+                  <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-muted)]">为了减轻首屏压力，统计图只会在你真正展开时再加载。</p>
                 </div>
-
-                <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3">
-                  <p className="text-sm font-medium text-[var(--text-primary)] mb-1">聊天时间分布</p>
-                  <p className="text-[11px] text-[var(--text-muted)] mb-3">{usageChartGranularity === 'hour' ? '按小时看全天哪个时段最忙' : usageChartGranularity === 'day' ? '按天看哪天请求最多' : usageChartGranularity === 'week' ? '按周看哪个自然周最忙' : '按月看哪个月份最忙'}。点击柱子可联动下方事件明细。</p>
-                  <div className="h-[260px]">
-                    {usageEventsLoading ? (
-                      <div className="h-full flex items-center justify-center text-sm text-[var(--text-muted)]">正在读取统一用量事件日志...</div>
-                    ) : chatTimeDistributionData.length === 0 ? (
-                      <div className="h-full flex items-center justify-center text-sm text-[var(--text-muted)]">当前没有可用的聊天用量事件。</div>
-                    ) : (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={chatTimeDistributionData} margin={{ top: 12, right: 12, left: 0, bottom: 18 }}>
-                          <CartesianGrid stroke="var(--border-subtle)" strokeDasharray="3 3" />
-                          <XAxis dataKey="label" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} interval="preserveStartEnd" minTickGap={18} />
-                          <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} allowDecimals={false} />
-                          <Tooltip cursor={{ fill: 'rgba(255,255,255,0.03)' }} contentStyle={{ background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: 12, color: 'var(--text-primary)' }} />
-                          <Bar dataKey="count" fill="var(--chart-3)" radius={[8, 8, 0, 0]} cursor="pointer" isAnimationActive={!lowPerformanceMode} onClick={(data) => drillDownUsageEventsByBucket('chat', extractChartPayloadString(data, 'bucket'))} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3">
-                  <p className="text-sm font-medium text-[var(--text-primary)] mb-1">图像用量 Top 10 用户</p>
-                  <p className="text-[11px] text-[var(--text-muted)] mb-3">按生图和修图实际扣减的额度数量统计，同样来自 usage event。点击柱子可联动下方事件明细。</p>
-                  <div className="h-[260px]">
-                    {usageEventsLoading ? (
-                      <div className="h-full flex items-center justify-center text-sm text-[var(--text-muted)]">正在读取统一用量事件日志...</div>
-                    ) : imageTopUsersChartData.length === 0 ? (
-                      <div className="h-full flex items-center justify-center text-sm text-[var(--text-muted)]">当前没有可用的图像用量事件。</div>
-                    ) : (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={imageTopUsersChartData} margin={{ top: 12, right: 12, left: 0, bottom: 18 }}>
-                          <CartesianGrid stroke="var(--border-subtle)" strokeDasharray="3 3" />
-                          <XAxis dataKey="name" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={56} />
-                          <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} allowDecimals={false} />
-                          <Tooltip cursor={{ fill: 'rgba(255,255,255,0.03)' }} contentStyle={{ background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: 12, color: 'var(--text-primary)' }} />
-                          <Bar dataKey="count" radius={[8, 8, 0, 0]} cursor="pointer" isAnimationActive={!lowPerformanceMode} onClick={(data) => drillDownUsageEventsByUser('image', String(data?.name || ''))}>
-                            {imageTopUsersChartData.map((entry, index) => (
-                              <Cell key={`${entry.name}-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                    )}
-                  </div>
-                </div>
-
-                <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3">
-                  <p className="text-sm font-medium text-[var(--text-primary)] mb-1">图像时间分布</p>
-                  <p className="text-[11px] text-[var(--text-muted)] mb-3">{usageChartGranularity === 'hour' ? '按小时看哪个时段图像调用最密集' : usageChartGranularity === 'day' ? '按天看哪天图像调用最多' : usageChartGranularity === 'week' ? '按周看哪个自然周图像调用最多' : '按月看哪个月份图像调用最多'}。点击柱子可联动下方事件明细。</p>
-                  <div className="h-[260px]">
-                    {usageEventsLoading ? (
-                      <div className="h-full flex items-center justify-center text-sm text-[var(--text-muted)]">正在读取统一用量事件日志...</div>
-                    ) : imageTimeDistributionData.length === 0 ? (
-                      <div className="h-full flex items-center justify-center text-sm text-[var(--text-muted)]">当前没有可用的图像用量事件。</div>
-                    ) : (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={imageTimeDistributionData} margin={{ top: 12, right: 12, left: 0, bottom: 18 }}>
-                          <CartesianGrid stroke="var(--border-subtle)" strokeDasharray="3 3" />
-                          <XAxis dataKey="label" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} interval="preserveStartEnd" minTickGap={18} />
-                          <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} allowDecimals={false} />
-                          <Tooltip cursor={{ fill: 'rgba(255,255,255,0.03)' }} contentStyle={{ background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: 12, color: 'var(--text-primary)' }} />
-                          <Bar dataKey="count" fill="var(--chart-5)" radius={[8, 8, 0, 0]} cursor="pointer" isAnimationActive={!lowPerformanceMode} onClick={(data) => drillDownUsageEventsByBucket('image', extractChartPayloadString(data, 'bucket'))} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </>
+              )}
+            >
+              <UsageOverviewCharts
+                usageEventsLoading={usageEventsLoading}
+                lowPerformanceMode={lowPerformanceMode}
+                usageChartGranularity={usageChartGranularity}
+                chatTopUsersChartData={chatTopUsersChartData}
+                chatTimeDistributionData={chatTimeDistributionData}
+                imageTopUsersChartData={imageTopUsersChartData}
+                imageTimeDistributionData={imageTimeDistributionData}
+                onChatUserClick={(userId) => drillDownUsageEventsByUser('chat', userId)}
+                onChatBucketClick={(bucket) => drillDownUsageEventsByBucket('chat', bucket)}
+                onImageUserClick={(userId) => drillDownUsageEventsByUser('image', userId)}
+                onImageBucketClick={(bucket) => drillDownUsageEventsByBucket('image', bucket)}
+              />
+            </Suspense>
           ) : (
             <div className="rounded-[var(--radius-sm)] border border-dashed border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-4 py-6">
               <p className="text-sm text-[var(--text-primary)]">图表已收起</p>
