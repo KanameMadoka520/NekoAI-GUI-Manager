@@ -43,6 +43,8 @@ pub struct WebConsoleSettings {
     pub host: String,
     #[serde(default = "default_web_console_port")]
     pub port: u16,
+    #[serde(default)]
+    pub allow_remote_access: bool,
 }
 
 #[derive(Serialize, Clone)]
@@ -54,6 +56,7 @@ pub struct WebConsoleStatus {
     pub port: u16,
     pub url: String,
     pub plugin_dir: Option<String>,
+    pub allow_remote_access: bool,
 }
 
 #[derive(Clone)]
@@ -222,6 +225,7 @@ fn default_web_console_settings() -> WebConsoleSettings {
         enabled: false,
         host: default_web_console_host(),
         port: DEFAULT_WEB_CONSOLE_PORT,
+        allow_remote_access: false,
     }
 }
 
@@ -272,11 +276,17 @@ fn build_browser_url(host: &str, port: u16) -> String {
     format!("http://{}:{}/", format_http_host(&browser_access_host(host)), port)
 }
 
+fn is_local_only_host(host: &str) -> bool {
+    let normalized = host.trim().to_ascii_lowercase();
+    matches!(normalized.as_str(), "" | "127.0.0.1" | "localhost" | "::1" | "[::1]")
+}
+
 fn normalize_settings(settings: WebConsoleSettings) -> WebConsoleSettings {
     WebConsoleSettings {
         enabled: settings.enabled,
         host: normalize_host(settings.host),
         port: normalize_port(settings.port),
+        allow_remote_access: settings.allow_remote_access,
     }
 }
 
@@ -332,6 +342,7 @@ fn current_status(state: &AppState, settings: &WebConsoleSettings) -> Result<Web
         port,
         url: build_browser_url(&host, port),
         plugin_dir,
+        allow_remote_access: settings.allow_remote_access,
     })
 }
 
@@ -477,6 +488,13 @@ fn current_status_from_app(app: &AppHandle, settings: &WebConsoleSettings) -> Re
 
 fn apply_web_console_settings(app: AppHandle, settings: WebConsoleSettings) -> Result<WebConsoleStatus, String> {
     let normalized = normalize_settings(settings);
+
+    if normalized.enabled && !normalized.allow_remote_access && !is_local_only_host(&normalized.host) {
+        return Err(format!(
+            "当前监听地址 {} 会把管理接口暴露给其他设备。若确实需要局域网访问，请先显式勾选“允许远程访问”。",
+            normalized.host
+        ));
+    }
 
     if normalized.enabled {
         start_web_console_runtime(app.clone(), normalized.host.clone(), normalized.port)?;

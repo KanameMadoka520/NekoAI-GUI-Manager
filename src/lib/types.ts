@@ -494,6 +494,7 @@ export interface WebConsoleSettings {
   enabled: boolean;
   host: string;
   port: number;
+  allowRemoteAccess?: boolean;
 }
 
 export interface WebConsoleStatus {
@@ -503,6 +504,7 @@ export interface WebConsoleStatus {
   port: number;
   url: string;
   pluginDir?: string | null;
+  allowRemoteAccess?: boolean;
 }
 
 // ===== API Test =====

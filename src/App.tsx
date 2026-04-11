@@ -67,6 +67,11 @@ function getCurrentPluginDirInfo() {
   return { fullPath, shortName };
 }
 
+function isLocalOnlyHost(host: string) {
+  const normalized = host.trim().toLowerCase();
+  return normalized === '' || normalized === '127.0.0.1' || normalized === 'localhost' || normalized === '::1' || normalized === '[::1]';
+}
+
 const scaleOptions = [
   { label: '80%', value: 0.8 },
   { label: '90%', value: 0.9 },
@@ -136,6 +141,7 @@ function App() {
   const [webConsoleStatus, setWebConsoleStatus] = useState<WebConsoleStatus | null>(null);
   const [webConsoleHostDraft, setWebConsoleHostDraft] = useState('127.0.0.1');
   const [webConsolePortDraft, setWebConsolePortDraft] = useState('32191');
+  const [webConsoleAllowRemoteAccessDraft, setWebConsoleAllowRemoteAccessDraft] = useState(false);
   const [webConsoleBusy, setWebConsoleBusy] = useState(false);
   const { title, subtitle } = pageTitles[activePage];
   const runningInTauri = isTauriRuntime();
@@ -172,10 +178,14 @@ function App() {
   }, [webConsoleBrowserHostPreview, webConsolePortDraft]);
   const webConsolePortParsed = useMemo(() => Number.parseInt(webConsolePortDraft.trim(), 10), [webConsolePortDraft]);
   const webConsoleRunning = webConsoleStatus?.running === true;
+  const webConsoleRemoteBinding = useMemo(() => !isLocalOnlyHost(webConsoleHostNormalized), [webConsoleHostNormalized]);
   const webConsoleConfigChangedWhileRunning = webConsoleRunning && (
     (Number.isFinite(webConsolePortParsed) && webConsoleStatus?.port !== webConsolePortParsed)
     || (webConsoleStatus?.host?.trim() || '127.0.0.1') !== webConsoleHostNormalized
   );
+  const webConsoleToggleNeedsRemoteConfirmation = (!webConsoleRunning || webConsoleConfigChangedWhileRunning)
+    && webConsoleRemoteBinding
+    && !webConsoleAllowRemoteAccessDraft;
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', settings.theme);
@@ -281,6 +291,7 @@ function App() {
       setWebConsoleStatus(status);
       setWebConsoleHostDraft(status.host || '127.0.0.1');
       setWebConsolePortDraft(String(status.port || 32191));
+      setWebConsoleAllowRemoteAccessDraft(status.allowRemoteAccess === true);
     } catch (e: any) {
       addToast('error', `加载本地 Web 控制台状态失败: ${e?.message ?? e}`);
     }
@@ -364,16 +375,26 @@ function App() {
       addToast('warning', '本地 Web 控制台监听地址不能为空');
       return;
     }
+    if (webConsoleToggleNeedsRemoteConfirmation) {
+      addToast('warning', '当前监听地址会暴露管理接口给其他设备。若确实需要局域网访问，请先勾选“允许远程访问”。');
+      return;
+    }
 
     setWebConsoleBusy(true);
     try {
       const shouldEnable = !webConsoleRunning || webConsoleConfigChangedWhileRunning;
-      await saveWebConsoleSettings({ enabled: shouldEnable, host: webConsoleHostNormalized, port: parsedPort });
+      await saveWebConsoleSettings({
+        enabled: shouldEnable,
+        host: webConsoleHostNormalized,
+        port: parsedPort,
+        allowRemoteAccess: webConsoleAllowRemoteAccessDraft,
+      });
       await new Promise((resolve) => window.setTimeout(resolve, 180));
       const status = await getWebConsoleStatus();
       setWebConsoleStatus(status);
       setWebConsoleHostDraft(status.host || '127.0.0.1');
       setWebConsolePortDraft(String(status.port));
+      setWebConsoleAllowRemoteAccessDraft(status.allowRemoteAccess === true);
       if (shouldEnable && status.enabled && status.running) {
         addToast('success', webConsoleConfigChangedWhileRunning ? `本地 Web 控制台已切换到新地址：${status.url}` : `本地 Web 控制台已启动：${status.url}`);
         await openWebConsoleExternally(status.url);
@@ -730,6 +751,12 @@ function App() {
                 </div>
               )}
 
+              {webConsoleRemoteBinding && (
+                <div className={`rounded-[var(--radius-sm)] border px-3 py-2.5 text-xs leading-relaxed ${webConsoleAllowRemoteAccessDraft ? 'border-[rgba(255,171,64,0.35)] bg-[rgba(255,171,64,0.08)] text-[var(--text-secondary)]' : 'border-[rgba(255,82,82,0.35)] bg-[rgba(255,82,82,0.08)] text-[var(--text-secondary)]'}`}>
+                  当前监听地址不是本机地址，`/api/invoke/*` 这类管理接口会被同网段其他设备访问到。只有在你明确需要局域网共享 GUI 时，才建议开启远程访问。
+                </div>
+              )}
+
               <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-4 space-y-3">
                 <div className="flex items-start justify-between gap-3 flex-wrap">
                   <div>
@@ -810,12 +837,32 @@ function App() {
                     )}
                   </div>
                 </div>
+
+                <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 py-3 space-y-2">
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={webConsoleAllowRemoteAccessDraft}
+                      onChange={(e) => setWebConsoleAllowRemoteAccessDraft(e.target.checked)}
+                      className="mt-0.5"
+                    />
+                    <span className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                      允许远程访问。
+                      {webConsoleRemoteBinding
+                        ? ' 当前地址不是本机地址，勾选后才允许真正启动或重启服务。'
+                        : ' 当前是本机地址，不勾选也可以正常使用。'}
+                    </span>
+                  </label>
+                  <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+                    如果监听 `0.0.0.0` 或其他非本机地址，请确认当前网络可信，并且你知道谁能访问这台机器的端口。
+                  </p>
+                </div>
               </div>
 
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={handleToggleWebConsole}
-                  disabled={webConsoleBusy}
+                  disabled={webConsoleBusy || webConsoleToggleNeedsRemoteConfirmation}
                   className={`px-4 py-2 text-sm rounded-[var(--radius-sm)] text-white disabled:opacity-60 cursor-pointer ${webConsoleRunning && !webConsoleConfigChangedWhileRunning ? 'bg-[var(--error)] hover:opacity-90' : 'bg-[var(--accent-purple)] hover:opacity-90'}`}
                 >
                   {webConsoleBusy
@@ -826,6 +873,11 @@ function App() {
                         ? '应用新地址并重启'
                         : '开启并打开浏览器'}
                 </button>
+                {webConsoleToggleNeedsRemoteConfirmation && (
+                  <span className="inline-flex items-center px-2.5 py-1 text-[11px] rounded-[var(--radius-sm)] border border-[rgba(255,82,82,0.35)] text-[var(--error)] bg-[rgba(255,82,82,0.08)]">
+                    需先勾选“允许远程访问”
+                  </span>
+                )}
                 <button
                   onClick={handleOpenWebConsoleUrl}
                   disabled={!webConsoleRunning || webConsoleBusy}
