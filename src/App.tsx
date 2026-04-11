@@ -847,7 +847,7 @@ function App() {
                       className="mt-0.5"
                     />
                     <span className="text-xs text-[var(--text-secondary)] leading-relaxed">
-                      允许远程访问。
+                      允许远程访问（含义：允许同局域网或其他能连到这台电脑端口的设备打开当前 Web 管理界面，并调用管理接口）。
                       {webConsoleRemoteBinding
                         ? ' 当前地址不是本机地址，勾选后才允许真正启动或重启服务。'
                         : ' 当前是本机地址，不勾选也可以正常使用。'}
