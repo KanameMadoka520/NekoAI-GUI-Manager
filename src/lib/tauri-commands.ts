@@ -159,5 +159,11 @@ export const listAuditLogs = (limit = 200) =>
 export const getWebConsoleStatus = () =>
   invokeCompat<WebConsoleStatus>('get_web_console_status');
 
-export const saveWebConsoleSettings = (settings: WebConsoleSettings) =>
-  invokeCompat<WebConsoleStatus>('save_web_console_settings', { settings });
+export const saveWebConsoleSettings = (settings: WebConsoleSettings, accessPassword?: string, clearPassword = false) =>
+  invokeCompat<WebConsoleStatus>('save_web_console_settings', {
+    settings,
+    access_password: accessPassword,
+    clear_password: clearPassword,
+    accessPassword,
+    clearPassword,
+  });

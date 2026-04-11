@@ -12,8 +12,8 @@ import { Setup } from './pages/Setup';
 import { useKeyboardShortcuts, shortcutList } from './hooks/useKeyboardShortcuts';
 import { useFileWatcher } from './hooks/useFileWatcher';
 import { setPluginDir, runStartupSelfCheck, applySelfCheckFixes, getManagerContext, getWebConsoleStatus, saveWebConsoleSettings, openUrlInBrowser } from './lib/tauri-commands';
-import { isTauriRuntime } from './lib/runtime-bridge';
-import type { SelfCheckReport, WebConsoleStatus } from './lib/types';
+import { getWebConsoleSessionStatus, isTauriRuntime, loginWebConsoleSession, logoutWebConsoleSession } from './lib/runtime-bridge';
+import type { SelfCheckReport, WebConsoleSessionStatus, WebConsoleStatus } from './lib/types';
 import { explainSelfCheckItem } from './lib/human-issues';
 import { useUiStore } from './stores/uiStore';
 
@@ -43,6 +43,7 @@ const pageTitles: Record<PageId, { title: string; subtitle: string }> = {
 
 const APP_LAST_PAGE_STORAGE_KEY = 'nekoai-last-page';
 const VALID_PAGE_IDS: PageId[] = ['dashboard', 'api', 'config', 'personality', 'evaluation', 'memory', 'history', 'usage', 'commands', 'ops'];
+const BROWSER_READ_ONLY_PAGES: PageId[] = ['dashboard', 'history', 'usage'];
 const CUSTOM_TITLEBAR_HEIGHT_PX = 36;
 
 function loadLastActivePage(): PageId {
@@ -70,6 +71,19 @@ function getCurrentPluginDirInfo() {
 function isLocalOnlyHost(host: string) {
   const normalized = host.trim().toLowerCase();
   return normalized === '' || normalized === '127.0.0.1' || normalized === 'localhost' || normalized === '::1' || normalized === '[::1]';
+}
+
+function formatRemoteAddrRules(list: string[] | undefined) {
+  return (list ?? []).join('\n');
+}
+
+function parseRemoteAddrRules(text: string) {
+  return Array.from(new Set(
+    text
+      .split(/[\n,]+/)
+      .map((item) => item.trim())
+      .filter(Boolean),
+  ));
 }
 
 const scaleOptions = [
@@ -122,7 +136,7 @@ function PageFallback() {
   );
 }
 
-type AppPhase = 'initializing' | 'setup' | 'ready';
+type AppPhase = 'initializing' | 'browser-auth' | 'setup' | 'ready';
 type PendingLeaveAction = { type: 'page'; page: PageId } | { type: 'change-dir' } | null;
 
 function App() {
@@ -136,12 +150,24 @@ function App() {
   const [startupCheck, setStartupCheck] = useState<SelfCheckReport | null>(null);
   const [showStartupCheck, setShowStartupCheck] = useState(false);
   const [startupCheckBusy, setStartupCheckBusy] = useState(false);
+  const [lastPagePaintMs, setLastPagePaintMs] = useState<number | null>(null);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [pendingLeaveAction, setPendingLeaveAction] = useState<PendingLeaveAction>(null);
+  const [browserSession, setBrowserSession] = useState<WebConsoleSessionStatus | null>(null);
+  const [browserLoginPassword, setBrowserLoginPassword] = useState('');
+  const [browserLoginReadOnly, setBrowserLoginReadOnly] = useState(false);
+  const [browserAuthBusy, setBrowserAuthBusy] = useState(false);
   const [webConsoleStatus, setWebConsoleStatus] = useState<WebConsoleStatus | null>(null);
   const [webConsoleHostDraft, setWebConsoleHostDraft] = useState('127.0.0.1');
   const [webConsolePortDraft, setWebConsolePortDraft] = useState('32191');
   const [webConsoleAllowRemoteAccessDraft, setWebConsoleAllowRemoteAccessDraft] = useState(false);
+  const [webConsoleAuthEnabledDraft, setWebConsoleAuthEnabledDraft] = useState(false);
+  const [webConsoleAllowReadOnlyLoginDraft, setWebConsoleAllowReadOnlyLoginDraft] = useState(true);
+  const [webConsoleForceReadOnlyDraft, setWebConsoleForceReadOnlyDraft] = useState(false);
+  const [webConsoleAllowedRemoteAddrsDraft, setWebConsoleAllowedRemoteAddrsDraft] = useState('');
+  const [webConsoleSessionTtlDraft, setWebConsoleSessionTtlDraft] = useState('720');
+  const [webConsoleAccessPasswordDraft, setWebConsoleAccessPasswordDraft] = useState('');
+  const [webConsoleClearPasswordDraft, setWebConsoleClearPasswordDraft] = useState(false);
   const [webConsoleBusy, setWebConsoleBusy] = useState(false);
   const { title, subtitle } = pageTitles[activePage];
   const runningInTauri = isTauriRuntime();
@@ -168,6 +194,7 @@ function App() {
   const pluginDirInfo = useMemo(() => getCurrentPluginDirInfo(), [phase, refreshKey]);
   const currentDirtyMessage = dirtyPages[activePage];
   const webConsoleHostNormalized = useMemo(() => webConsoleHostDraft.trim() || '127.0.0.1', [webConsoleHostDraft]);
+  const webConsoleAllowedRemoteAddrs = useMemo(() => parseRemoteAddrRules(webConsoleAllowedRemoteAddrsDraft), [webConsoleAllowedRemoteAddrsDraft]);
   const webConsoleBrowserHostPreview = useMemo(
     () => (webConsoleHostNormalized === '0.0.0.0' ? '127.0.0.1' : webConsoleHostNormalized),
     [webConsoleHostNormalized],
@@ -177,15 +204,26 @@ function App() {
     return `http://${webConsoleBrowserHostPreview}:${port}/`;
   }, [webConsoleBrowserHostPreview, webConsolePortDraft]);
   const webConsolePortParsed = useMemo(() => Number.parseInt(webConsolePortDraft.trim(), 10), [webConsolePortDraft]);
+  const webConsoleSessionTtlParsed = useMemo(() => Number.parseInt(webConsoleSessionTtlDraft.trim(), 10), [webConsoleSessionTtlDraft]);
   const webConsoleRunning = webConsoleStatus?.running === true;
   const webConsoleRemoteBinding = useMemo(() => !isLocalOnlyHost(webConsoleHostNormalized), [webConsoleHostNormalized]);
   const webConsoleConfigChangedWhileRunning = webConsoleRunning && (
     (Number.isFinite(webConsolePortParsed) && webConsoleStatus?.port !== webConsolePortParsed)
     || (webConsoleStatus?.host?.trim() || '127.0.0.1') !== webConsoleHostNormalized
+    || (webConsoleStatus?.allowRemoteAccess === true) !== webConsoleAllowRemoteAccessDraft
+    || (webConsoleStatus?.authEnabled === true) !== webConsoleAuthEnabledDraft
+    || Boolean(webConsoleStatus?.allowReadOnlyLogin ?? true) !== webConsoleAllowReadOnlyLoginDraft
+    || (webConsoleStatus?.forceReadOnly === true) !== webConsoleForceReadOnlyDraft
+    || JSON.stringify(webConsoleStatus?.allowedRemoteAddrs ?? []) !== JSON.stringify(webConsoleAllowedRemoteAddrs)
+    || (Number(webConsoleStatus?.sessionTtlMinutes ?? 720) !== (Number.isFinite(webConsoleSessionTtlParsed) ? webConsoleSessionTtlParsed : 720))
+    || webConsoleAccessPasswordDraft.trim().length > 0
+    || webConsoleClearPasswordDraft
   );
   const webConsoleToggleNeedsRemoteConfirmation = (!webConsoleRunning || webConsoleConfigChangedWhileRunning)
     && webConsoleRemoteBinding
     && !webConsoleAllowRemoteAccessDraft;
+  const browserReadOnlySession = !runningInTauri && browserSession?.authenticated === true && browserSession?.readOnly === true;
+  const browserVisiblePages = browserReadOnlySession ? BROWSER_READ_ONLY_PAGES : undefined;
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', settings.theme);
@@ -217,6 +255,28 @@ function App() {
   }, [phase, pageJumpRequest, activePage]);
 
   useEffect(() => {
+    if (phase !== 'ready') return undefined;
+    const startedAt = performance.now();
+    let raf1 = 0;
+    let raf2 = 0;
+    raf1 = window.requestAnimationFrame(() => {
+      raf2 = window.requestAnimationFrame(() => {
+        setLastPagePaintMs(Math.round(performance.now() - startedAt));
+      });
+    });
+    return () => {
+      window.cancelAnimationFrame(raf1);
+      window.cancelAnimationFrame(raf2);
+    };
+  }, [phase, activePage, refreshKey]);
+
+  useEffect(() => {
+    if (!browserReadOnlySession) return;
+    if (BROWSER_READ_ONLY_PAGES.includes(activePage)) return;
+    setActivePage('dashboard');
+  }, [browserReadOnlySession, activePage]);
+
+  useEffect(() => {
     if (phase !== 'ready') return;
     let cancelled = false;
 
@@ -242,6 +302,29 @@ function App() {
 
   const toggleHelp = useCallback(() => setShowHelp((v) => !v), []);
 
+  const loadBrowserSession = useCallback(async () => {
+    if (runningInTauri) return null;
+    const session = await getWebConsoleSessionStatus();
+    setBrowserSession(session);
+    setBrowserLoginReadOnly(session.forceReadOnly);
+    return session;
+  }, [runningInTauri]);
+
+  useEffect(() => {
+    if (runningInTauri) return undefined;
+    const handler = () => {
+      void loadBrowserSession().then((session) => {
+        if (session?.authEnabled && !session.authenticated) {
+          setPhase('browser-auth');
+        }
+      }).catch(() => {
+        setPhase('browser-auth');
+      });
+    };
+    window.addEventListener('neko-web-console-auth-changed', handler);
+    return () => window.removeEventListener('neko-web-console-auth-changed', handler);
+  }, [runningInTauri, loadBrowserSession]);
+
   // Restore plugin dir on startup
   useEffect(() => {
     if (phase !== 'initializing') return;
@@ -249,19 +332,19 @@ function App() {
 
     async function bootstrap() {
       const savedDir = localStorage.getItem('nekoai-plugin-dir');
-      if (savedDir) {
-        try {
-          await setPluginDir(savedDir);
-          if (!cancelled) setPhase('ready');
-          return;
-        } catch {
-          localStorage.removeItem('nekoai-configured');
-          localStorage.removeItem('nekoai-plugin-dir');
-        }
-      }
 
       if (!runningInTauri) {
         try {
+          const session = await loadBrowserSession();
+          if (session?.authEnabled && !session.authenticated) {
+            if (!cancelled) setPhase('browser-auth');
+            return;
+          }
+          if (savedDir) {
+            await setPluginDir(savedDir);
+            if (!cancelled) setPhase('ready');
+            return;
+          }
           const context = await getManagerContext();
           const backendDir = context.pluginDir?.trim() ?? '';
           if (backendDir) {
@@ -273,6 +356,15 @@ function App() {
         } catch {
           // ignore and fall through to setup
         }
+      } else if (savedDir) {
+        try {
+          await setPluginDir(savedDir);
+          if (!cancelled) setPhase('ready');
+          return;
+        } catch {
+          localStorage.removeItem('nekoai-configured');
+          localStorage.removeItem('nekoai-plugin-dir');
+        }
       }
 
       localStorage.removeItem('nekoai-configured');
@@ -283,7 +375,7 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, [phase, runningInTauri]);
+  }, [phase, runningInTauri, loadBrowserSession]);
 
   const loadWebConsole = useCallback(async () => {
     try {
@@ -292,6 +384,13 @@ function App() {
       setWebConsoleHostDraft(status.host || '127.0.0.1');
       setWebConsolePortDraft(String(status.port || 32191));
       setWebConsoleAllowRemoteAccessDraft(status.allowRemoteAccess === true);
+      setWebConsoleAuthEnabledDraft(status.authEnabled === true);
+      setWebConsoleAllowReadOnlyLoginDraft(status.allowReadOnlyLogin !== false);
+      setWebConsoleForceReadOnlyDraft(status.forceReadOnly === true);
+      setWebConsoleAllowedRemoteAddrsDraft(formatRemoteAddrRules(status.allowedRemoteAddrs));
+      setWebConsoleSessionTtlDraft(String(status.sessionTtlMinutes || 720));
+      setWebConsoleAccessPasswordDraft('');
+      setWebConsoleClearPasswordDraft(false);
     } catch (e: any) {
       addToast('error', `加载本地 Web 控制台状态失败: ${e?.message ?? e}`);
     }
@@ -379,6 +478,14 @@ function App() {
       addToast('warning', '当前监听地址会暴露管理接口给其他设备。若确实需要局域网访问，请先勾选“允许远程访问”。');
       return;
     }
+    if (!Number.isFinite(webConsoleSessionTtlParsed) || webConsoleSessionTtlParsed < 10 || webConsoleSessionTtlParsed > 60 * 24 * 14) {
+      addToast('warning', '浏览器会话时长必须是 10 到 20160 分钟之间的整数');
+      return;
+    }
+    if (webConsoleAuthEnabledDraft && !webConsoleStatus?.hasPassword && !webConsoleAccessPasswordDraft.trim()) {
+      addToast('warning', '你启用了登录鉴权，但还没有设置访问口令。请先填写口令。');
+      return;
+    }
 
     setWebConsoleBusy(true);
     try {
@@ -388,15 +495,27 @@ function App() {
         host: webConsoleHostNormalized,
         port: parsedPort,
         allowRemoteAccess: webConsoleAllowRemoteAccessDraft,
-      });
+        authEnabled: webConsoleAuthEnabledDraft,
+        allowReadOnlyLogin: webConsoleAllowReadOnlyLoginDraft,
+        forceReadOnly: webConsoleForceReadOnlyDraft,
+        allowedRemoteAddrs: webConsoleAllowedRemoteAddrs,
+        sessionTtlMinutes: webConsoleSessionTtlParsed,
+      }, webConsoleAccessPasswordDraft.trim() || undefined, webConsoleClearPasswordDraft);
       await new Promise((resolve) => window.setTimeout(resolve, 180));
       const status = await getWebConsoleStatus();
       setWebConsoleStatus(status);
       setWebConsoleHostDraft(status.host || '127.0.0.1');
       setWebConsolePortDraft(String(status.port));
       setWebConsoleAllowRemoteAccessDraft(status.allowRemoteAccess === true);
+      setWebConsoleAuthEnabledDraft(status.authEnabled === true);
+      setWebConsoleAllowReadOnlyLoginDraft(status.allowReadOnlyLogin !== false);
+      setWebConsoleForceReadOnlyDraft(status.forceReadOnly === true);
+      setWebConsoleAllowedRemoteAddrsDraft(formatRemoteAddrRules(status.allowedRemoteAddrs));
+      setWebConsoleSessionTtlDraft(String(status.sessionTtlMinutes || 720));
+      setWebConsoleAccessPasswordDraft('');
+      setWebConsoleClearPasswordDraft(false);
       if (shouldEnable && status.enabled && status.running) {
-        addToast('success', webConsoleConfigChangedWhileRunning ? `本地 Web 控制台已切换到新地址：${status.url}` : `本地 Web 控制台已启动：${status.url}`);
+        addToast('success', webConsoleConfigChangedWhileRunning ? `本地 Web 控制台已应用新配置：${status.url}` : `本地 Web 控制台已启动：${status.url}`);
         await openWebConsoleExternally(status.url);
       } else if (shouldEnable) {
         addToast('error', '本地 Web 控制台未能稳定启动，请先点“刷新状态”再看是否仍为未运行');
@@ -432,6 +551,41 @@ function App() {
     }
   }
 
+  async function handleBrowserLogin() {
+    if (runningInTauri) return;
+    if (!browserLoginPassword.trim()) {
+      addToast('warning', '请输入本地 Web 服务访问口令');
+      return;
+    }
+    setBrowserAuthBusy(true);
+    try {
+      await loginWebConsoleSession(browserLoginPassword, browserLoginReadOnly);
+      const session = await loadBrowserSession();
+      setBrowserLoginPassword('');
+      addToast('success', session?.readOnly ? '浏览器只读会话已建立' : '浏览器管理会话已建立');
+      setPhase('initializing');
+    } catch (e: any) {
+      addToast('error', `登录本地 Web 服务失败: ${e?.message ?? e}`);
+    } finally {
+      setBrowserAuthBusy(false);
+    }
+  }
+
+  async function handleBrowserLogout() {
+    if (runningInTauri) return;
+    setBrowserAuthBusy(true);
+    try {
+      await logoutWebConsoleSession();
+      setBrowserSession((prev) => prev ? { ...prev, authenticated: false, readOnly: false } : prev);
+      setPhase('browser-auth');
+      addToast('success', '浏览器会话已退出');
+    } catch (e: any) {
+      addToast('error', `退出浏览器会话失败: ${e?.message ?? e}`);
+    } finally {
+      setBrowserAuthBusy(false);
+    }
+  }
+
   function handleSetupComplete() {
     setRefreshKey((k) => k + 1);
     setActivePage(loadLastActivePage());
@@ -445,6 +599,10 @@ function App() {
 
   function handleNavigate(page: PageId) {
     if (page === activePage) return;
+    if (browserReadOnlySession && !BROWSER_READ_ONLY_PAGES.includes(page)) {
+      addToast('warning', '当前浏览器会话是只读模式。为避免误操作，外部视图只开放概览、历史记录和用量管理。');
+      return;
+    }
     if (currentDirtyMessage) {
       setPendingLeaveAction({ type: 'page', page });
       setShowLeaveConfirm(true);
@@ -510,6 +668,78 @@ function App() {
         </div>
       </div>
     );
+  } else if (phase === 'browser-auth') {
+    content = (
+      <div className="flex items-center justify-center h-full w-full px-6">
+        <div className="w-full max-w-[520px] rounded-[var(--radius)] border border-[var(--border-subtle)] p-6" style={{ background: 'var(--surface-card)', boxShadow: 'var(--shadow-card)' }}>
+          <div className="flex items-start gap-3">
+            <span className="text-3xl leading-none">🔐</span>
+            <div className="min-w-0">
+              <h2 className="text-lg font-semibold text-[var(--text-primary)]">本地 Web 服务需要先登录</h2>
+              <p className="mt-2 text-sm leading-relaxed text-[var(--text-secondary)]">
+                当前浏览器访问的是 NekoAI Manager 的本地 Web 服务。它已启用访问口令保护，先完成登录，才能继续读取配置和操作界面。
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 space-y-4">
+            <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-4 py-3 text-xs text-[var(--text-secondary)] leading-relaxed">
+              {browserSession?.forceReadOnly
+                ? '当前服务端已强制浏览器端只读。登录后你可以浏览概览、历史和统计，但涉及改配置、保存、执行操作的写入接口会被后端拒绝。'
+                : browserSession?.allowReadOnlyLogin
+                  ? '当前服务端支持完整登录和只读登录。只读模式适合你在浏览器里看状态、看统计，不适合直接改配置。'
+                  : '当前服务端只开放完整登录。'}
+            </div>
+
+            <label className="block text-sm text-[var(--text-secondary)]">
+              访问口令
+              <input
+                type="password"
+                value={browserLoginPassword}
+                onChange={(e) => setBrowserLoginPassword(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') void handleBrowserLogin(); }}
+                className="mt-2 w-full px-3 py-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
+                placeholder="输入本地 Web 服务访问口令"
+              />
+            </label>
+
+            {(browserSession?.allowReadOnlyLogin || browserSession?.forceReadOnly) && (
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={browserSession?.forceReadOnly ? true : browserLoginReadOnly}
+                  disabled={browserSession?.forceReadOnly === true}
+                  onChange={(e) => setBrowserLoginReadOnly(e.target.checked)}
+                  className="mt-0.5"
+                />
+                <span className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                  {browserSession?.forceReadOnly
+                    ? '服务端已强制浏览器只读，本次登录会自动进入只读模式。'
+                    : '以只读模式登录。只读模式下浏览器端仍可看状态和记录，但不允许写配置、不允许执行会改数据的接口。'}
+                </span>
+              </label>
+            )}
+
+            <div className="flex items-center justify-end gap-2">
+              <button
+                onClick={() => { setBrowserLoginPassword(''); setBrowserLoginReadOnly(Boolean(browserSession?.forceReadOnly)); }}
+                className="px-3 py-2 text-sm rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+              >
+                清空
+              </button>
+              <button
+                onClick={() => void handleBrowserLogin()}
+                disabled={browserAuthBusy}
+                className="px-4 py-2 text-sm rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-white hover:opacity-90 cursor-pointer disabled:opacity-60"
+              >
+                {browserAuthBusy ? '登录中...' : '登录并进入管理器'}
+              </button>
+            </div>
+          </div>
+        </div>
+        <ToastContainer />
+      </div>
+    );
   } else if (phase === 'setup') {
     content = (
       <>
@@ -530,6 +760,7 @@ function App() {
             onToggleCollapse={toggleSidebar}
             collapsed={settings.sidebarCollapsed}
             width={settings.sidebarWidth}
+            visiblePages={browserVisiblePages}
           />
           {!settings.sidebarCollapsed && (
             <div
@@ -552,6 +783,20 @@ function App() {
                       目录：{pluginDirInfo.shortName}
                     </span>
                   )}
+                  {!runningInTauri && browserSession?.authenticated && (
+                    <>
+                      <span className={`inline-flex items-center px-2.5 py-1 text-[11px] rounded-[var(--radius-sm)] border ${browserReadOnlySession ? 'border-[rgba(255,171,64,0.35)] bg-[rgba(255,171,64,0.08)] text-[var(--warning)]' : 'border-[rgba(0,230,118,0.35)] bg-[rgba(0,230,118,0.08)] text-[var(--success)]'}`}>
+                        {browserReadOnlySession ? '浏览器只读会话' : '浏览器完整会话'}
+                      </span>
+                      <button
+                        onClick={() => void handleBrowserLogout()}
+                        className="text-xs px-2 py-1 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] cursor-pointer"
+                        title="退出当前浏览器会话"
+                      >
+                        退出会话
+                      </button>
+                    </>
+                  )}
                   <button
                     onClick={toggleHelp}
                     className="text-xs px-2 py-1 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] cursor-pointer"
@@ -563,6 +808,16 @@ function App() {
               }
             />
             <div className="flex-1 overflow-y-auto p-6">
+              {lowPerformanceMode && (
+                <div className="mb-4 rounded-[var(--radius-sm)] border border-[rgba(14,165,233,0.28)] bg-[rgba(14,165,233,0.08)] px-4 py-3 text-xs leading-relaxed text-[var(--text-secondary)]">
+                  当前已启用低性能模式：背景动画、模糊、绝大多数过渡动画已关闭，部分重图表和长区块会延迟挂载或默认收起。若你还觉得卡，优先去 API 管理、历史记录、用量管理这些重页面继续收起不需要的区块。
+                </div>
+              )}
+              {browserReadOnlySession && (
+                <div className="mb-4 rounded-[var(--radius-sm)] border border-[rgba(255,171,64,0.35)] bg-[rgba(255,171,64,0.08)] px-4 py-3 text-xs leading-relaxed text-[var(--text-secondary)]">
+                  当前浏览器会话为只读外部视图。左侧只保留概览、历史记录和用量管理；即使后端还能返回部分读取数据，所有写配置、保存和执行修改性操作都会被后端拒绝。
+                </div>
+              )}
               <Suspense fallback={<PageFallback />}>
                 {activePage === 'dashboard' && (
                   <DeferredMount key={`dashboard-${refreshKey}`} fallback={<PageFallback />}>
@@ -820,9 +1075,18 @@ function App() {
                   <div className="flex flex-wrap gap-2 text-[11px] text-[var(--text-secondary)]">
                     <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--surface-card)]">默认冷门端口：32191</span>
                     <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--surface-card)]">当前监听：{webConsoleHostNormalized}:{webConsolePortDraft.trim() || '32191'}</span>
+                    <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--surface-card)]">
+                      浏览器鉴权：{webConsoleAuthEnabledDraft ? (webConsoleStatus?.hasPassword || webConsoleAccessPasswordDraft.trim() ? '已开启' : '待设置口令') : '关闭'}
+                    </span>
+                    <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--surface-card)]">
+                      只读策略：{webConsoleForceReadOnlyDraft ? '强制只读' : webConsoleAllowReadOnlyLoginDraft ? '允许只读登录' : '仅完整登录'}
+                    </span>
+                    <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--surface-card)]">
+                      远端来源规则：{webConsoleAllowedRemoteAddrs.length > 0 ? `${webConsoleAllowedRemoteAddrs.length} 条` : '未限制'}
+                    </span>
                     {webConsoleConfigChangedWhileRunning && (
                       <span className="px-2 py-1 rounded border border-[rgba(255,171,64,0.35)] text-[var(--warning)] bg-[rgba(255,171,64,0.08)]">
-                        你修改了监听地址或端口，下一次按钮操作会按新配置重启服务
+                        你修改了本地服务配置，下一次按钮操作会按新配置重启服务
                       </span>
                     )}
                     {webConsoleHostNormalized === '0.0.0.0' && (
@@ -857,6 +1121,117 @@ function App() {
                     如果监听 `0.0.0.0` 或其他非本机地址，请确认当前网络可信，并且你知道谁能访问这台机器的端口。
                   </p>
                 </div>
+
+                <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 py-3 space-y-3">
+                  <div>
+                    <p className="text-sm font-medium text-[var(--text-primary)]">浏览器登录与访问控制</p>
+                    <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-muted)]">
+                      这里控制浏览器端是否需要访问口令、是否允许只读登录，以及哪些远端来源地址可以访问当前本地 Web 服务。
+                    </p>
+                  </div>
+
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={webConsoleAuthEnabledDraft}
+                      onChange={(e) => setWebConsoleAuthEnabledDraft(e.target.checked)}
+                      className="mt-0.5"
+                    />
+                    <span className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                      启用浏览器登录鉴权。开启后，浏览器必须先输入访问口令，才能读取管理界面和调用管理接口。
+                    </span>
+                  </label>
+
+                  <div className="grid grid-cols-[120px_1fr] gap-3 items-start">
+                    <span className="text-xs text-[var(--text-secondary)]">访问口令</span>
+                    <div className="space-y-2">
+                      <input
+                        type="password"
+                        value={webConsoleAccessPasswordDraft}
+                        onChange={(e) => {
+                          setWebConsoleAccessPasswordDraft(e.target.value);
+                          if (e.target.value.trim()) setWebConsoleClearPasswordDraft(false);
+                        }}
+                        className="w-full px-3 py-2 text-sm rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
+                        placeholder={webConsoleStatus?.hasPassword ? '留空表示不修改当前口令' : '请输入新的访问口令'}
+                      />
+                      <label className="flex items-start gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={webConsoleClearPasswordDraft}
+                          onChange={(e) => {
+                            setWebConsoleClearPasswordDraft(e.target.checked);
+                            if (e.target.checked) setWebConsoleAccessPasswordDraft('');
+                          }}
+                          className="mt-0.5"
+                        />
+                        <span className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+                          清空已保存口令。
+                          {webConsoleStatus?.hasPassword ? ' 当前配置里已经存在口令哈希；若勾选这里，保存后会移除它。' : ' 当前还没有已保存口令。'}
+                        </span>
+                      </label>
+                    </div>
+
+                    <span className="text-xs text-[var(--text-secondary)]">会话时长</span>
+                    <div className="space-y-2">
+                      <input
+                        type="number"
+                        min={10}
+                        max={20160}
+                        value={webConsoleSessionTtlDraft}
+                        onChange={(e) => setWebConsoleSessionTtlDraft(e.target.value)}
+                        className="w-full px-3 py-2 text-sm mono rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
+                      />
+                      <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+                        浏览器登录成功后的会话有效时长，单位是分钟。建议至少保留 10 分钟，避免频繁掉登录态。
+                      </p>
+                    </div>
+
+                    <span className="text-xs text-[var(--text-secondary)]">远端来源规则</span>
+                    <div className="space-y-2">
+                      <textarea
+                        value={webConsoleAllowedRemoteAddrsDraft}
+                        onChange={(e) => setWebConsoleAllowedRemoteAddrsDraft(e.target.value)}
+                        rows={4}
+                        className="w-full px-3 py-2 text-sm mono rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)] resize-y"
+                        placeholder={'留空表示不额外限制远端来源地址。\n每行或每个逗号分隔一个规则，例如：\n192.168.1.23\n192.168.1.*'}
+                      />
+                      <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+                        只有远端来源地址命中规则时，浏览器才能访问本地 Web 服务。支持完整 IP，也支持 `192.168.1.*` 这种前缀规则。回环地址 `127.0.0.1 / ::1` 始终允许。
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-2">
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={webConsoleAllowReadOnlyLoginDraft}
+                        disabled={webConsoleForceReadOnlyDraft}
+                        onChange={(e) => setWebConsoleAllowReadOnlyLoginDraft(e.target.checked)}
+                        className="mt-0.5"
+                      />
+                      <span className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                        允许浏览器只读登录。只读会话可以看状态、看记录、看统计，但后端会拒绝写配置和执行修改性操作。
+                      </span>
+                    </label>
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={webConsoleForceReadOnlyDraft}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setWebConsoleForceReadOnlyDraft(checked);
+                          if (checked) setWebConsoleAllowReadOnlyLoginDraft(true);
+                        }}
+                        className="mt-0.5"
+                      />
+                      <span className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                        强制浏览器端只读。勾选后，浏览器即使登录成功也只能拿到只读会话，适合你只想远程查看状态、不想让浏览器改配置时使用。
+                      </span>
+                    </label>
+                  </div>
+                </div>
               </div>
 
               <div className="flex flex-wrap gap-2">
@@ -870,7 +1245,7 @@ function App() {
                     : webConsoleRunning && !webConsoleConfigChangedWhileRunning
                       ? '关闭服务'
                       : webConsoleRunning && webConsoleConfigChangedWhileRunning
-                        ? '应用新地址并重启'
+                        ? '应用新配置并重启'
                         : '开启并打开浏览器'}
                 </button>
                 {webConsoleToggleNeedsRemoteConfirmation && (
@@ -1046,6 +1421,37 @@ function App() {
                 <p className="text-[11px] text-[var(--text-muted)] mt-2">
                   调整界面整体大小，包括文字和控件
                 </p>
+              </div>
+
+              <div className="border-t border-[var(--border-subtle)]" />
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <label className="text-sm text-[var(--text-secondary)] block">低性能模式说明</label>
+                    <p className="text-[11px] text-[var(--text-muted)] mt-1 leading-relaxed">
+                      这一模式不是只改动画开关，还会同步关闭模糊、缩小阴影、收窄过渡、让部分重区块默认折叠，并把很多离屏卡片延后到滚动接近时再渲染。
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => updateSettings({ renderMode: 'lite', ambientDensity: 'low', contentDensity: 'compact' })}
+                    className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--accent-purple)] hover:bg-[var(--border-subtle)] cursor-pointer whitespace-nowrap"
+                  >
+                    一键套用省资源组合
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2 text-[11px] text-[var(--text-secondary)]">
+                  <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--surface-card)]">当前页：{pageTitles[activePage].title}</span>
+                  <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--surface-card)]">最近切页耗时：{lastPagePaintMs == null ? '-' : `${lastPagePaintMs} ms`}</span>
+                  <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--surface-card)]">背景效果：{ambientEnabled ? '启用' : '关闭'}</span>
+                  <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--surface-card)]">侧栏：{settings.sidebarCollapsed ? '收起' : `展开 ${settings.sidebarWidth}px`}</span>
+                  <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--surface-card)]">内容密度：{settings.contentDensity}</span>
+                  <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--surface-card)]">浏览器会话：{runningInTauri ? '桌面版' : browserReadOnlySession ? '只读' : browserSession?.authenticated ? '完整' : '未登录'}</span>
+                </div>
+                <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 py-3 text-[11px] leading-relaxed text-[var(--text-muted)]">
+                  当前仍然最容易吃性能的页面通常是 `API管理`、`历史记录`、`用量管理` 和 `人格评测实验室`。
+                  如果你在这些页面里仍感觉卡，优先收起图表、长列表、健康栏和多节点编辑区，而不是先继续调主题或缩放。
+                </div>
               </div>
 
               <div className="border-t border-[var(--border-subtle)]" />

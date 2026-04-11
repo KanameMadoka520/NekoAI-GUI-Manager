@@ -495,6 +495,11 @@ export interface WebConsoleSettings {
   host: string;
   port: number;
   allowRemoteAccess?: boolean;
+  authEnabled?: boolean;
+  allowReadOnlyLogin?: boolean;
+  forceReadOnly?: boolean;
+  allowedRemoteAddrs?: string[];
+  sessionTtlMinutes?: number;
 }
 
 export interface WebConsoleStatus {
@@ -505,6 +510,30 @@ export interface WebConsoleStatus {
   url: string;
   pluginDir?: string | null;
   allowRemoteAccess?: boolean;
+  authEnabled?: boolean;
+  hasPassword?: boolean;
+  allowReadOnlyLogin?: boolean;
+  forceReadOnly?: boolean;
+  allowedRemoteAddrs?: string[];
+  sessionTtlMinutes?: number;
+}
+
+export interface WebConsoleSessionStatus {
+  authEnabled: boolean;
+  hasPassword: boolean;
+  authenticated: boolean;
+  readOnly: boolean;
+  allowReadOnlyLogin: boolean;
+  forceReadOnly: boolean;
+  expiresAt?: string | null;
+  sessionTtlMinutes: number;
+}
+
+export interface WebConsoleLoginResult {
+  token: string;
+  readOnly: boolean;
+  expiresAt: string;
+  sessionTtlMinutes: number;
 }
 
 // ===== API Test =====

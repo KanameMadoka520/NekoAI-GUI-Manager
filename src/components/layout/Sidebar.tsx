@@ -31,10 +31,13 @@ interface SidebarProps {
   onToggleCollapse?: () => void;
   collapsed?: boolean;
   width?: number;
+  visiblePages?: PageId[];
 }
 
-export function Sidebar({ activePage, onNavigate, onChangeDir, onOpenSettings, onOpenWebConsole, onToggleCollapse, collapsed = false, width = 224 }: SidebarProps) {
+export function Sidebar({ activePage, onNavigate, onChangeDir, onOpenSettings, onOpenWebConsole, onToggleCollapse, collapsed = false, width = 224, visiblePages }: SidebarProps) {
   const [clock, setClock] = useState('');
+  const visiblePageSet = visiblePages ? new Set(visiblePages) : null;
+  const displayedNavItems = visiblePageSet ? navItems.filter((item) => visiblePageSet.has(item.id)) : navItems;
 
   useEffect(() => {
     let timer: number | null = null;
@@ -85,7 +88,7 @@ export function Sidebar({ activePage, onNavigate, onChangeDir, onOpenSettings, o
       </div>
 
       <nav className={`flex-1 py-3 ${collapsed ? 'px-2' : 'px-3'} space-y-1 overflow-y-auto`}>
-        {navItems.map((item) => (
+        {displayedNavItems.map((item) => (
           <button
             key={item.id}
             onClick={() => onNavigate(item.id)}
