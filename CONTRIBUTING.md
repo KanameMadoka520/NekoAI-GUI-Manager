@@ -268,7 +268,7 @@ npm install --no-save @rollup/rollup-win32-x64-msvc@4.59.0
 
 例如这次新增的图像节点链路：
 
-- 前端不只是多一个 `ImageApiNode` 类型，还要同时照顾 `image_api_config.json` 的导入导出、`activeImageApiIndex` 的读写、图像节点列表模式、以及启动前自检里的索引越界修复。
+- 前端不只是多一个 `ImageApiNode` 类型，还要同时照顾 `image_api_config.json` 的导入导出、`activeImageApiIndex` 的读写、图像节点列表模式、节点能力字段（如 `supportsEdit`）、以及启动前自检里的索引越界修复。OpenAI `gpt-image-2` 当前按“仅生图”节点处理，GUI 不应把它伪装成可修图节点。
 
 例如这次新增的 `groupMentionFocusMode`：
 

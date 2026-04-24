@@ -134,8 +134,12 @@ function getDefaultImageGenerationUrl(providerType: ImageApiProviderType) {
 
 function getDefaultImageEditUrl(providerType: ImageApiProviderType) {
   return providerType === 'openai'
-    ? 'https://api.openai.com/v1/images/edits'
+    ? ''
     : 'https://api.x.ai/v1/images/edits';
+}
+
+function getDefaultImageSupportsEdit(providerType: ImageApiProviderType) {
+  return providerType === 'xai';
 }
 
 function getImageProviderLabel(providerType: ImageApiProviderType) {
@@ -146,17 +150,40 @@ function getImageApiKeyPlaceholder(providerType: ImageApiProviderType) {
   return providerType === 'openai' ? 'sk-...' : 'xai-...';
 }
 
+function isGptImage2Model(modelName?: string) {
+  return String(modelName ?? '').trim().toLowerCase() === 'gpt-image-2';
+}
+
+function isOpenAiGenerationOnlyImageNode(node: Partial<ImageApiNode>) {
+  const providerType = normalizeImageProviderType(node.providerType);
+  const modelName = typeof node.modelName === 'string' && node.modelName.trim() ? node.modelName : getDefaultImageModel(providerType);
+  return providerType === 'openai' && isGptImage2Model(modelName);
+}
+
+function imageNodeSupportsEdit(node: Partial<ImageApiNode>) {
+  if (isOpenAiGenerationOnlyImageNode(node)) return false;
+  const providerType = normalizeImageProviderType(node.providerType);
+  return typeof node.supportsEdit === 'boolean' ? node.supportsEdit : getDefaultImageSupportsEdit(providerType);
+}
+
+function getImageCapabilityLabel(node: Partial<ImageApiNode>) {
+  return imageNodeSupportsEdit(node) ? '生图 + 修图' : '仅生图';
+}
+
 function normalizeImageApiNode(input?: Partial<ImageApiNode>): ImageApiNode {
   const providerType = normalizeImageProviderType(input?.providerType);
+  const modelName = typeof input?.modelName === 'string' && input.modelName.trim() ? input.modelName : getDefaultImageModel(providerType);
+  const base = { ...input, providerType, modelName };
   return {
     providerType,
     generationUrl: typeof input?.generationUrl === 'string' ? input.generationUrl : '',
     editUrl: typeof input?.editUrl === 'string' ? input.editUrl : '',
     apiKey: typeof input?.apiKey === 'string' ? input.apiKey : '',
-    modelName: typeof input?.modelName === 'string' && input.modelName.trim() ? input.modelName : getDefaultImageModel(providerType),
+    modelName,
     remark: typeof input?.remark === 'string' ? input.remark : '',
     aspectRatio: typeof input?.aspectRatio === 'string' ? input.aspectRatio : '',
     resolution: typeof input?.resolution === 'string' ? input.resolution : '',
+    supportsEdit: imageNodeSupportsEdit(base),
   };
 }
 
@@ -580,7 +607,7 @@ export function ApiManager() {
 
   function updateImageNode(index: number, field: keyof ImageApiNode, value: ImageApiNode[keyof ImageApiNode]) {
     const next = [...imageNodes];
-    next[index] = { ...next[index], [field]: value } as ImageApiNode;
+    next[index] = normalizeImageApiNode({ ...next[index], [field]: value } as ImageApiNode);
     setImageState({ ...imageState, nodes: next });
   }
 
@@ -588,14 +615,18 @@ export function ApiManager() {
     const source = imageNodes[index];
     if (!source) return;
     const previousProvider = normalizeImageProviderType(source.providerType);
+    const sourceEditWasDefault = !source.editUrl || source.editUrl === getDefaultImageEditUrl(previousProvider);
+    const modelName = !source.modelName || source.modelName === getDefaultImageModel(previousProvider) ? getDefaultImageModel(providerType) : source.modelName;
+    const supportsEdit = providerType === 'xai' && !isGptImage2Model(modelName);
     const next = [...imageNodes];
-    next[index] = {
+    next[index] = normalizeImageApiNode({
       ...source,
       providerType,
-      modelName: !source.modelName || source.modelName === getDefaultImageModel(previousProvider) ? getDefaultImageModel(providerType) : source.modelName,
+      modelName,
       generationUrl: !source.generationUrl || source.generationUrl === getDefaultImageGenerationUrl(previousProvider) ? getDefaultImageGenerationUrl(providerType) : source.generationUrl,
-      editUrl: !source.editUrl || source.editUrl === getDefaultImageEditUrl(previousProvider) ? getDefaultImageEditUrl(providerType) : source.editUrl,
-    };
+      editUrl: supportsEdit ? (sourceEditWasDefault ? getDefaultImageEditUrl(providerType) : source.editUrl) : (sourceEditWasDefault ? '' : source.editUrl),
+      supportsEdit,
+    });
     setImageState({ ...imageState, nodes: next });
   }
 
@@ -628,6 +659,10 @@ export function ApiManager() {
   function applyImageEditUrlSuffix(index: number) {
     const node = imageNodes[index];
     if (!node) return;
+    if (!imageNodeSupportsEdit(node)) {
+      addToast('warning', '当前图像节点仅支持生图，不需要配置修图 URL。');
+      return;
+    }
     const nextUrl = appendXaiImageEditSuffix(node.editUrl || '');
     if (nextUrl === (node.editUrl || '')) {
       if (/[?#]/.test(String(node.editUrl || ''))) addToast('warning', '当前 URL 含查询参数或锚点，图像编辑后缀请手动补在路径位置。');
@@ -853,16 +888,18 @@ export function ApiManager() {
         remark: 'xAI 官方图像模板',
         aspectRatio: '',
         resolution: '',
+        supportsEdit: true,
       }),
       normalizeImageApiNode({
         providerType: 'openai',
         generationUrl: 'https://api.openai.com/v1/images/generations',
-        editUrl: 'https://api.openai.com/v1/images/edits',
+        editUrl: '',
         apiKey: 'sk-your-openai-key',
         modelName: 'gpt-image-2',
-        remark: 'OpenAI 图像模板',
+        remark: 'OpenAI 生图模板',
         aspectRatio: '',
         resolution: '',
+        supportsEdit: false,
       }),
     ];
     downloadJsonWithTimestamp(template, 'image_api_config.template.json');
@@ -915,14 +952,16 @@ export function ApiManager() {
   }
 
   function addImageNode(providerType: ImageApiProviderType = 'openai') {
+    const supportsEdit = getDefaultImageSupportsEdit(providerType);
     setImageState({
       ...imageState,
       nodes: [...imageNodes, normalizeImageApiNode({
         providerType,
         generationUrl: getDefaultImageGenerationUrl(providerType),
-        editUrl: getDefaultImageEditUrl(providerType),
+        editUrl: supportsEdit ? getDefaultImageEditUrl(providerType) : '',
         remark: '',
         modelName: getDefaultImageModel(providerType),
+        supportsEdit,
       })],
     });
   }
@@ -950,7 +989,8 @@ export function ApiManager() {
         n.remark.toLowerCase().includes(q) ||
         n.providerType.toLowerCase().includes(q) ||
         n.generationUrl.toLowerCase().includes(q) ||
-        n.editUrl.toLowerCase().includes(q)
+        n.editUrl.toLowerCase().includes(q) ||
+        getImageCapabilityLabel(n).toLowerCase().includes(q)
       )
       .map(({ i }) => i);
   }, [imageNodes, deferredImageSearch]);
@@ -1700,9 +1740,10 @@ function ImageApiManagerPanel({
 
   return (
     <div className="flex-1 min-h-0 flex flex-col gap-4">
-      <div className={`grid grid-cols-2 xl:grid-cols-4 ${densityClass.summaryGrid}`}>
+      <div className={`grid grid-cols-2 xl:grid-cols-5 ${densityClass.summaryGrid}`}>
         <SummaryCard label="图像节点总数" value={String(nodes.length)} hint="这里是独立的 image_api_config.json，不会混进聊天节点列表。" />
         <SummaryCard label="当前图像节点" value={nodes[activeIndex]?.modelName || (nodes[activeIndex] ? getDefaultImageModel(normalizeImageProviderType(nodes[activeIndex].providerType)) : `#${activeIndex}`)} hint={`命令会优先从 #${activeIndex} 开始使用。`} />
+        <SummaryCard label="可修图节点" value={String(nodes.filter((node) => imageNodeSupportsEdit(node)).length)} hint="gpt-image-2 当前按仅生图节点处理，不会被修图命令选中。" />
         <SummaryCard label="当前显示" value={`${filteredIndices.length}/${nodes.length}`} hint="搜索只影响当前列表显示，不会改真实顺序。" />
         <SummaryCard label="保存状态" value={dirty ? '待保存' : '已同步'} hint={dirty ? '图像节点有未保存改动。' : '图像节点列表已经和文件一致。'} tone={dirty ? 'warning' : 'neutral'} />
       </div>
@@ -1773,6 +1814,8 @@ function ImageApiManagerPanel({
                   const node = nodes[index];
                   const keyVisible = showKey.has(index);
                   const providerType = normalizeImageProviderType(node.providerType);
+                  const supportsEdit = imageNodeSupportsEdit(node);
+                  const generationOnlyOpenAi = isOpenAiGenerationOnlyImageNode(node);
                   return (
                     <div
                       key={index}
@@ -1784,6 +1827,7 @@ function ImageApiManagerPanel({
                         <span className="text-xs mono text-[var(--text-muted)]">#{index}</span>
                         <span className="text-sm font-medium text-[var(--text-primary)]">{node.modelName || getDefaultImageModel(providerType)}</span>
                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-[rgba(0,188,212,0.14)] text-[var(--info)]">{getImageProviderLabel(providerType)}</span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${supportsEdit ? 'bg-[rgba(16,185,129,0.14)] text-[var(--success)]' : 'bg-[rgba(251,191,36,0.15)] text-[var(--warning)]'}`}>{getImageCapabilityLabel(node)}</span>
                         {index === activeIndex ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--accent-purple)] text-white">活跃</span> : null}
                         <div className="flex-1" />
                         <button
@@ -1822,7 +1866,22 @@ function ImageApiManagerPanel({
                               <option value="xai">xai</option>
                             </select>
                             <p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">
-                              OpenAI 图像默认模型是 `gpt-image-2`。修图 URL 如果填写 `/v1/chat/completions`，插件会按 OpenAI Compatible 多模态消息解析返回图片。
+                              OpenAI 图像默认模型是 `gpt-image-2`，当前按仅生图节点处理。xAI 节点默认同时支持生图和修图。
+                            </p>
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-[var(--text-muted)] mb-1 block">节点能力</label>
+                            <select
+                              value={supportsEdit ? 'true' : 'false'}
+                              onChange={(e) => onUpdate(index, 'supportsEdit', e.target.value === 'true')}
+                              disabled={generationOnlyOpenAi}
+                              className="w-full px-2.5 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)] disabled:opacity-55 cursor-pointer disabled:cursor-not-allowed"
+                            >
+                              <option value="false">仅生图</option>
+                              <option value="true">生图 + 修图</option>
+                            </select>
+                            <p className={`mt-1 text-[10px] leading-relaxed ${generationOnlyOpenAi ? 'text-[var(--warning)]' : 'text-[var(--text-muted)]'}`}>
+                              {generationOnlyOpenAi ? '`gpt-image-2` 图像节点不会参与 `neko.修图`。' : '只有支持修图的节点才会被 `neko.修图` 自动选择。'}
                             </p>
                           </div>
                           <div>
@@ -1848,7 +1907,7 @@ function ImageApiManagerPanel({
                               </p>
                             ) : providerType === 'openai' ? (
                               <p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">
-                                OpenAI 图像渠道目前默认使用 `gpt-image-2`。如上游兼容服务扩展模型名，可以在这里手动覆盖。
+                                OpenAI 图像渠道目前默认使用 `gpt-image-2`，该模型按仅生图能力保存。如上游兼容服务扩展模型名，可以在这里手动覆盖。
                               </p>
                             ) : (
                               <p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">
@@ -1882,17 +1941,24 @@ function ImageApiManagerPanel({
                               <input
                                 value={node.editUrl}
                                 onChange={(e) => onUpdate(index, 'editUrl', e.target.value)}
-                                className="flex-1 px-2.5 py-2 text-xs mono rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
-                                placeholder={providerType === 'openai' ? 'https://api.openai.com/v1/images/edits 或 /v1/chat/completions' : getDefaultImageEditUrl(providerType)}
+                                disabled={!supportsEdit}
+                                className="flex-1 px-2.5 py-2 text-xs mono rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)] disabled:opacity-55 disabled:cursor-not-allowed"
+                                placeholder={supportsEdit ? getDefaultImageEditUrl(providerType) : '当前节点仅生图，修图命令会跳过'}
                               />
                               <button
                                 type="button"
                                 onClick={() => onApplyEditSuffix(index)}
-                                className="px-2.5 py-2 text-[11px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-purple)] cursor-pointer whitespace-nowrap"
+                                disabled={!supportsEdit}
+                                className="px-2.5 py-2 text-[11px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-purple)] cursor-pointer whitespace-nowrap disabled:opacity-55 disabled:cursor-not-allowed"
                               >
                                 补 /v1/images/edits
                               </button>
                             </div>
+                            {!supportsEdit ? (
+                              <p className="mt-1 text-[10px] leading-relaxed text-[var(--warning)]">
+                                此节点不会参与 `neko.修图`。已填写的修图 URL 会保留在配置里，但插件运行时不会调用。
+                              </p>
+                            ) : null}
                           </div>
 
                           <div>

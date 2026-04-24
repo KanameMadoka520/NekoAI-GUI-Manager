@@ -19,6 +19,7 @@ export interface ImageApiNode {
   remark: string;
   aspectRatio?: string;
   resolution?: string;
+  supportsEdit?: boolean;
 }
 
 // ===== Runtime Config =====
