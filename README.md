@@ -72,10 +72,10 @@
   - 保持“URL 由用户自己填写完整路径”的旧兼容策略
   - API URL 输入框右侧新增“补默认后缀”按钮，只做常见后缀辅助补全，不锁死自定义兼容站
   - 新增 `xAI Web Search` 开关，并明确标注“仅支持 xAI 官方 API + Grok 模型 + openai-response”
-- 图像节点新增 **xAI 生图 / 修图** 独立管理能力
+- 图像节点新增 **xAI / OpenAI 生图 / 修图** 独立管理能力
   - 独立维护 `generationUrl` / `editUrl` / `apiKey` / `modelName` / `aspectRatio` / `resolution`
   - 支持导入 / 导出 `image_api_config.json`
-  - 支持一键导出 xAI 图像节点模板
+  - 支持一键导出 xAI / OpenAI 图像节点模板，OpenAI 默认模型为 `gpt-image-2`
   - 生成 / 修图 URL 右侧同样提供默认后缀补全按钮
   - 默认不提供图像批量测活，避免直接消耗图像额度
 - Rust 后端与自检链路已同步支持图像节点
@@ -254,7 +254,7 @@
 | 模块 | 功能 |
 |------|------|
 | **概览仪表盘** | 核心状态总览（昵称/活跃节点/人格/路由/表情包）、API类型分布、记忆容量进度条、群组用户信息（限流/人格/API映射标签）、配置文件健康检查表 |
-| **API 管理** | **聊天节点 / 图像节点双模式**、聊天节点编辑（`openai (completions)` / `openai-response` / `Anthropic` / `Gemini`、xAI Web Search 开关、URL 默认后缀辅助、拖拽排序、批量测试、健康分、导入/导出）、图像节点编辑（独立 `image_api_config.json`、生成/修图 URL、默认比例/分辨率、xAI 模板导出、导入/导出、活跃图像节点切换） |
+| **API 管理** | **聊天节点 / 图像节点双模式**、聊天节点编辑（`openai (completions)` / `openai-response` / `Anthropic` / `Gemini`、xAI Web Search 开关、URL 默认后缀辅助、拖拽排序、批量测试、健康分、导入/导出）、图像节点编辑（独立 `image_api_config.json`、provider、生成/修图 URL、默认比例/分辨率、xAI / OpenAI 模板导出、导入/导出、活跃图像节点切换） |
 | **配置编辑** | 12个配置节全覆盖、侧边导航跟踪滚动、多种控件类型（开关/滑块/标签列表/键值编辑器/下拉框）、**schema 驱动字段说明与部分控件渲染**、恢复全部默认值（**二级确认**）、**runtime JSON 导入/导出（导入二级确认）**、**迁移提醒 + 差异概览 + 可修项自动修复**，并覆盖 `activeImageApiIndex` 等新字段 |
 | **人格管理** | 群聊/私聊双栏并列、编辑弹窗（名称+大文本域+字符计数）、克隆/删除、一键切换活跃人格、搜索筛选、**群聊/私聊人格分文件导入/导出（导入二级确认）**、**人格 A/B 测试台（固定 API 节点、同输入双输出对比、测试记录回看 / 筛选 / 删除，用于快速试跑）** |
 | **人格评测实验室（新增）** | **独立页面**、多 API × 多人格 × 多用例 × 多轮次实验矩阵、单条输出多维人工打分（风格一致性 / 稳定性 / 任务完成度 / 拟人感）、实验记录回看 / 删除、按人格 / API / 组合的基础统计摘要 |
@@ -576,9 +576,9 @@ npx vite
 - **URL 后缀辅助** — API URL 输入框右侧会根据当前类型显示 `补 /v1/chat/completions`、`补 /v1/responses`、`补 /v1/messages`、`补 /v1beta/models/...:generateContent` 等按钮；URL 最终仍然完全由你自己控制
 - **xAI Web Search 开关** — 仅在 `openai-response` 节点可勾选，并明确提示“只支持 xAI 官方 API + Grok 模型”
 - **拖拽排序 / 连通测试 / 健康分** — 聊天节点支持拖拽排序、单个/批量测试、健康分排序/筛选、评分解释面板
-- **图像节点卡片** — 独立维护 `generationUrl`、`editUrl`、`apiKey`、`modelName`、`aspectRatio`、`resolution`
+- **图像节点卡片** — 独立维护 `providerType`、`generationUrl`、`editUrl`、`apiKey`、`modelName`、`aspectRatio`、`resolution`
 - **图像 URL 后缀辅助** — 生成 URL 可一键补 `/v1/images/generations`，修图 URL 可一键补 `/v1/images/edits`
-- **图像模板导出** — 图像节点工具栏支持导出 xAI 模板，便于快速落地 `image_api_config.json`
+- **图像模板导出** — 图像节点工具栏支持导出 xAI / OpenAI 模板，便于快速落地 `image_api_config.json`
 - **图像节点保护策略** — 默认不提供图像测活，避免误耗图像额度；图像节点的活跃索引会保存到 `runtime_config.json` 的 `activeImageApiIndex`
 - **撤销/重做 / 导入导出** — 聊天节点和图像节点都支持独立的撤销、重做、导入、导出与保存流程
 
@@ -1013,7 +1013,7 @@ NekoAI-GUI-Data/
 | 旧工具 | 新版对应 | 改进 |
 |--------|---------|------|
 | `api_manager.html` | API 管理页（聊天节点模式） | 新增拖拽排序、撤销重做、重复检测、对全部 API 可用性测试、Responses / xAI Web Search 管理 |
-| `image_api_manager.html` | API 管理页（图像节点模式） | 新增独立图像节点列表、xAI 模板导出、生成 / 修图 URL 默认后缀辅助 |
+| `image_api_manager.html` | API 管理页（图像节点模式） | 新增独立图像节点列表、xAI / OpenAI 模板导出、生成 / 修图 URL 默认后缀辅助 |
 | `config_editor.html` | 配置编辑页 | 从旧版基础配置扩展到 12 节，并接入 `runtime_schema.json` 的说明、迁移提醒与差异概览 |
 | `dashboard.html` | 概览仪表盘 | 新增群组映射标签、API类型分布进度条、配置健康表 |
 | `history_viewer.html` | 历史记录页 | 新增 Recharts 统计图表、4种视图模式、全局搜索 |

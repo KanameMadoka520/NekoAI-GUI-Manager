@@ -22,7 +22,7 @@ import { usePageDirtyState } from '../hooks/usePageDirtyState';
 import { getConfig, saveConfig, pingApi, batchPingApis, batchPingApisStream, getApiHistoryMetrics, getApiHealthWeights, saveApiHealthWeights } from '../lib/tauri-commands';
 import { listenCompat } from '../lib/runtime-bridge';
 import { downloadJsonWithTimestamp, pickJsonAndParse } from '../lib/json-transfer';
-import type { ApiNode, ImageApiNode, RuntimeConfig, PingResult, ApiHistoryMetric, ApiHealthWeights } from '../lib/types';
+import type { ApiNode, ImageApiNode, ImageApiProviderType, RuntimeConfig, PingResult, ApiHistoryMetric, ApiHealthWeights } from '../lib/types';
 
 interface NodeState {
   nodes: ApiNode[];
@@ -116,13 +116,44 @@ function normalizeApiNode(input?: Partial<ApiNode>): ApiNode {
   };
 }
 
+function normalizeImageProviderType(input?: string): ImageApiProviderType {
+  const raw = String(input ?? '').trim().toLowerCase();
+  if (raw === 'openai' || raw === 'openai-compatible' || raw === 'openai_compatible') return 'openai';
+  return 'xai';
+}
+
+function getDefaultImageModel(providerType: ImageApiProviderType) {
+  return providerType === 'openai' ? 'gpt-image-2' : 'grok-imagine-image';
+}
+
+function getDefaultImageGenerationUrl(providerType: ImageApiProviderType) {
+  return providerType === 'openai'
+    ? 'https://api.openai.com/v1/images/generations'
+    : 'https://api.x.ai/v1/images/generations';
+}
+
+function getDefaultImageEditUrl(providerType: ImageApiProviderType) {
+  return providerType === 'openai'
+    ? 'https://api.openai.com/v1/images/edits'
+    : 'https://api.x.ai/v1/images/edits';
+}
+
+function getImageProviderLabel(providerType: ImageApiProviderType) {
+  return providerType === 'openai' ? 'OpenAI 图像' : 'xAI 图像';
+}
+
+function getImageApiKeyPlaceholder(providerType: ImageApiProviderType) {
+  return providerType === 'openai' ? 'sk-...' : 'xai-...';
+}
+
 function normalizeImageApiNode(input?: Partial<ImageApiNode>): ImageApiNode {
+  const providerType = normalizeImageProviderType(input?.providerType);
   return {
-    providerType: 'xai',
+    providerType,
     generationUrl: typeof input?.generationUrl === 'string' ? input.generationUrl : '',
     editUrl: typeof input?.editUrl === 'string' ? input.editUrl : '',
     apiKey: typeof input?.apiKey === 'string' ? input.apiKey : '',
-    modelName: typeof input?.modelName === 'string' && input.modelName.trim() ? input.modelName : 'grok-imagine-image',
+    modelName: typeof input?.modelName === 'string' && input.modelName.trim() ? input.modelName : getDefaultImageModel(providerType),
     remark: typeof input?.remark === 'string' ? input.remark : '',
     aspectRatio: typeof input?.aspectRatio === 'string' ? input.aspectRatio : '',
     resolution: typeof input?.resolution === 'string' ? input.resolution : '',
@@ -553,6 +584,21 @@ export function ApiManager() {
     setImageState({ ...imageState, nodes: next });
   }
 
+  function updateImageNodeProvider(index: number, providerType: ImageApiProviderType) {
+    const source = imageNodes[index];
+    if (!source) return;
+    const previousProvider = normalizeImageProviderType(source.providerType);
+    const next = [...imageNodes];
+    next[index] = {
+      ...source,
+      providerType,
+      modelName: !source.modelName || source.modelName === getDefaultImageModel(previousProvider) ? getDefaultImageModel(providerType) : source.modelName,
+      generationUrl: !source.generationUrl || source.generationUrl === getDefaultImageGenerationUrl(previousProvider) ? getDefaultImageGenerationUrl(providerType) : source.generationUrl,
+      editUrl: !source.editUrl || source.editUrl === getDefaultImageEditUrl(previousProvider) ? getDefaultImageEditUrl(providerType) : source.editUrl,
+    };
+    setImageState({ ...imageState, nodes: next });
+  }
+
   function applyDefaultUrlSuffix(index: number) {
     const node = nodes[index];
     if (!node) return;
@@ -808,6 +854,16 @@ export function ApiManager() {
         aspectRatio: '',
         resolution: '',
       }),
+      normalizeImageApiNode({
+        providerType: 'openai',
+        generationUrl: 'https://api.openai.com/v1/images/generations',
+        editUrl: 'https://api.openai.com/v1/images/edits',
+        apiKey: 'sk-your-openai-key',
+        modelName: 'gpt-image-2',
+        remark: 'OpenAI 图像模板',
+        aspectRatio: '',
+        resolution: '',
+      }),
     ];
     downloadJsonWithTimestamp(template, 'image_api_config.template.json');
     addToast('success', '已导出图像节点模板');
@@ -858,10 +914,16 @@ export function ApiManager() {
     });
   }
 
-  function addImageNode() {
+  function addImageNode(providerType: ImageApiProviderType = 'openai') {
     setImageState({
       ...imageState,
-      nodes: [...imageNodes, normalizeImageApiNode({ providerType: 'xai', remark: '', modelName: 'grok-imagine-image' })],
+      nodes: [...imageNodes, normalizeImageApiNode({
+        providerType,
+        generationUrl: getDefaultImageGenerationUrl(providerType),
+        editUrl: getDefaultImageEditUrl(providerType),
+        remark: '',
+        modelName: getDefaultImageModel(providerType),
+      })],
     });
   }
 
@@ -1201,6 +1263,7 @@ export function ApiManager() {
           onRemove={removeImageNode}
           onSetActive={(index) => setImageState({ ...imageState, activeIndex: index })}
           onUpdate={updateImageNode}
+          onChangeProvider={updateImageNodeProvider}
           onApplyGenerationSuffix={applyImageGenerationUrlSuffix}
           onApplyEditSuffix={applyImageEditUrlSuffix}
           filteredIndices={filteredImageIndices}
@@ -1602,6 +1665,7 @@ function ImageApiManagerPanel({
   onRemove,
   onSetActive,
   onUpdate,
+  onChangeProvider,
   onApplyGenerationSuffix,
   onApplyEditSuffix,
   cardRef,
@@ -1621,11 +1685,12 @@ function ImageApiManagerPanel({
   onExport: () => void;
   onExportTemplate: () => void;
   onImport: () => void | Promise<void>;
-  onAdd: () => void;
+  onAdd: (providerType?: ImageApiProviderType) => void;
   onClone: (index: number) => void;
   onRemove: (index: number) => void;
   onSetActive: (index: number) => void;
   onUpdate: (index: number, field: keyof ImageApiNode, value: ImageApiNode[keyof ImageApiNode]) => void;
+  onChangeProvider: (index: number, providerType: ImageApiProviderType) => void;
   onApplyGenerationSuffix: (index: number) => void;
   onApplyEditSuffix: (index: number) => void;
   cardRef: (index: number, el: HTMLDivElement | null) => void;
@@ -1637,7 +1702,7 @@ function ImageApiManagerPanel({
     <div className="flex-1 min-h-0 flex flex-col gap-4">
       <div className={`grid grid-cols-2 xl:grid-cols-4 ${densityClass.summaryGrid}`}>
         <SummaryCard label="图像节点总数" value={String(nodes.length)} hint="这里是独立的 image_api_config.json，不会混进聊天节点列表。" />
-        <SummaryCard label="当前图像节点" value={nodes[activeIndex]?.modelName || `#${activeIndex}`} hint={`命令会优先从 #${activeIndex} 开始使用。`} />
+        <SummaryCard label="当前图像节点" value={nodes[activeIndex]?.modelName || (nodes[activeIndex] ? getDefaultImageModel(normalizeImageProviderType(nodes[activeIndex].providerType)) : `#${activeIndex}`)} hint={`命令会优先从 #${activeIndex} 开始使用。`} />
         <SummaryCard label="当前显示" value={`${filteredIndices.length}/${nodes.length}`} hint="搜索只影响当前列表显示，不会改真实顺序。" />
         <SummaryCard label="保存状态" value={dirty ? '待保存' : '已同步'} hint={dirty ? '图像节点有未保存改动。' : '图像节点列表已经和文件一致。'} tone={dirty ? 'warning' : 'neutral'} />
       </div>
@@ -1652,10 +1717,16 @@ function ImageApiManagerPanel({
             💾 保存图像节点
           </button>
           <button
-            onClick={onAdd}
+            onClick={() => onAdd('openai')}
             className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--accent-purple)] hover:bg-[var(--border-subtle)] transition-colors cursor-pointer"
           >
-            + 新增图像节点
+            + 新增 OpenAI 图像节点
+          </button>
+          <button
+            onClick={() => onAdd('xai')}
+            className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--info)] hover:bg-[var(--border-subtle)] transition-colors cursor-pointer"
+          >
+            + 新增 xAI 图像节点
           </button>
           <ImportExportActions
             onExport={onExport}
@@ -1667,7 +1738,7 @@ function ImageApiManagerPanel({
             onClick={onExportTemplate}
             className="px-3 py-1.5 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--info)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
           >
-            🧩 下载 xAI 模板
+            🧩 下载图像模板
           </button>
           <div className="flex-1" />
           <button
@@ -1688,7 +1759,7 @@ function ImageApiManagerPanel({
       </Panel>
 
       <div className="flex-1 min-h-0 overflow-y-auto pr-1">
-        <Panel title="图像节点列表" subtitle="xAI 图像生成、图像编辑 URL 和默认参数在这里单独维护。" padding="sm">
+        <Panel title="图像节点列表" subtitle="OpenAI / xAI 图像生成、图像编辑 URL 和默认参数在这里单独维护。" padding="sm">
           <div className="space-y-3">
             <SearchBar value={search} onChange={onSearchChange} placeholder="搜索备注 / 模型 / URL..." />
 
@@ -1701,6 +1772,7 @@ function ImageApiManagerPanel({
                 {filteredIndices.map((index) => {
                   const node = nodes[index];
                   const keyVisible = showKey.has(index);
+                  const providerType = normalizeImageProviderType(node.providerType);
                   return (
                     <div
                       key={index}
@@ -1710,8 +1782,8 @@ function ImageApiManagerPanel({
                     >
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-xs mono text-[var(--text-muted)]">#{index}</span>
-                        <span className="text-sm font-medium text-[var(--text-primary)]">{node.modelName || 'grok-imagine-image'}</span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-[rgba(0,188,212,0.14)] text-[var(--info)]">xAI 图像</span>
+                        <span className="text-sm font-medium text-[var(--text-primary)]">{node.modelName || getDefaultImageModel(providerType)}</span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-[rgba(0,188,212,0.14)] text-[var(--info)]">{getImageProviderLabel(providerType)}</span>
                         {index === activeIndex ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--accent-purple)] text-white">活跃</span> : null}
                         <div className="flex-1" />
                         <button
@@ -1740,6 +1812,20 @@ function ImageApiManagerPanel({
                       >
                         <div className="mt-4 grid gap-3 xl:grid-cols-2">
                           <div>
+                            <label className="text-[10px] text-[var(--text-muted)] mb-1 block">Provider</label>
+                            <select
+                              value={providerType}
+                              onChange={(e) => onChangeProvider(index, e.target.value as ImageApiProviderType)}
+                              className="w-full px-2.5 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)] cursor-pointer"
+                            >
+                              <option value="openai">openai</option>
+                              <option value="xai">xai</option>
+                            </select>
+                            <p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">
+                              OpenAI 图像默认模型是 `gpt-image-2`。修图 URL 如果填写 `/v1/chat/completions`，插件会按 OpenAI Compatible 多模态消息解析返回图片。
+                            </p>
+                          </div>
+                          <div>
                             <label className="text-[10px] text-[var(--text-muted)] mb-1 block">备注</label>
                             <input
                               value={node.remark}
@@ -1754,11 +1840,15 @@ function ImageApiManagerPanel({
                               value={node.modelName}
                               onChange={(e) => onUpdate(index, 'modelName', e.target.value)}
                               className="w-full px-2.5 py-2 text-xs mono rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
-                              placeholder="grok-imagine-image"
+                              placeholder={getDefaultImageModel(providerType)}
                             />
-                            {String(node.modelName || '').trim().toLowerCase() === 'grok-imagine-image-pro' ? (
+                            {providerType === 'xai' && String(node.modelName || '').trim().toLowerCase() === 'grok-imagine-image-pro' ? (
                               <p className="mt-1 text-[10px] leading-relaxed text-[var(--warning)]">
                                 当前已知 `grok-imagine-image-pro` 可能阶段性返回 500 / 503。插件现在会在这种“模型暂时不可用”的场景下，自动回退到 `grok-imagine-image` 再重试一次，并在日志与完成提示里明确写出回退情况。
+                              </p>
+                            ) : providerType === 'openai' ? (
+                              <p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">
+                                OpenAI 图像渠道目前默认使用 `gpt-image-2`。如上游兼容服务扩展模型名，可以在这里手动覆盖。
                               </p>
                             ) : (
                               <p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">
@@ -1774,7 +1864,7 @@ function ImageApiManagerPanel({
                                 value={node.generationUrl}
                                 onChange={(e) => onUpdate(index, 'generationUrl', e.target.value)}
                                 className="flex-1 px-2.5 py-2 text-xs mono rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
-                                placeholder="先填基础地址，需要时点右侧按钮补常见后缀"
+                                placeholder={getDefaultImageGenerationUrl(providerType)}
                               />
                               <button
                                 type="button"
@@ -1793,7 +1883,7 @@ function ImageApiManagerPanel({
                                 value={node.editUrl}
                                 onChange={(e) => onUpdate(index, 'editUrl', e.target.value)}
                                 className="flex-1 px-2.5 py-2 text-xs mono rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
-                                placeholder="先填基础地址，需要时点右侧按钮补常见后缀"
+                                placeholder={providerType === 'openai' ? 'https://api.openai.com/v1/images/edits 或 /v1/chat/completions' : getDefaultImageEditUrl(providerType)}
                               />
                               <button
                                 type="button"
@@ -1819,8 +1909,8 @@ function ImageApiManagerPanel({
                               ))}
                             </select>
                             <p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">
-                              `空白` 不等于 `auto`。`空白` 表示这个图像节点不会主动传 `aspect_ratio`，如果命令里也没写 `--ratio`，就完全交给 xAI 自己决定。
-                              `auto` 表示会显式传 `aspect_ratio=auto` 给 xAI，让它自动挑一个合适比例。命令里如果手动写 `--ratio 16:9`，冒号请使用英文冒号 `:`
+                              `空白` 不等于 `auto`。`空白` 表示这个图像节点不会主动传 `aspect_ratio`，如果命令里也没写 `--ratio`，就完全交给图像接口自己决定。
+                              `auto` 表示会显式传 `aspect_ratio=auto` 给图像接口，让它自动挑一个合适比例。命令里如果手动写 `--ratio 16:9`，冒号请使用英文冒号 `:`
                             </p>
                           </div>
 
@@ -1850,7 +1940,7 @@ function ImageApiManagerPanel({
                                 value={node.apiKey}
                                 onChange={(e) => onUpdate(index, 'apiKey', e.target.value)}
                                 className="w-full px-2.5 py-2 text-xs mono rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
-                                placeholder="xai-..."
+                                placeholder={getImageApiKeyPlaceholder(providerType)}
                               />
                             </div>
                           ) : null}

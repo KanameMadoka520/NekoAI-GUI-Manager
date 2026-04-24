@@ -8,8 +8,10 @@ export interface ApiNode {
   xaiWebSearchEnabled?: boolean;
 }
 
+export type ImageApiProviderType = 'xai' | 'openai';
+
 export interface ImageApiNode {
-  providerType: 'xai';
+  providerType: ImageApiProviderType;
   generationUrl: string;
   editUrl: string;
   apiKey: string;

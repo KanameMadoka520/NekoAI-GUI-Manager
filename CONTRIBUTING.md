@@ -322,7 +322,7 @@ npm install --no-save @rollup/rollup-win32-x64-msvc@4.59.0
    - 聊天节点：URL 右侧“补默认后缀”按钮行为正确，不会覆盖已写好的自定义路径
    - 聊天节点：`xaiWebSearchEnabled` 仅在 `openai-response` 下可用，保存后不丢
    - 图像节点：`image_api_config.json` 的导入/导出可用（导入二级确认）
-   - 图像节点：xAI 模板导出可用，生成 / 修图 URL 的默认后缀按钮行为正确
+   - 图像节点：xAI / OpenAI 模板导出可用，生成 / 修图 URL 的默认后缀按钮行为正确
    - 图像节点：`activeImageApiIndex` 保存后与当前启用节点一致
 3. **配置编辑**：
    - 空配置可加载
@@ -436,8 +436,8 @@ npm install --no-save @rollup/rollup-win32-x64-msvc@4.59.0
   - URL 默认后缀辅助按钮（保持用户自己掌控完整 URL）
 - 图像节点新增：
   - 独立 `image_api_config.json`
-  - xAI 生图 / 修图节点字段（`generationUrl` / `editUrl` / `aspectRatio` / `resolution`）
-  - xAI 模板导出
+  - xAI / OpenAI 生图、修图节点字段（`providerType` / `generationUrl` / `editUrl` / `aspectRatio` / `resolution`）
+  - xAI / OpenAI 模板导出
 - Rust 侧已同步：
   - `config.rs` 的 `imageApi` 映射
   - `watcher.rs` 对 `image_api_config.json` 的监听
