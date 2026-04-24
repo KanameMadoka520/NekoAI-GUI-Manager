@@ -134,12 +134,12 @@ function getDefaultImageGenerationUrl(providerType: ImageApiProviderType) {
 
 function getDefaultImageEditUrl(providerType: ImageApiProviderType) {
   return providerType === 'openai'
-    ? ''
+    ? 'https://api.openai.com/v1/images/edits'
     : 'https://api.x.ai/v1/images/edits';
 }
 
 function getDefaultImageSupportsEdit(providerType: ImageApiProviderType) {
-  return providerType === 'xai';
+  return providerType === 'xai' || providerType === 'openai';
 }
 
 function getImageProviderLabel(providerType: ImageApiProviderType) {
@@ -154,14 +154,13 @@ function isGptImage2Model(modelName?: string) {
   return String(modelName ?? '').trim().toLowerCase() === 'gpt-image-2';
 }
 
-function isOpenAiGenerationOnlyImageNode(node: Partial<ImageApiNode>) {
+function isGptImage2ImageNode(node: Partial<ImageApiNode>) {
   const providerType = normalizeImageProviderType(node.providerType);
   const modelName = typeof node.modelName === 'string' && node.modelName.trim() ? node.modelName : getDefaultImageModel(providerType);
   return providerType === 'openai' && isGptImage2Model(modelName);
 }
 
 function imageNodeSupportsEdit(node: Partial<ImageApiNode>) {
-  if (isOpenAiGenerationOnlyImageNode(node)) return false;
   const providerType = normalizeImageProviderType(node.providerType);
   return typeof node.supportsEdit === 'boolean' ? node.supportsEdit : getDefaultImageSupportsEdit(providerType);
 }
@@ -617,7 +616,7 @@ export function ApiManager() {
     const previousProvider = normalizeImageProviderType(source.providerType);
     const sourceEditWasDefault = !source.editUrl || source.editUrl === getDefaultImageEditUrl(previousProvider);
     const modelName = !source.modelName || source.modelName === getDefaultImageModel(previousProvider) ? getDefaultImageModel(providerType) : source.modelName;
-    const supportsEdit = providerType === 'xai' && !isGptImage2Model(modelName);
+    const supportsEdit = getDefaultImageSupportsEdit(providerType);
     const next = [...imageNodes];
     next[index] = normalizeImageApiNode({
       ...source,
@@ -893,13 +892,13 @@ export function ApiManager() {
       normalizeImageApiNode({
         providerType: 'openai',
         generationUrl: 'https://api.openai.com/v1/images/generations',
-        editUrl: '',
+        editUrl: 'https://api.openai.com/v1/images/edits',
         apiKey: 'sk-your-openai-key',
         modelName: 'gpt-image-2',
-        remark: 'OpenAI 生图模板',
+        remark: 'OpenAI 图像模板',
         aspectRatio: '',
         resolution: '',
-        supportsEdit: false,
+        supportsEdit: true,
       }),
     ];
     downloadJsonWithTimestamp(template, 'image_api_config.template.json');
@@ -1743,7 +1742,7 @@ function ImageApiManagerPanel({
       <div className={`grid grid-cols-2 xl:grid-cols-5 ${densityClass.summaryGrid}`}>
         <SummaryCard label="图像节点总数" value={String(nodes.length)} hint="这里是独立的 image_api_config.json，不会混进聊天节点列表。" />
         <SummaryCard label="当前图像节点" value={nodes[activeIndex]?.modelName || (nodes[activeIndex] ? getDefaultImageModel(normalizeImageProviderType(nodes[activeIndex].providerType)) : `#${activeIndex}`)} hint={`命令会优先从 #${activeIndex} 开始使用。`} />
-        <SummaryCard label="可修图节点" value={String(nodes.filter((node) => imageNodeSupportsEdit(node)).length)} hint="gpt-image-2 当前按仅生图节点处理，不会被修图命令选中。" />
+        <SummaryCard label="可参考图节点" value={String(nodes.filter((node) => imageNodeSupportsEdit(node)).length)} hint="支持修图 URL 的节点可在 neko.生图 中接收引用图片作为参考图。" />
         <SummaryCard label="当前显示" value={`${filteredIndices.length}/${nodes.length}`} hint="搜索只影响当前列表显示，不会改真实顺序。" />
         <SummaryCard label="保存状态" value={dirty ? '待保存' : '已同步'} hint={dirty ? '图像节点有未保存改动。' : '图像节点列表已经和文件一致。'} tone={dirty ? 'warning' : 'neutral'} />
       </div>
@@ -1815,7 +1814,7 @@ function ImageApiManagerPanel({
                   const keyVisible = showKey.has(index);
                   const providerType = normalizeImageProviderType(node.providerType);
                   const supportsEdit = imageNodeSupportsEdit(node);
-                  const generationOnlyOpenAi = isOpenAiGenerationOnlyImageNode(node);
+                  const gptImage2Node = isGptImage2ImageNode(node);
                   return (
                     <div
                       key={index}
@@ -1866,7 +1865,7 @@ function ImageApiManagerPanel({
                               <option value="xai">xai</option>
                             </select>
                             <p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">
-                              OpenAI 图像默认模型是 `gpt-image-2`，当前按仅生图节点处理。xAI 节点默认同时支持生图和修图。
+                              OpenAI 图像默认模型是 `gpt-image-2`。该模型支持引用带图消息后用 `neko.生图 提示词` 参考生成。
                             </p>
                           </div>
                           <div>
@@ -1874,14 +1873,13 @@ function ImageApiManagerPanel({
                             <select
                               value={supportsEdit ? 'true' : 'false'}
                               onChange={(e) => onUpdate(index, 'supportsEdit', e.target.value === 'true')}
-                              disabled={generationOnlyOpenAi}
-                              className="w-full px-2.5 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)] disabled:opacity-55 cursor-pointer disabled:cursor-not-allowed"
+                              className="w-full px-2.5 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)] cursor-pointer"
                             >
                               <option value="false">仅生图</option>
                               <option value="true">生图 + 修图</option>
                             </select>
-                            <p className={`mt-1 text-[10px] leading-relaxed ${generationOnlyOpenAi ? 'text-[var(--warning)]' : 'text-[var(--text-muted)]'}`}>
-                              {generationOnlyOpenAi ? '`gpt-image-2` 图像节点不会参与 `neko.修图`。' : '只有支持修图的节点才会被 `neko.修图` 自动选择。'}
+                            <p className={`mt-1 text-[10px] leading-relaxed ${gptImage2Node ? 'text-[var(--info)]' : 'text-[var(--text-muted)]'}`}>
+                              {gptImage2Node ? '`gpt-image-2` 开启该能力并填写修图 URL 后，可直接引用带图消息进行参考图生图。' : '支持该能力的节点会被 `neko.修图` 使用，也可在 `neko.生图` 中接收引用图片作为参考。'}
                             </p>
                           </div>
                           <div>
@@ -1907,7 +1905,7 @@ function ImageApiManagerPanel({
                               </p>
                             ) : providerType === 'openai' ? (
                               <p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">
-                                OpenAI 图像渠道目前默认使用 `gpt-image-2`，该模型按仅生图能力保存。如上游兼容服务扩展模型名，可以在这里手动覆盖。
+                                OpenAI 图像渠道目前默认使用 `gpt-image-2`。检测到该模型时，建议保留修图 URL，用于引用图片后的参考图生图。
                               </p>
                             ) : (
                               <p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">
