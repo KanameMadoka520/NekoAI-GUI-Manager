@@ -62,6 +62,7 @@ const defaults: Partial<RuntimeConfig> = {
   singleAskSleep: 1000,
   singleTalkWaiting: 500,
   apiTimeoutMs: 120000,
+  imageApiTimeoutMs: 300000,
   sendProcessingNotice: true,
   processingNoticeText: '已接收到请求，请耐心等待处理。',
   processingNoticeDelayMs: 0,
@@ -256,6 +257,7 @@ function normalizeRuntimeConfig(input?: Partial<RuntimeConfig> | null): RuntimeC
     singleAskSleep: Number.isFinite(Number(merged.singleAskSleep)) ? Number(merged.singleAskSleep) : 1000,
     singleTalkWaiting: Number.isFinite(Number(merged.singleTalkWaiting)) ? Number(merged.singleTalkWaiting) : 500,
     apiTimeoutMs: Number.isFinite(Number(merged.apiTimeoutMs)) ? Number(merged.apiTimeoutMs) : 120000,
+    imageApiTimeoutMs: Number.isFinite(Number(merged.imageApiTimeoutMs)) ? Number(merged.imageApiTimeoutMs) : 300000,
     sendProcessingNotice: merged.sendProcessingNotice !== false,
     processingNoticeText: typeof merged.processingNoticeText === 'string' && merged.processingNoticeText.trim()
       ? merged.processingNoticeText

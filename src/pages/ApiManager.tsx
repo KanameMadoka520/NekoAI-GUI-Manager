@@ -66,6 +66,7 @@ type DirectoryListItem =
   | { kind: 'node'; key: string; index: number };
 
 const API_MANAGER_VIEW_STORAGE_KEY = 'nekoai-api-manager-view';
+const DEFAULT_IMAGE_API_TIMEOUT_MS = 300000;
 const DEFAULT_API_MANAGER_VIEW_STATE: ApiManagerViewState = {
   managerMode: 'chat',
   search: '',
@@ -244,6 +245,26 @@ function appendXaiImageGenerationSuffix(url: string) {
 
 function appendXaiImageEditSuffix(url: string) {
   return appendKnownSuffix(url, '/v1/images/edits', /\/v1\/images\/edits(?:[/?#]|$)/i);
+}
+
+function readPositiveMs(value: unknown) {
+  const ms = Number(value);
+  return Number.isFinite(ms) && ms > 0 ? Math.floor(ms) : 0;
+}
+
+function getRuntimeImageApiTimeoutMs(runtime?: RuntimeConfig | null) {
+  const explicit = readPositiveMs(runtime?.imageApiTimeoutMs);
+  if (explicit > 0) return explicit;
+  return Math.max(readPositiveMs(runtime?.apiTimeoutMs) || 120000, DEFAULT_IMAGE_API_TIMEOUT_MS);
+}
+
+function formatTimeoutMs(ms: number) {
+  const seconds = Math.max(1, Math.round(ms / 1000));
+  if (seconds >= 60) {
+    const minutes = seconds / 60;
+    return `${Number.isInteger(minutes) ? minutes : minutes.toFixed(1)} 分钟`;
+  }
+  return `${seconds} 秒`;
 }
 
 const IMAGE_ASPECT_RATIO_OPTIONS: Array<{ value: string; label: string }> = [
@@ -428,6 +449,7 @@ export function ApiManager() {
   } = useUndoRedo<ImageNodeState>({ nodes: [], activeIndex: 0 });
   const [original, setOriginal] = useState('');
   const [imageOriginal, setImageOriginal] = useState('');
+  const [imageRuntimeOriginal, setImageRuntimeOriginal] = useState('');
   const [originalWeights, setOriginalWeights] = useState('');
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState(initialViewState.search);
@@ -470,10 +492,13 @@ export function ApiManager() {
   }), [weightLive, historyWeight, weightTimeout, weightJitter]);
   const dirty = useMemo(() => JSON.stringify(state) !== original || JSON.stringify(weightState) !== originalWeights, [state, original, weightState, originalWeights]);
   const imageDirty = useMemo(() => JSON.stringify(imageState) !== imageOriginal, [imageState, imageOriginal]);
+  const imageRuntimeState = useMemo(() => JSON.stringify({ imageApiTimeoutMs: getRuntimeImageApiTimeoutMs(runtimeConfig) }), [runtimeConfig]);
+  const imageRuntimeDirty = useMemo(() => imageRuntimeState !== imageRuntimeOriginal, [imageRuntimeState, imageRuntimeOriginal]);
+  const imageConfigDirty = imageDirty || imageRuntimeDirty;
   const density = getDensityClass(settings.contentDensity);
   const nodeCardStackGap = settings.contentDensity === 'compact' ? 'space-y-6' : settings.contentDensity === 'spacious' ? 'space-y-10' : 'space-y-8';
   const allApiKeyExpanded = nodes.length > 0 && nodes.every((_, i) => expandedCards.has(i));
-  usePageDirtyState('api', dirty || imageDirty, managerMode === 'image' ? '图像节点列表存在未保存改动，离开后这些改动不会自动写回文件。' : '聊天节点列表或评分设置存在未保存改动，离开后这些改动不会自动写回文件。');
+  usePageDirtyState('api', dirty || imageConfigDirty, managerMode === 'image' ? '图像节点列表或全局图像设置存在未保存改动，离开后这些改动不会自动写回文件。' : '聊天节点列表或评分设置存在未保存改动，离开后这些改动不会自动写回文件。');
 
   useEffect(() => { load(); }, []);
 
@@ -564,6 +589,7 @@ export function ApiManager() {
       resetImageState(imageInitial);
       setOriginal(JSON.stringify(initial));
       setImageOriginal(JSON.stringify(imageInitial));
+      setImageRuntimeOriginal(JSON.stringify({ imageApiTimeoutMs: getRuntimeImageApiTimeoutMs(rt ?? null) }));
       setSelected(new Set());
       setPingResults(new Map());
       setRuntimeConfig(rt ?? null);
@@ -608,6 +634,14 @@ export function ApiManager() {
     const next = [...imageNodes];
     next[index] = normalizeImageApiNode({ ...next[index], [field]: value } as ImageApiNode);
     setImageState({ ...imageState, nodes: next });
+  }
+
+  function updateImageApiTimeoutSeconds(seconds: number) {
+    const normalizedSeconds = Math.max(1, Math.floor(Number(seconds) || 0));
+    setRuntimeConfig((current) => ({
+      ...(current ?? ({} as RuntimeConfig)),
+      imageApiTimeoutMs: normalizedSeconds * 1000,
+    } as RuntimeConfig));
   }
 
   function updateImageNodeProvider(index: number, providerType: ImageApiProviderType) {
@@ -852,19 +886,21 @@ export function ApiManager() {
   }
 
   async function saveImageApis() {
-    if (!imageDirty) return;
+    if (!imageConfigDirty) return;
     try {
-      await saveConfig('imageApi', imageNodes);
-      const rt = runtimeConfig ?? await getConfig<RuntimeConfig>('runtime');
+      if (imageDirty) await saveConfig('imageApi', imageNodes);
+      const rt = await getConfig<RuntimeConfig>('runtime');
       if (rt) {
         const updatedRuntime = {
           ...rt,
           activeImageApiIndex: activeImageIndex,
+          imageApiTimeoutMs: getRuntimeImageApiTimeoutMs(runtimeConfig ?? rt),
         };
         await saveConfig('runtime', updatedRuntime);
         setRuntimeConfig(updatedRuntime);
       }
       setImageOriginal(JSON.stringify(imageState));
+      setImageRuntimeOriginal(JSON.stringify({ imageApiTimeoutMs: getRuntimeImageApiTimeoutMs(runtimeConfig ?? rt) }));
       addToast('success', '图像 API 配置已保存');
     } catch (e: any) {
       addToast('error', `保存失败: ${e?.message ?? e}`);
@@ -1286,8 +1322,9 @@ export function ApiManager() {
           density={settings.contentDensity}
           nodes={imageNodes}
           activeIndex={activeImageIndex}
+          imageApiTimeoutMs={getRuntimeImageApiTimeoutMs(runtimeConfig)}
           search={imageSearch}
-          dirty={imageDirty}
+          dirty={imageConfigDirty}
           canUndo={canUndoImage}
           canRedo={canRedoImage}
           onSearchChange={setImageSearch}
@@ -1301,6 +1338,7 @@ export function ApiManager() {
           onClone={cloneImageNode}
           onRemove={removeImageNode}
           onSetActive={(index) => setImageState({ ...imageState, activeIndex: index })}
+          onImageApiTimeoutSecondsChange={updateImageApiTimeoutSeconds}
           onUpdate={updateImageNode}
           onChangeProvider={updateImageNodeProvider}
           onApplyGenerationSuffix={applyImageGenerationUrlSuffix}
@@ -1687,6 +1725,7 @@ function ImageApiManagerPanel({
   density,
   nodes,
   activeIndex,
+  imageApiTimeoutMs,
   search,
   dirty,
   canUndo,
@@ -1703,6 +1742,7 @@ function ImageApiManagerPanel({
   onClone,
   onRemove,
   onSetActive,
+  onImageApiTimeoutSecondsChange,
   onUpdate,
   onChangeProvider,
   onApplyGenerationSuffix,
@@ -1712,6 +1752,7 @@ function ImageApiManagerPanel({
   density: 'compact' | 'standard' | 'spacious';
   nodes: ImageApiNode[];
   activeIndex: number;
+  imageApiTimeoutMs: number;
   search: string;
   dirty: boolean;
   canUndo: boolean;
@@ -1728,6 +1769,7 @@ function ImageApiManagerPanel({
   onClone: (index: number) => void;
   onRemove: (index: number) => void;
   onSetActive: (index: number) => void;
+  onImageApiTimeoutSecondsChange: (seconds: number) => void;
   onUpdate: (index: number, field: keyof ImageApiNode, value: ImageApiNode[keyof ImageApiNode]) => void;
   onChangeProvider: (index: number, providerType: ImageApiProviderType) => void;
   onApplyGenerationSuffix: (index: number) => void;
@@ -1736,15 +1778,17 @@ function ImageApiManagerPanel({
 }) {
   const densityClass = getDensityClass(density);
   const [showKey, setShowKey] = useState<Set<number>>(new Set());
+  const imageApiTimeoutSeconds = Math.max(1, Math.round(imageApiTimeoutMs / 1000));
 
   return (
     <div className="flex-1 min-h-0 flex flex-col gap-4">
-      <div className={`grid grid-cols-2 xl:grid-cols-5 ${densityClass.summaryGrid}`}>
+      <div className={`grid grid-cols-2 xl:grid-cols-6 ${densityClass.summaryGrid}`}>
         <SummaryCard label="图像节点总数" value={String(nodes.length)} hint="这里是独立的 image_api_config.json，不会混进聊天节点列表。" />
         <SummaryCard label="当前图像节点" value={nodes[activeIndex]?.modelName || (nodes[activeIndex] ? getDefaultImageModel(normalizeImageProviderType(nodes[activeIndex].providerType)) : `#${activeIndex}`)} hint={`命令会优先从 #${activeIndex} 开始使用。`} />
         <SummaryCard label="可参考图节点" value={String(nodes.filter((node) => imageNodeSupportsEdit(node)).length)} hint="支持修图 URL 的节点可在 neko.生图 中接收引用图片作为参考图。" />
+        <SummaryCard label="图像超时" value={formatTimeoutMs(imageApiTimeoutMs)} hint="neko.生图 / neko.修图 等待下游图像接口的最长时间。" />
         <SummaryCard label="当前显示" value={`${filteredIndices.length}/${nodes.length}`} hint="搜索只影响当前列表显示，不会改真实顺序。" />
-        <SummaryCard label="保存状态" value={dirty ? '待保存' : '已同步'} hint={dirty ? '图像节点有未保存改动。' : '图像节点列表已经和文件一致。'} tone={dirty ? 'warning' : 'neutral'} />
+        <SummaryCard label="保存状态" value={dirty ? '待保存' : '已同步'} hint={dirty ? '图像节点或全局图像设置有未保存改动。' : '图像节点列表和全局设置已经和文件一致。'} tone={dirty ? 'warning' : 'neutral'} />
       </div>
 
       <Panel title="图像节点操作" subtitle="这里管理独立的图像 API 节点。聊天节点和图像节点已经分离，图像一键测活默认不提供，避免直接消耗图像额度。" padding="sm">
@@ -1780,6 +1824,19 @@ function ImageApiManagerPanel({
           >
             🧩 下载图像模板
           </button>
+          <div className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-1.5">
+            <span className="text-[11px] text-[var(--text-muted)]">图像超时</span>
+            <input
+              type="number"
+              min={1}
+              step={1}
+              value={imageApiTimeoutSeconds}
+              onChange={(e) => onImageApiTimeoutSecondsChange(Number(e.target.value))}
+              className="w-20 px-2 py-1 text-xs mono rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
+              title="按秒填写，保存后写入 runtime_config.json 的 imageApiTimeoutMs"
+            />
+            <span className="text-[11px] text-[var(--text-muted)]">秒</span>
+          </div>
           <div className="flex-1" />
           <button
             onClick={onUndo}
@@ -1796,6 +1853,9 @@ function ImageApiManagerPanel({
             ↪ 重做
           </button>
         </div>
+        <p className="mt-2 text-[11px] leading-relaxed text-[var(--text-muted)]">
+          图像超时只影响 <span className="mono">neko.生图</span> / <span className="mono">neko.修图</span> 的下游图像接口等待时间；聊天 API 仍使用 <span className="mono">apiTimeoutMs</span>。例如填 300 就是 5 分钟。
+        </p>
       </Panel>
 
       <div className="flex-1 min-h-0 overflow-y-auto pr-1">

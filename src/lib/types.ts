@@ -109,6 +109,7 @@ export interface RuntimeConfig {
   singleAskSleep?: number;
   singleTalkWaiting?: number;
   apiTimeoutMs?: number;
+  imageApiTimeoutMs?: number;
   sendProcessingNotice?: boolean;
   processingNoticeText?: string;
   processingNoticeDelayMs?: number;

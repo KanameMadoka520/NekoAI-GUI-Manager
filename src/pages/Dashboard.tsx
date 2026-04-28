@@ -106,6 +106,7 @@ export function Dashboard() {
   const activeApi = runtime && apis.length > 0 ? apis[runtime.activeApiIndex] : null;
   const activeGroupPersonality = runtime && groupPersonalities.length > 0 ? groupPersonalities[runtime.activeGroupPersonalityIndex] : null;
   const activePrivatePersonality = runtime && privatePersonalities.length > 0 ? privatePersonalities[runtime.activePrivatePersonalityIndex] : null;
+  const imageApiTimeoutMs = runtime?.imageApiTimeoutMs ?? Math.max(runtime?.apiTimeoutMs ?? 120000, 300000);
 
   const apiTypeCounts = { openai: 0, gemini: 0, anthropic: 0 };
   apis.forEach((a) => { if (a.aiType in apiTypeCounts) apiTypeCounts[a.aiType as keyof typeof apiTypeCounts]++; });
@@ -178,7 +179,8 @@ export function Dashboard() {
                 <StatusRow label="运行时 Schema" value={runtimeSchema ? `v${runtimeSchema.schemaVersion} · ${Object.keys(runtimeSchema.fields ?? {}).length} 字段` : '缺失'} dot={runtimeSchema ? 'var(--success)' : 'var(--error)'} />
                 <StatusRow label="记忆压缩" value={runtime?.memorySummary?.enabled ? `开启 · 阈值 ${runtime.memorySummary.threshold}` : '关闭'} dot={runtime?.memorySummary?.enabled ? 'var(--success)' : 'var(--text-muted)'} />
                 <StatusRow label="闲置自动清空" value={formatDurationMs(runtime?.contextAutoForgetMs)} dot={(runtime?.contextAutoForgetMs ?? 0) > 0 ? 'var(--success)' : 'var(--text-muted)'} />
-                <StatusRow label="API 超时" value={formatDurationMs(runtime?.apiTimeoutMs)} />
+                <StatusRow label="聊天 API 超时" value={formatDurationMs(runtime?.apiTimeoutMs)} />
+                <StatusRow label="图像 API 超时" value={formatDurationMs(imageApiTimeoutMs)} />
                 <StatusRow label="处理中提示" value={runtime?.sendProcessingNotice === false ? '关闭' : `开启 · ${formatDurationMs(runtime?.processingNoticeDelayMs ?? 0)}`} dot={runtime?.sendProcessingNotice === false ? 'var(--text-muted)' : 'var(--success)'} />
                 <StatusRow label="失败提示" value={runtime?.sendFailureNotice === false ? '关闭' : `开启 · ${(runtime?.failureNoticeDetailMode ?? 'full')}`} dot={runtime?.sendFailureNotice === false ? 'var(--text-muted)' : 'var(--success)'} />
                 <StatusRow label="表情包" value={runtime?.enableMemes ? `开启 · ${Math.round((runtime.memeProb ?? 0) * 100)}%` : '关闭'} dot={runtime?.enableMemes ? 'var(--success)' : 'var(--text-muted)'} />
