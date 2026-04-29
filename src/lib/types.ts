@@ -13,7 +13,9 @@ export type ImageApiProviderType = 'xai' | 'openai';
 export interface ImageApiNode {
   providerType: ImageApiProviderType;
   generationUrl: string;
+  generationUrls?: string[];
   editUrl: string;
+  editUrls?: string[];
   apiKey: string;
   modelName: string;
   remark: string;

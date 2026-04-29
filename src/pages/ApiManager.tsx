@@ -170,6 +170,23 @@ function getImageCapabilityLabel(node: Partial<ImageApiNode>) {
   return imageNodeSupportsEdit(node) ? '生图 + 修图' : '仅生图';
 }
 
+function normalizeImageUrlList(value: unknown): string[] {
+  const rawItems = Array.isArray(value) ? value : String(value ?? '').split(/\r?\n/);
+  const urls: string[] = [];
+  const seen = new Set<string>();
+  for (const item of rawItems) {
+    const url = String(item ?? '').trim();
+    if (!url || seen.has(url)) continue;
+    seen.add(url);
+    urls.push(url);
+  }
+  return urls;
+}
+
+function imageUrlListToText(value: unknown): string {
+  return normalizeImageUrlList(value).join('\n');
+}
+
 function normalizeImageApiNode(input?: Partial<ImageApiNode>): ImageApiNode {
   const providerType = normalizeImageProviderType(input?.providerType);
   const modelName = typeof input?.modelName === 'string' && input.modelName.trim() ? input.modelName : getDefaultImageModel(providerType);
@@ -177,7 +194,9 @@ function normalizeImageApiNode(input?: Partial<ImageApiNode>): ImageApiNode {
   return {
     providerType,
     generationUrl: typeof input?.generationUrl === 'string' ? input.generationUrl : '',
+    generationUrls: normalizeImageUrlList(input?.generationUrls),
     editUrl: typeof input?.editUrl === 'string' ? input.editUrl : '',
+    editUrls: normalizeImageUrlList(input?.editUrls),
     apiKey: typeof input?.apiKey === 'string' ? input.apiKey : '',
     modelName,
     remark: typeof input?.remark === 'string' ? input.remark : '',
@@ -917,7 +936,9 @@ export function ApiManager() {
       normalizeImageApiNode({
         providerType: 'xai',
         generationUrl: 'https://api.x.ai/v1/images/generations',
+        generationUrls: [],
         editUrl: 'https://api.x.ai/v1/images/edits',
+        editUrls: [],
         apiKey: 'xai-your-key',
         modelName: 'grok-imagine-image',
         remark: 'xAI 官方图像模板',
@@ -928,7 +949,9 @@ export function ApiManager() {
       normalizeImageApiNode({
         providerType: 'openai',
         generationUrl: 'https://api.openai.com/v1/images/generations',
+        generationUrls: [],
         editUrl: 'https://api.openai.com/v1/images/edits',
+        editUrls: [],
         apiKey: 'sk-your-openai-key',
         modelName: 'gpt-image-2',
         remark: 'OpenAI 图像模板',
@@ -993,7 +1016,9 @@ export function ApiManager() {
       nodes: [...imageNodes, normalizeImageApiNode({
         providerType,
         generationUrl: getDefaultImageGenerationUrl(providerType),
+        generationUrls: [],
         editUrl: supportsEdit ? getDefaultImageEditUrl(providerType) : '',
+        editUrls: [],
         remark: '',
         modelName: getDefaultImageModel(providerType),
         supportsEdit,
@@ -1024,7 +1049,9 @@ export function ApiManager() {
         n.remark.toLowerCase().includes(q) ||
         n.providerType.toLowerCase().includes(q) ||
         n.generationUrl.toLowerCase().includes(q) ||
+        (n.generationUrls ?? []).some((url) => url.toLowerCase().includes(q)) ||
         n.editUrl.toLowerCase().includes(q) ||
+        (n.editUrls ?? []).some((url) => url.toLowerCase().includes(q)) ||
         getImageCapabilityLabel(n).toLowerCase().includes(q)
       )
       .map(({ i }) => i);
@@ -1991,6 +2018,22 @@ function ImageApiManagerPanel({
                                 补 /v1/images/generations
                               </button>
                             </div>
+                            <p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">
+                              主 URL 请求失败或返回空图片时，插件会按备用生图 URL 的顺序继续尝试。
+                            </p>
+                          </div>
+
+                          <div className="xl:col-span-2">
+                            <label className="text-[10px] text-[var(--text-muted)] mb-1 block">备用生图 URL（每行一个）</label>
+                            <textarea
+                              value={imageUrlListToText(node.generationUrls)}
+                              onChange={(e) => onUpdate(index, 'generationUrls', normalizeImageUrlList(e.target.value))}
+                              className="w-full min-h-[76px] resize-y px-2.5 py-2 text-xs mono rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
+                              placeholder={getDefaultImageGenerationUrl(providerType)}
+                            />
+                            <p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">
+                              适合同一个供应商有多个中转地址的场景；不要重复填写主 URL。
+                            </p>
                           </div>
 
                           <div className="xl:col-span-2">
@@ -2017,6 +2060,20 @@ function ImageApiManagerPanel({
                                 此节点不会参与 `neko.修图`。已填写的修图 URL 会保留在配置里，但插件运行时不会调用。
                               </p>
                             ) : null}
+                          </div>
+
+                          <div className="xl:col-span-2">
+                            <label className="text-[10px] text-[var(--text-muted)] mb-1 block">备用修图 URL（每行一个）</label>
+                            <textarea
+                              value={imageUrlListToText(node.editUrls)}
+                              onChange={(e) => onUpdate(index, 'editUrls', normalizeImageUrlList(e.target.value))}
+                              disabled={!supportsEdit}
+                              className="w-full min-h-[76px] resize-y px-2.5 py-2 text-xs mono rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)] disabled:opacity-55 disabled:cursor-not-allowed"
+                              placeholder={supportsEdit ? getDefaultImageEditUrl(providerType) : '当前节点仅生图，修图命令会跳过'}
+                            />
+                            <p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">
+                              修图或参考图生图会按主修图 URL、备用修图 URL 的顺序尝试。
+                            </p>
                           </div>
 
                           <div>
