@@ -104,6 +104,8 @@ const defaults: Partial<RuntimeConfig> = {
     mode: 'failover',
     retryCount: 2,
     retryDelay: 1000,
+    sameNodeRetryCount: 0,
+    sameNodeRetryDelay: 1000,
     excludeIndices: [],
   },
   memorySummary: { enabled: false, threshold: 30, summaryPrompt: '' },
@@ -126,6 +128,8 @@ function normalizeSmartRouter(input: RuntimeConfig['smartRouter'] | undefined): 
     mode: 'failover' as const,
     retryCount: 2,
     retryDelay: 1000,
+    sameNodeRetryCount: 0,
+    sameNodeRetryDelay: 1000,
     excludeIndices: [] as number[],
   };
 
@@ -138,6 +142,8 @@ function normalizeSmartRouter(input: RuntimeConfig['smartRouter'] | undefined): 
     mode,
     retryCount: Number.isFinite(Number(input?.retryCount)) ? Number(input?.retryCount) : base.retryCount,
     retryDelay: Number.isFinite(Number(input?.retryDelay)) ? Number(input?.retryDelay) : base.retryDelay,
+    sameNodeRetryCount: Number.isFinite(Number(input?.sameNodeRetryCount)) ? Number(input?.sameNodeRetryCount) : base.sameNodeRetryCount,
+    sameNodeRetryDelay: Number.isFinite(Number(input?.sameNodeRetryDelay)) ? Number(input?.sameNodeRetryDelay) : base.sameNodeRetryDelay,
     excludeIndices: (input?.excludeIndices ?? []).filter((x) => Number.isFinite(Number(x))).map((x) => Number(x)),
   };
 }
@@ -1307,10 +1313,12 @@ export function ConfigEditor() {
               {renderSchemaField('smartRouter.enabled')}
               {renderSchemaField('smartRouter.mode')}
               {renderSchemaField('smartRouter.excludeIndices')}
+              {renderSchemaField('smartRouter.sameNodeRetryCount', { min: 0 })}
+              {renderSchemaField('smartRouter.sameNodeRetryDelay', { min: 0 })}
               {renderSchemaField('smartRouter.retryCount', { min: 0 })}
               {renderSchemaField('smartRouter.retryDelay', { min: 0 })}
               <InlineNote>
-                当前插件支持的路由值只有 failover / round-robin / random。排除列表用于跳过不想参与切换的节点。
+                同节点重试会在当前节点原地重试，智能路由关闭时也能生效；路由重试用于失败后切换到其他节点，需开启智能路由。
               </InlineNote>
             </SectionCard>
           )}

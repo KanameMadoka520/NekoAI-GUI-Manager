@@ -32,6 +32,8 @@ export interface SmartRouter {
   mode: SmartRouterMode;
   retryCount?: number;
   retryDelay?: number;
+  sameNodeRetryCount?: number;
+  sameNodeRetryDelay?: number;
   excludeIndices?: number[];
 }
 
