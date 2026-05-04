@@ -37,6 +37,11 @@ export interface SmartRouter {
   excludeIndices?: number[];
 }
 
+export interface ImageRouterConfig {
+  enabled: boolean;
+  order: number[];
+}
+
 export interface MemorySummary {
   enabled: boolean;
   threshold: number;
@@ -136,6 +141,7 @@ export interface RuntimeConfig {
   groupPersonalityMap: Record<string, number>;
   groupApiMap: Record<string, number>;
   smartRouter: SmartRouter;
+  imageRouter?: ImageRouterConfig;
   memorySummary: MemorySummary;
   requestQueue: RequestQueue;
   apiParams: ApiParams;

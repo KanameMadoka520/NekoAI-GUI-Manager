@@ -22,7 +22,7 @@ import { usePageDirtyState } from '../hooks/usePageDirtyState';
 import { getConfig, saveConfig, pingApi, batchPingApis, batchPingApisStream, getApiHistoryMetrics, getApiHealthWeights, saveApiHealthWeights } from '../lib/tauri-commands';
 import { listenCompat } from '../lib/runtime-bridge';
 import { downloadJsonWithTimestamp, pickJsonAndParse } from '../lib/json-transfer';
-import type { ApiNode, ImageApiNode, ImageApiProviderType, RuntimeConfig, PingResult, ApiHistoryMetric, ApiHealthWeights } from '../lib/types';
+import type { ApiNode, ImageApiNode, ImageApiProviderType, RuntimeConfig, PingResult, ApiHistoryMetric, ApiHealthWeights, ImageRouterConfig } from '../lib/types';
 
 interface NodeState {
   nodes: ApiNode[];
@@ -51,6 +51,7 @@ type NodeHealth = {
 
 type ApiManagerViewState = {
   managerMode: 'chat' | 'image';
+  imagePanelMode: 'nodes' | 'router';
   search: string;
   imageSearch: string;
   healthSort: 'none' | 'desc' | 'asc';
@@ -69,6 +70,7 @@ const API_MANAGER_VIEW_STORAGE_KEY = 'nekoai-api-manager-view';
 const DEFAULT_IMAGE_API_TIMEOUT_MS = 300000;
 const DEFAULT_API_MANAGER_VIEW_STATE: ApiManagerViewState = {
   managerMode: 'chat',
+  imagePanelMode: 'nodes',
   search: '',
   imageSearch: '',
   healthSort: 'none',
@@ -185,6 +187,26 @@ function normalizeImageUrlList(value: unknown): string[] {
 
 function imageUrlListToText(value: unknown): string {
   return normalizeImageUrlList(value).join('\n');
+}
+
+function normalizeImageRouteOrder(value: unknown): number[] {
+  const rawItems = Array.isArray(value) ? value : String(value ?? '').split(/[\s,，;；]+/);
+  const order: number[] = [];
+  const seen = new Set<number>();
+  for (const item of rawItems) {
+    const index = Number(item);
+    if (!Number.isInteger(index) || index < 0 || seen.has(index)) continue;
+    seen.add(index);
+    order.push(index);
+  }
+  return order;
+}
+
+function normalizeImageRouter(input: RuntimeConfig['imageRouter'] | undefined): ImageRouterConfig {
+  return {
+    enabled: input?.enabled === true,
+    order: normalizeImageRouteOrder(input?.order),
+  };
 }
 
 function normalizeImageApiNode(input?: Partial<ImageApiNode>): ImageApiNode {
@@ -358,6 +380,7 @@ function loadApiManagerViewState(): ApiManagerViewState {
     const parsed = JSON.parse(raw) as Partial<ApiManagerViewState>;
     return {
       managerMode: parsed.managerMode === 'image' ? 'image' : 'chat',
+      imagePanelMode: parsed.imagePanelMode === 'router' ? 'router' : 'nodes',
       search: typeof parsed.search === 'string' ? parsed.search : '',
       imageSearch: typeof parsed.imageSearch === 'string' ? parsed.imageSearch : '',
       healthSort: parsed.healthSort === 'asc' || parsed.healthSort === 'desc' ? parsed.healthSort : 'none',
@@ -474,6 +497,7 @@ export function ApiManager() {
   const [search, setSearch] = useState(initialViewState.search);
   const [imageSearch, setImageSearch] = useState(initialViewState.imageSearch);
   const [managerMode, setManagerMode] = useState<'chat' | 'image'>(initialViewState.managerMode);
+  const [imagePanelMode, setImagePanelMode] = useState<'nodes' | 'router'>(initialViewState.imagePanelMode);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [pingResults, setPingResults] = useState<Map<number, PingResult>>(new Map());
   const [pinging, setPinging] = useState<Set<number>>(new Set());
@@ -511,7 +535,11 @@ export function ApiManager() {
   }), [weightLive, historyWeight, weightTimeout, weightJitter]);
   const dirty = useMemo(() => JSON.stringify(state) !== original || JSON.stringify(weightState) !== originalWeights, [state, original, weightState, originalWeights]);
   const imageDirty = useMemo(() => JSON.stringify(imageState) !== imageOriginal, [imageState, imageOriginal]);
-  const imageRuntimeState = useMemo(() => JSON.stringify({ imageApiTimeoutMs: getRuntimeImageApiTimeoutMs(runtimeConfig) }), [runtimeConfig]);
+  const imageRuntimeState = useMemo(() => JSON.stringify({
+    imageApiTimeoutMs: getRuntimeImageApiTimeoutMs(runtimeConfig),
+    imageRouter: normalizeImageRouter(runtimeConfig?.imageRouter),
+  }), [runtimeConfig]);
+  const imageRouter = useMemo(() => normalizeImageRouter(runtimeConfig?.imageRouter), [runtimeConfig]);
   const imageRuntimeDirty = useMemo(() => imageRuntimeState !== imageRuntimeOriginal, [imageRuntimeState, imageRuntimeOriginal]);
   const imageConfigDirty = imageDirty || imageRuntimeDirty;
   const density = getDensityClass(settings.contentDensity);
@@ -524,6 +552,7 @@ export function ApiManager() {
   useEffect(() => {
     persistApiManagerViewState({
       managerMode,
+      imagePanelMode,
       search,
       imageSearch,
       healthSort,
@@ -533,7 +562,7 @@ export function ApiManager() {
       showNodeHealthPanels,
       focusActiveNodeOnly,
     });
-  }, [managerMode, search, imageSearch, healthSort, healthFilter, healthSourceFilter, showAdvancedToolbar, showNodeHealthPanels, focusActiveNodeOnly]);
+  }, [managerMode, imagePanelMode, search, imageSearch, healthSort, healthFilter, healthSourceFilter, showAdvancedToolbar, showNodeHealthPanels, focusActiveNodeOnly]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -608,7 +637,10 @@ export function ApiManager() {
       resetImageState(imageInitial);
       setOriginal(JSON.stringify(initial));
       setImageOriginal(JSON.stringify(imageInitial));
-      setImageRuntimeOriginal(JSON.stringify({ imageApiTimeoutMs: getRuntimeImageApiTimeoutMs(rt ?? null) }));
+      setImageRuntimeOriginal(JSON.stringify({
+        imageApiTimeoutMs: getRuntimeImageApiTimeoutMs(rt ?? null),
+        imageRouter: normalizeImageRouter(rt?.imageRouter),
+      }));
       setSelected(new Set());
       setPingResults(new Map());
       setRuntimeConfig(rt ?? null);
@@ -660,6 +692,13 @@ export function ApiManager() {
     setRuntimeConfig((current) => ({
       ...(current ?? ({} as RuntimeConfig)),
       imageApiTimeoutMs: normalizedSeconds * 1000,
+    } as RuntimeConfig));
+  }
+
+  function updateImageRouter(next: ImageRouterConfig) {
+    setRuntimeConfig((current) => ({
+      ...(current ?? ({} as RuntimeConfig)),
+      imageRouter: normalizeImageRouter(next),
     } as RuntimeConfig));
   }
 
@@ -914,12 +953,16 @@ export function ApiManager() {
           ...rt,
           activeImageApiIndex: activeImageIndex,
           imageApiTimeoutMs: getRuntimeImageApiTimeoutMs(runtimeConfig ?? rt),
+          imageRouter: normalizeImageRouter((runtimeConfig ?? rt).imageRouter),
         };
         await saveConfig('runtime', updatedRuntime);
         setRuntimeConfig(updatedRuntime);
       }
       setImageOriginal(JSON.stringify(imageState));
-      setImageRuntimeOriginal(JSON.stringify({ imageApiTimeoutMs: getRuntimeImageApiTimeoutMs(runtimeConfig ?? rt) }));
+      setImageRuntimeOriginal(JSON.stringify({
+        imageApiTimeoutMs: getRuntimeImageApiTimeoutMs(runtimeConfig ?? rt),
+        imageRouter: normalizeImageRouter((runtimeConfig ?? rt)?.imageRouter),
+      }));
       addToast('success', '图像 API 配置已保存');
     } catch (e: any) {
       addToast('error', `保存失败: ${e?.message ?? e}`);
@@ -1296,6 +1339,7 @@ export function ApiManager() {
 
     if (pageJumpRequest.category === 'image') {
       setManagerMode('image');
+      setImagePanelMode('nodes');
       setImageSearch('');
       setTimeout(() => scrollToImageNode(targetIndex), 80);
     } else {
@@ -1347,14 +1391,17 @@ export function ApiManager() {
         {modeSwitcher}
         <ImageApiManagerPanel
           density={settings.contentDensity}
+          viewMode={imagePanelMode}
           nodes={imageNodes}
           activeIndex={activeImageIndex}
+          imageRouter={imageRouter}
           imageApiTimeoutMs={getRuntimeImageApiTimeoutMs(runtimeConfig)}
           search={imageSearch}
           dirty={imageConfigDirty}
           canUndo={canUndoImage}
           canRedo={canRedoImage}
           onSearchChange={setImageSearch}
+          onViewModeChange={setImagePanelMode}
           onUndo={undoImage}
           onRedo={redoImage}
           onSave={saveImageApis}
@@ -1365,7 +1412,12 @@ export function ApiManager() {
           onClone={cloneImageNode}
           onRemove={removeImageNode}
           onSetActive={(index) => setImageState({ ...imageState, activeIndex: index })}
+          onImageRouterChange={updateImageRouter}
           onImageApiTimeoutSecondsChange={updateImageApiTimeoutSeconds}
+          onJumpToNode={(index) => {
+            setImagePanelMode('nodes');
+            setTimeout(() => scrollToImageNode(index), 50);
+          }}
           onUpdate={updateImageNode}
           onChangeProvider={updateImageNodeProvider}
           onApplyGenerationSuffix={applyImageGenerationUrlSuffix}
@@ -1750,8 +1802,10 @@ export function ApiManager() {
 
 function ImageApiManagerPanel({
   density,
+  viewMode,
   nodes,
   activeIndex,
+  imageRouter,
   imageApiTimeoutMs,
   search,
   dirty,
@@ -1759,6 +1813,7 @@ function ImageApiManagerPanel({
   canRedo,
   filteredIndices,
   onSearchChange,
+  onViewModeChange,
   onUndo,
   onRedo,
   onSave,
@@ -1769,7 +1824,9 @@ function ImageApiManagerPanel({
   onClone,
   onRemove,
   onSetActive,
+  onImageRouterChange,
   onImageApiTimeoutSecondsChange,
+  onJumpToNode,
   onUpdate,
   onChangeProvider,
   onApplyGenerationSuffix,
@@ -1777,8 +1834,10 @@ function ImageApiManagerPanel({
   cardRef,
 }: {
   density: 'compact' | 'standard' | 'spacious';
+  viewMode: 'nodes' | 'router';
   nodes: ImageApiNode[];
   activeIndex: number;
+  imageRouter: ImageRouterConfig;
   imageApiTimeoutMs: number;
   search: string;
   dirty: boolean;
@@ -1786,6 +1845,7 @@ function ImageApiManagerPanel({
   canRedo: boolean;
   filteredIndices: number[];
   onSearchChange: (next: string) => void;
+  onViewModeChange: (next: 'nodes' | 'router') => void;
   onUndo: () => void;
   onRedo: () => void;
   onSave: () => void | Promise<void>;
@@ -1796,7 +1856,9 @@ function ImageApiManagerPanel({
   onClone: (index: number) => void;
   onRemove: (index: number) => void;
   onSetActive: (index: number) => void;
+  onImageRouterChange: (next: ImageRouterConfig) => void;
   onImageApiTimeoutSecondsChange: (seconds: number) => void;
+  onJumpToNode: (index: number) => void;
   onUpdate: (index: number, field: keyof ImageApiNode, value: ImageApiNode[keyof ImageApiNode]) => void;
   onChangeProvider: (index: number, providerType: ImageApiProviderType) => void;
   onApplyGenerationSuffix: (index: number) => void;
@@ -1812,6 +1874,7 @@ function ImageApiManagerPanel({
       <div className={`grid grid-cols-2 xl:grid-cols-6 ${densityClass.summaryGrid}`}>
         <SummaryCard label="图像节点总数" value={String(nodes.length)} hint="这里是独立的 image_api_config.json，不会混进聊天节点列表。" />
         <SummaryCard label="当前图像节点" value={nodes[activeIndex]?.modelName || (nodes[activeIndex] ? getDefaultImageModel(normalizeImageProviderType(nodes[activeIndex].providerType)) : `#${activeIndex}`)} hint={`命令会优先从 #${activeIndex} 开始使用。`} />
+        <SummaryCard label="路由集群" value={imageRouter.enabled ? `${imageRouter.order.length} 节点` : '关闭'} hint={imageRouter.enabled ? `按 ${imageRouter.order.join(' → ') || '空路径'} 依次尝试。` : '关闭时仍按当前图像节点运行。'} tone={imageRouter.enabled ? 'warning' : 'neutral'} />
         <SummaryCard label="可参考图节点" value={String(nodes.filter((node) => imageNodeSupportsEdit(node)).length)} hint="支持修图 URL 的节点可在 neko.生图 中接收引用图片作为参考图。" />
         <SummaryCard label="图像超时" value={formatTimeoutMs(imageApiTimeoutMs)} hint="neko.生图 / neko.修图 等待下游图像接口的最长时间。" />
         <SummaryCard label="当前显示" value={`${filteredIndices.length}/${nodes.length}`} hint="搜索只影响当前列表显示，不会改真实顺序。" />
@@ -1885,7 +1948,32 @@ function ImageApiManagerPanel({
         </p>
       </Panel>
 
+      <Panel title="图像配置页面" subtitle="节点列表维护具体供应商、URL 和密钥；路由集群维护这些节点的尝试顺序。" padding="sm">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => onViewModeChange('nodes')}
+            className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] border cursor-pointer ${viewMode === 'nodes' ? 'border-transparent bg-[var(--accent-purple)] text-white' : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+          >
+            图像节点列表
+          </button>
+          <button
+            onClick={() => onViewModeChange('router')}
+            className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] border cursor-pointer ${viewMode === 'router' ? 'border-transparent bg-[var(--accent-purple)] text-white' : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+          >
+            图像路由集群
+          </button>
+        </div>
+      </Panel>
+
       <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+        {viewMode === 'router' ? (
+          <ImageRouterPanel
+            nodes={nodes}
+            imageRouter={imageRouter}
+            onChange={onImageRouterChange}
+            onJumpToNode={onJumpToNode}
+          />
+        ) : (
         <Panel title="图像节点列表" subtitle="OpenAI / xAI 图像生成、图像编辑 URL 和默认参数在这里单独维护。" padding="sm">
           <div className="space-y-3">
             <SearchBar value={search} onChange={onSearchChange} placeholder="搜索备注 / 模型 / URL..." />
@@ -2160,8 +2248,168 @@ function ImageApiManagerPanel({
             )}
           </div>
         </Panel>
+        )}
       </div>
     </div>
+  );
+}
+
+function ImageRouterPanel({
+  nodes,
+  imageRouter,
+  onChange,
+  onJumpToNode,
+}: {
+  nodes: ImageApiNode[];
+  imageRouter: ImageRouterConfig;
+  onChange: (next: ImageRouterConfig) => void;
+  onJumpToNode: (index: number) => void;
+}) {
+  const enabled = imageRouter.enabled === true;
+  const order = Array.isArray(imageRouter.order) ? imageRouter.order : [];
+  const orderText = order.join(', ');
+
+  function updateOrder(next: number[]) {
+    onChange({ ...imageRouter, order: next });
+  }
+
+  function updateEnabled(next: boolean) {
+    onChange({ ...imageRouter, enabled: next });
+  }
+
+  function addNode(index: number) {
+    if (order.includes(index)) return;
+    updateOrder([...order, index]);
+  }
+
+  function removeNode(index: number) {
+    updateOrder(order.filter((item) => item !== index));
+  }
+
+  function moveNode(index: number, direction: -1 | 1) {
+    const current = order.indexOf(index);
+    if (current < 0) return;
+    const target = current + direction;
+    if (target < 0 || target >= order.length) return;
+    const next = [...order];
+    const [picked] = next.splice(current, 1);
+    next.splice(target, 0, picked);
+    updateOrder(next);
+  }
+
+  return (
+    <Panel title="图像路由集群" subtitle="按指定图像节点顺序接力尝试，任一节点成功即直接返回结果。当前顺序只影响图像生图和修图，不会改动节点本身。" padding="sm">
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+            <input
+              type="checkbox"
+              checked={enabled}
+              onChange={(e) => updateEnabled(e.target.checked)}
+            />
+            启用图像路由集群
+          </label>
+          <button
+            onClick={() => updateOrder([])}
+            disabled={order.length === 0}
+            className={`px-3 py-1.5 text-xs rounded-[var(--radius-sm)] border transition-colors ${order.length > 0 ? 'bg-[var(--bg-elevated)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer' : 'bg-[var(--bg-elevated)] border-[var(--border-subtle)] text-[var(--text-muted)] cursor-not-allowed opacity-60'}`}
+          >
+            清空顺序
+          </button>
+          <span className="text-[11px] text-[var(--text-muted)]">成功节点会直接返回；只有整条路径都失败才视为失败。</span>
+        </div>
+
+        <div className="grid gap-3 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+          <div>
+            <label className="text-[10px] text-[var(--text-muted)] mb-1 block">路由顺序（用逗号或换行分隔节点编号）</label>
+            <textarea
+              value={orderText}
+              onChange={(e) => updateOrder(normalizeImageRouteOrder(e.target.value))}
+              className="w-full min-h-[120px] resize-y px-2.5 py-2 text-xs mono rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
+              placeholder="例如: 5, 4, 2"
+            />
+            <p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">
+              这里写的是实际尝试顺序。比如填 <span className="mono">5, 4, 2</span>，就会先试节点 5，失败后试节点 4，再失败后试节点 2。修图和参考图生图会自动跳过不支持修图的节点。
+            </p>
+          </div>
+
+          <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 py-3">
+            <p className="text-[10px] text-[var(--text-muted)]">当前路径</p>
+            <p className="mt-1 text-xs text-[var(--text-primary)] leading-relaxed break-words">
+              {order.length > 0
+                ? order.map((index) => {
+                  const node = nodes[index];
+                  return node ? `#${index} ${node.remark || node.modelName || '未命名'}` : `#${index}（无效）`;
+                }).join(' → ')
+                : '尚未配置路由顺序'}
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          {nodes.length === 0 ? (
+            <div className="rounded-[var(--radius-sm)] border border-dashed border-[var(--border-subtle)] px-4 py-6 text-sm text-[var(--text-muted)] text-center">
+              当前没有可用于路由的图像节点。
+            </div>
+          ) : (
+            nodes.map((node, index) => {
+              const position = order.indexOf(index);
+              const isInRoute = position >= 0;
+              const providerType = normalizeImageProviderType(node.providerType);
+              return (
+                <div
+                  key={index}
+                  className="flex flex-wrap items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2"
+                >
+                  <span className="mono text-[10px] text-[var(--text-muted)] w-7 text-right">#{index}</span>
+                  <span className="text-xs text-[var(--text-primary)]">{node.remark || node.modelName || '未命名节点'}</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-[rgba(0,188,212,0.14)] text-[var(--info)]">{getImageProviderLabel(providerType)}</span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded ${imageNodeSupportsEdit(node) ? 'bg-[rgba(16,185,129,0.14)] text-[var(--success)]' : 'bg-[rgba(251,191,36,0.15)] text-[var(--warning)]'}`}>
+                    {imageNodeSupportsEdit(node) ? '支持修图' : '仅生图'}
+                  </span>
+                  {isInRoute ? (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--accent-purple)] text-white">顺位 {position + 1}</span>
+                  ) : (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--surface-card)] text-[var(--text-muted)]">未加入</span>
+                  )}
+                  <div className="flex-1" />
+                  <button
+                    onClick={() => onJumpToNode(index)}
+                    className="px-2.5 py-1.5 text-[10px] rounded-[var(--radius-sm)] bg-[var(--surface-card)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+                  >
+                    定位
+                  </button>
+                  <button
+                    onClick={() => (isInRoute ? removeNode(index) : addNode(index))}
+                    className={`px-2.5 py-1.5 text-[10px] rounded-[var(--radius-sm)] cursor-pointer ${isInRoute ? 'bg-[rgba(255,82,82,0.12)] text-[var(--error)] hover:bg-[rgba(255,82,82,0.2)]' : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+                  >
+                    {isInRoute ? '移出路径' : '加入路径'}
+                  </button>
+                  {isInRoute ? (
+                    <>
+                      <button
+                        onClick={() => moveNode(index, -1)}
+                        disabled={position <= 0}
+                        className={`px-2.5 py-1.5 text-[10px] rounded-[var(--radius-sm)] cursor-pointer ${position > 0 ? 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]' : 'bg-[var(--surface-card)] text-[var(--text-muted)] cursor-not-allowed opacity-50'}`}
+                      >
+                        上移
+                      </button>
+                      <button
+                        onClick={() => moveNode(index, 1)}
+                        disabled={position < 0 || position >= order.length - 1}
+                        className={`px-2.5 py-1.5 text-[10px] rounded-[var(--radius-sm)] cursor-pointer ${position >= 0 && position < order.length - 1 ? 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]' : 'bg-[var(--surface-card)] text-[var(--text-muted)] cursor-not-allowed opacity-50'}`}
+                      >
+                        下移
+                      </button>
+                    </>
+                  ) : null}
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    </Panel>
   );
 }
 

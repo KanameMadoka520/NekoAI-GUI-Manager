@@ -30,6 +30,7 @@ const sections: Section[] = [
   { id: 'feedback', label: '请求反馈', icon: '📣', summary: '控制处理中提示、失败回报和 API 超时。', mode: 'both' },
   { id: 'memory', label: '记忆与摘要', icon: '🧠', summary: '闲置自动清空、记忆压缩与摘要提示词。', mode: 'common' },
   { id: 'router', label: '智能路由', icon: '🔀', summary: '插件当前支持的路由模式、重试和排除列表。', mode: 'advanced' },
+  { id: 'imageRouter', label: '图像路由集群', icon: '🖼', summary: '按图像节点编号顺序接力尝试，任一节点成功即返回结果。', mode: 'advanced' },
   { id: 'memes', label: '表情包', icon: '😸', summary: '控制表情包功能与触发概率。', mode: 'common' },
   { id: 'queue', label: '请求队列', icon: '📤', summary: '当前插件实际消费的请求并发配置。', mode: 'advanced' },
   { id: 'mapping', label: '群级映射', icon: '🗺', summary: '按群定制人格与 API 索引。', mode: 'advanced' },
@@ -108,6 +109,10 @@ const defaults: Partial<RuntimeConfig> = {
     sameNodeRetryDelay: 1000,
     excludeIndices: [],
   },
+  imageRouter: {
+    enabled: false,
+    order: [],
+  },
   memorySummary: { enabled: false, threshold: 30, summaryPrompt: '' },
   requestQueue: {
     maxConcurrent: 3,
@@ -145,6 +150,22 @@ function normalizeSmartRouter(input: RuntimeConfig['smartRouter'] | undefined): 
     sameNodeRetryCount: Number.isFinite(Number(input?.sameNodeRetryCount)) ? Number(input?.sameNodeRetryCount) : base.sameNodeRetryCount,
     sameNodeRetryDelay: Number.isFinite(Number(input?.sameNodeRetryDelay)) ? Number(input?.sameNodeRetryDelay) : base.sameNodeRetryDelay,
     excludeIndices: (input?.excludeIndices ?? []).filter((x) => Number.isFinite(Number(x))).map((x) => Number(x)),
+  };
+}
+
+function normalizeImageRouter(input: RuntimeConfig['imageRouter'] | undefined): NonNullable<RuntimeConfig['imageRouter']> {
+  const rawItems = Array.isArray(input?.order) ? input?.order : String((input as any)?.order ?? '').split(/[\s,，;；]+/);
+  const order: number[] = [];
+  const seen = new Set<number>();
+  for (const item of rawItems) {
+    const index = Number(item);
+    if (!Number.isInteger(index) || index < 0 || seen.has(index)) continue;
+    seen.add(index);
+    order.push(index);
+  }
+  return {
+    enabled: input?.enabled === true,
+    order,
   };
 }
 
@@ -290,6 +311,7 @@ function normalizeRuntimeConfig(input?: Partial<RuntimeConfig> | null): RuntimeC
     groupPersonalityMap: merged.groupPersonalityMap && typeof merged.groupPersonalityMap === 'object' ? merged.groupPersonalityMap : {},
     groupApiMap: merged.groupApiMap && typeof merged.groupApiMap === 'object' ? merged.groupApiMap : {},
     smartRouter: normalizeSmartRouter(merged.smartRouter),
+    imageRouter: normalizeImageRouter(merged.imageRouter),
     memorySummary: normalizeMemorySummary(merged.memorySummary),
     requestQueue: normalizeRequestQueue(merged.requestQueue),
     apiParams: normalizeApiParams(merged.apiParams),
@@ -1319,6 +1341,16 @@ export function ConfigEditor() {
               {renderSchemaField('smartRouter.retryDelay', { min: 0 })}
               <InlineNote>
                 同节点重试会在当前节点原地重试，智能路由关闭时也能生效；路由重试用于失败后切换到其他节点，需开启智能路由。
+              </InlineNote>
+            </SectionCard>
+          )}
+
+          {visibleSections.some((s) => s.id === 'imageRouter') && (
+            <SectionCard id="imageRouter" title={sectionMetaMap.get('imageRouter')?.label ?? '图像路由集群'} icon="🖼" summary={sectionMetaMap.get('imageRouter')?.summary ?? '按图像节点编号顺序接力尝试。'} refs={sectionRefs}>
+              {renderSchemaField('imageRouter.enabled')}
+              {renderSchemaField('imageRouter.order')}
+              <InlineNote>
+                推荐在 API 管理页的“图像路由集群”页面维护该顺序；这里保留运行时配置的直接编辑入口。
               </InlineNote>
             </SectionCard>
           )}

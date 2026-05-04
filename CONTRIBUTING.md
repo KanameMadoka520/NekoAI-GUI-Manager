@@ -268,7 +268,7 @@ npm install --no-save @rollup/rollup-win32-x64-msvc@4.59.0
 
 例如这次新增的图像节点链路：
 
-- 前端不只是多一个 `ImageApiNode` 类型，还要同时照顾 `image_api_config.json` 的导入导出、`activeImageApiIndex` 的读写、图像节点列表模式、节点能力字段（如 `supportsEdit`）、备用 URL 字段（`generationUrls` / `editUrls`）、以及启动前自检里的索引越界修复。OpenAI `gpt-image-2` 在 `supportsEdit: true` 且 `editUrl` 已配置时可接收引用图，GUI 需要提示用户可通过引用带图消息后发送 `neko.生图 提示词` 做参考图生图。
+- 前端不只是多一个 `ImageApiNode` 类型，还要同时照顾 `image_api_config.json` 的导入导出、`activeImageApiIndex` 的读写、图像节点列表模式、图像路由集群（`runtime_config.json` 的 `imageRouter.enabled` / `imageRouter.order`）、节点能力字段（如 `supportsEdit`）、备用 URL 字段（`generationUrls` / `editUrls`）、以及启动前自检里的索引越界修复。OpenAI `gpt-image-2` 在 `supportsEdit: true` 且 `editUrl` 已配置时可接收引用图，GUI 需要提示用户可通过引用带图消息后发送 `neko.生图 提示词` 做参考图生图。
 
 例如这次新增的 `groupMentionFocusMode`：
 
@@ -293,7 +293,7 @@ npm install --no-save @rollup/rollup-win32-x64-msvc@4.59.0
 
 以下区域影响面大，改动时请额外谨慎并加强验证：
 
-- `src/pages/ApiManager.tsx`：聊天节点 / 图像节点双模式、拖拽排序、activeIndex / activeImageApiIndex 映射、批量状态映射、URL 默认后缀辅助、xAI Web Search 开关
+- `src/pages/ApiManager.tsx`：聊天节点 / 图像节点双模式、图像路由集群顺序编辑、拖拽排序、activeIndex / activeImageApiIndex 映射、批量状态映射、URL 默认后缀辅助、xAI Web Search 开关
 - `src/pages/ConfigEditor.tsx`：schema 驱动字段渲染、导入校验、迁移修复与差异概览
 - `src/hooks/useFileWatcher.ts` + `src/App.tsx`：外部变更提示与刷新逻辑
 - `src-tauri/src/api_test.rs`：连通性测试实现
@@ -323,7 +323,8 @@ npm install --no-save @rollup/rollup-win32-x64-msvc@4.59.0
    - 聊天节点：`xaiWebSearchEnabled` 仅在 `openai-response` 下可用，保存后不丢
    - 图像节点：`image_api_config.json` 的导入/导出可用（导入二级确认）
   - 图像节点：xAI / OpenAI 模板导出可用，生成 / 修图 URL 的默认后缀按钮行为正确，备用生成 / 修图 URL 保存后不会丢字段
-   - 图像节点：`activeImageApiIndex` 保存后与当前启用节点一致
+  - 图像节点：`activeImageApiIndex` 保存后与当前启用节点一致
+   - 图像路由集群：启用开关、节点顺序文本、加入/移出/上移/下移按钮保存后写入 `runtime_config.json.imageRouter`
 3. **配置编辑**：
    - 空配置可加载
    - 修改后可保存
