@@ -268,7 +268,7 @@ npm install --no-save @rollup/rollup-win32-x64-msvc@4.59.0
 
 例如这次新增的图像节点链路：
 
-- 前端不只是多一个 `ImageApiNode` 类型，还要同时照顾 `image_api_config.json` 的导入导出、`activeImageApiIndex` 的读写、图像节点列表模式、图像路由集群（`runtime_config.json` 的 `imageRouter.enabled` / `imageRouter.order`）、节点能力字段（如 `supportsEdit`）、备用 URL 字段（`generationUrls` / `editUrls`）、以及启动前自检里的索引越界修复。OpenAI `gpt-image-2` 在 `supportsEdit: true` 且 `editUrl` 已配置时可接收引用图，GUI 需要提示用户可通过引用带图消息后发送 `neko.生图 提示词` 做参考图生图。
+- 前端不只是多一个 `ImageApiNode` 类型，还要同时照顾 `image_api_config.json` 的导入导出、`activeImageApiIndex` 的读写、图像节点列表模式、图像路由集群（`runtime_config.json` 的 `imageRouter.enabled` / `imageRouter.order`）、节点能力字段（如 `supportsEdit`）、备用 URL 字段（`generationUrls` / `editUrls`）、OpenAI 流式字段（`streamingEnabled` / `partialImages` / `streamingFallbackToNonStream`），以及启动前自检里的索引越界修复。OpenAI `gpt-image-2` 在 `supportsEdit: true` 且 `editUrl` 已配置时可接收引用图，GUI 需要提示用户可通过引用带图消息后发送 `neko.生图 提示词` 做参考图生图。
 
 例如这次新增的 `groupMentionFocusMode`：
 

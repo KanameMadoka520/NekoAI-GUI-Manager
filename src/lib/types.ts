@@ -22,6 +22,9 @@ export interface ImageApiNode {
   aspectRatio?: string;
   resolution?: string;
   supportsEdit?: boolean;
+  streamingEnabled?: boolean;
+  partialImages?: number;
+  streamingFallbackToNonStream?: boolean;
 }
 
 // ===== Runtime Config =====

@@ -77,6 +77,7 @@
   - 支持导入 / 导出 `image_api_config.json`
   - 支持一键导出 xAI / OpenAI 图像节点模板，OpenAI 默认模型为 `gpt-image-2`，默认保留 `editUrl` 与 `supportsEdit`
   - 生成 / 修图 URL 右侧同样提供默认后缀补全按钮，并支持维护备用生成 / 修图 URL 列表；`gpt-image-2` 节点会提示可引用带图消息后使用 `neko.生图 提示词` 做参考图生图
+  - OpenAI 图像节点可选开启流式请求，配置 `partial_images` 数量，并在中转站不支持 SSE 时回退普通请求
   - API 管理的图像模式新增“图像路由集群”页面，可直接复用现有图像节点并配置人工顺序，例如 `5 → 4 → 2`，插件会按路径依次尝试，任一节点成功即返回图片
   - 默认不提供图像批量测活，避免直接消耗图像额度
 - Rust 后端与自检链路已同步支持图像节点
@@ -577,7 +578,7 @@ npx vite
 - **URL 后缀辅助** — API URL 输入框右侧会根据当前类型显示 `补 /v1/chat/completions`、`补 /v1/responses`、`补 /v1/messages`、`补 /v1beta/models/...:generateContent` 等按钮；URL 最终仍然完全由你自己控制
 - **xAI Web Search 开关** — 仅在 `openai-response` 节点可勾选，并明确提示“只支持 xAI 官方 API + Grok 模型”
 - **拖拽排序 / 连通测试 / 健康分** — 聊天节点支持拖拽排序、单个/批量测试、健康分排序/筛选、评分解释面板
-- **图像节点卡片** — 独立维护 `providerType`、`generationUrl`、`generationUrls`、`editUrl`、`editUrls`、`apiKey`、`modelName`、`aspectRatio`、`resolution`、`supportsEdit`
+- **图像节点卡片** — 独立维护 `providerType`、`generationUrl`、`generationUrls`、`editUrl`、`editUrls`、`apiKey`、`modelName`、`aspectRatio`、`resolution`、`supportsEdit`，OpenAI 节点还可配置流式请求、`partial_images` 数量与失败回退
 - **图像 URL 后缀辅助** — 生成 URL 可一键补 `/v1/images/generations`，修图 URL 可一键补 `/v1/images/edits`；备用 URL 支持每行一个地址，插件会在主 URL 失败或返回空图片时按顺序重试；OpenAI `gpt-image-2` 节点默认支持 `editUrl`，GUI 会提示其可直接引用带图消息进行参考图生图
 - **图像路由集群** — 图像模式下新增独立页面，可启用 `imageRouter` 并维护 `order` 节点路径。配置 `5, 4, 2` 后，插件会按节点 5 -> 4 -> 2 接力尝试，只有全部失败才向聊天里回报失败。
 - **图像模板导出** — 图像节点工具栏支持导出 xAI / OpenAI 模板，便于快速落地 `image_api_config.json`

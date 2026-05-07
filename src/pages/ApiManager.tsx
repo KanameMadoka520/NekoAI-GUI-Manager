@@ -202,6 +202,12 @@ function normalizeImageRouteOrder(value: unknown): number[] {
   return order;
 }
 
+function normalizePartialImages(value: unknown) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return 2;
+  return Math.max(0, Math.min(3, Math.floor(num)));
+}
+
 function normalizeImageRouter(input: RuntimeConfig['imageRouter'] | undefined): ImageRouterConfig {
   return {
     enabled: input?.enabled === true,
@@ -225,6 +231,9 @@ function normalizeImageApiNode(input?: Partial<ImageApiNode>): ImageApiNode {
     aspectRatio: typeof input?.aspectRatio === 'string' ? input.aspectRatio : '',
     resolution: typeof input?.resolution === 'string' ? input.resolution : '',
     supportsEdit: imageNodeSupportsEdit(base),
+    streamingEnabled: input?.streamingEnabled === true,
+    partialImages: normalizePartialImages(input?.partialImages),
+    streamingFallbackToNonStream: input?.streamingFallbackToNonStream !== false,
   };
 }
 
@@ -1001,6 +1010,9 @@ export function ApiManager() {
         aspectRatio: '',
         resolution: '',
         supportsEdit: true,
+        streamingEnabled: false,
+        partialImages: 2,
+        streamingFallbackToNonStream: true,
       }),
     ];
     downloadJsonWithTimestamp(template, 'image_api_config.template.json');
@@ -1065,6 +1077,9 @@ export function ApiManager() {
         remark: '',
         modelName: getDefaultImageModel(providerType),
         supportsEdit,
+        streamingEnabled: false,
+        partialImages: 2,
+        streamingFallbackToNonStream: true,
       })],
     });
   }
@@ -2002,6 +2017,7 @@ function ImageApiManagerPanel({
                         <span className="text-sm font-medium text-[var(--text-primary)]">{node.modelName || getDefaultImageModel(providerType)}</span>
                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-[rgba(0,188,212,0.14)] text-[var(--info)]">{getImageProviderLabel(providerType)}</span>
                         <span className={`text-[10px] px-1.5 py-0.5 rounded ${supportsEdit ? 'bg-[rgba(16,185,129,0.14)] text-[var(--success)]' : 'bg-[rgba(251,191,36,0.15)] text-[var(--warning)]'}`}>{getImageCapabilityLabel(node)}</span>
+                        {providerType === 'openai' && node.streamingEnabled ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-[rgba(0,188,212,0.14)] text-[var(--info)]">流式 partial {normalizePartialImages(node.partialImages)}</span> : null}
                         {index === activeIndex ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--accent-purple)] text-white">活跃</span> : null}
                         <div className="flex-1" />
                         <button
@@ -2087,6 +2103,56 @@ function ImageApiManagerPanel({
                                 若你填写 `grok-imagine-image-pro`，当 xAI 返回“模型暂时不可用 / 服务不可用 / 内部生成失败”时，插件会自动回退到 `grok-imagine-image` 再重试一次。
                               </p>
                             )}
+                          </div>
+
+                          <div className="xl:col-span-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3">
+                            <div className="grid gap-3 md:grid-cols-3">
+                              <label className="flex items-start gap-2 text-xs text-[var(--text-primary)]">
+                                <input
+                                  type="checkbox"
+                                  checked={providerType === 'openai' && node.streamingEnabled === true}
+                                  disabled={providerType !== 'openai'}
+                                  onChange={(e) => onUpdate(index, 'streamingEnabled', e.target.checked)}
+                                  className="mt-0.5"
+                                />
+                                <span>
+                                  <span className="block font-medium">启用 OpenAI 图像流式</span>
+                                  <span className="block mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">仅对 OpenAI 图像节点生效，会优先请求 SSE stream。</span>
+                                </span>
+                              </label>
+                              <div>
+                                <label className="text-[10px] text-[var(--text-muted)] mb-1 block">partial images</label>
+                                <select
+                                  value={normalizePartialImages(node.partialImages)}
+                                  disabled={providerType !== 'openai' || node.streamingEnabled !== true}
+                                  onChange={(e) => onUpdate(index, 'partialImages', normalizePartialImages(e.target.value))}
+                                  className="w-full px-2.5 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)] cursor-pointer disabled:opacity-55 disabled:cursor-not-allowed"
+                                >
+                                  <option value={0}>0（只等最终图）</option>
+                                  <option value={1}>1 张中间图</option>
+                                  <option value={2}>2 张中间图</option>
+                                  <option value={3}>3 张中间图</option>
+                                </select>
+                              </div>
+                              <label className="flex items-start gap-2 text-xs text-[var(--text-primary)]">
+                                <input
+                                  type="checkbox"
+                                  checked={node.streamingFallbackToNonStream !== false}
+                                  disabled={providerType !== 'openai' || node.streamingEnabled !== true}
+                                  onChange={(e) => onUpdate(index, 'streamingFallbackToNonStream', e.target.checked)}
+                                  className="mt-0.5"
+                                />
+                                <span>
+                                  <span className="block font-medium">失败回退普通请求</span>
+                                  <span className="block mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">推荐开启；中转站不支持 SSE 时不会直接判节点失败。</span>
+                                </span>
+                              </label>
+                            </div>
+                            <p className={`mt-2 text-[10px] leading-relaxed ${providerType === 'openai' ? 'text-[var(--text-muted)]' : 'text-[var(--warning)]'}`}>
+                              {providerType === 'openai'
+                                ? '流式请求会等待 completed 最终图；partial 只用于维持连接和日志进度，不会单独发到群里。'
+                                : 'xAI 图像节点暂不启用这组选项。'}
+                            </p>
                           </div>
 
                           <div className="xl:col-span-2">
