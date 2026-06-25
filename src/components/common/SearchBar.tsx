@@ -9,7 +9,7 @@ interface SearchBarProps {
 export function SearchBar({ value, onChange, placeholder = '搜索...', children, onEnter }: SearchBarProps) {
   return (
     <div className="flex items-center gap-2">
-      <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] focus-within:border-[var(--accent-purple)]">
+      <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] transition-colors focus-within:border-[var(--accent-purple)] focus-within:shadow-[0_0_0_3px_var(--focus-ring)]">
         <span className="text-[var(--text-muted)] text-sm">🔍</span>
         <input
           value={value}

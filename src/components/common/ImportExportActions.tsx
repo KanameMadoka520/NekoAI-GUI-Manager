@@ -38,14 +38,14 @@ export function ImportExportActions({
       <button
         onClick={onExport}
         disabled={exportDisabled}
-        className={`${cls} bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer disabled:opacity-30`}
+        className={`${cls} bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed`}
       >
         {exportLabel}
       </button>
       <button
         onClick={() => setConfirmOpen(true)}
         disabled={importDisabled}
-        className={`${cls} bg-[var(--bg-elevated)] text-[var(--warning)] hover:text-[var(--text-primary)] transition-colors cursor-pointer disabled:opacity-30`}
+        className={`${cls} bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--warning)] hover:bg-[var(--warning-soft-bg)] transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed`}
       >
         {importLabel}
       </button>

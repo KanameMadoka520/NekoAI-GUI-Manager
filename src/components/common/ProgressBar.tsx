@@ -17,9 +17,9 @@ export function ProgressBar({ value, max, label, showText = true }: ProgressBarP
           {showText && <span className="text-[var(--text-muted)] mono">{value}/{max}</span>}
         </div>
       )}
-      <div className="h-2 bg-[var(--bg-elevated)] rounded-full overflow-hidden">
+      <div className="h-2 bg-[var(--bg-elevated)] rounded-[var(--radius-pill)] overflow-hidden">
         <div
-          className="h-full rounded-full transition-all duration-300"
+          className="h-full rounded-[var(--radius-pill)] transition-[width] duration-300 ease-[var(--ease-spring)]"
           style={{ width: `${pct}%`, background: color }}
         />
       </div>

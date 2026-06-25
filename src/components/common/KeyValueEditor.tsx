@@ -68,7 +68,7 @@ export function KeyValueEditor({ data, onChange, keyPlaceholder = '键', valuePl
         />
         <button
           onClick={handleAdd}
-          className="px-2 py-1 text-xs bg-[var(--accent-purple)] text-white rounded-[var(--radius-sm)] hover:opacity-80 cursor-pointer"
+          className="px-2 py-1 text-xs bg-[var(--accent-purple)] text-[var(--on-accent)] rounded-[var(--radius-sm)] hover:opacity-85 cursor-pointer"
         >
           +
         </button>
