@@ -9,7 +9,7 @@ export function StatCard({ label, value, color = 'var(--accent-purple)', icon }:
   return (
     <div
       className="perf-stat-card card-lift relative rounded-[var(--radius)] p-5 flex flex-col gap-2 overflow-hidden border border-[var(--border-subtle)]"
-      style={{ background: 'var(--surface-card)', boxShadow: 'var(--shadow-card)' }}
+      style={{ background: 'var(--surface-card)' }}
     >
       {/* Accent left bar */}
       <div className="absolute top-3 left-0 bottom-3 w-[3px] rounded-r-[var(--radius-pill)]" style={{ background: color }} />

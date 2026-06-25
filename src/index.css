@@ -229,7 +229,7 @@
   --info-soft-bg: rgba(109, 90, 64, 0.16);
 
   --accent-strong: #8a5220;
-  --on-accent: #fbf3e2;
+  --on-accent: #ffffff;
   --scrollbar-thumb: rgba(92, 72, 44, 0.30);
   --scrollbar-thumb-hover: rgba(92, 72, 44, 0.48);
 
@@ -572,8 +572,10 @@ input[type="range"]::-webkit-slider-thumb:hover {
   transform: none;
 }
 
-/* Utility: card hover-lift used by interactive surfaces (auto-disabled in lite) */
+/* Utility: card hover-lift used by interactive surfaces (auto-disabled in lite).
+   Sets its own base shadow so the :hover elevation isn't overridden by inline styles. */
 .card-lift {
+  box-shadow: var(--shadow-card);
   transition: box-shadow 0.2s var(--ease-spring), transform 0.2s var(--ease-spring), border-color 0.2s var(--ease-spring);
 }
 .card-lift:hover {
@@ -584,6 +586,6 @@ input[type="range"]::-webkit-slider-thumb:hover {
   transition: none !important;
 }
 :root[data-render-mode='lite'] .card-lift:hover {
-  box-shadow: none;
+  box-shadow: var(--shadow-card);
   transform: none;
 }
