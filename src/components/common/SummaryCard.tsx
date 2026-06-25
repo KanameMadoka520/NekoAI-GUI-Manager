@@ -17,10 +17,10 @@ export function SummaryCard({ label, value, hint, tone = 'neutral', valueClassNa
           : 'text-[var(--text-primary)]';
 
   return (
-    <div className="perf-summary-card rounded-[var(--radius)] border border-[var(--border-subtle)] px-4 py-3" style={{ background: 'var(--surface-card)', boxShadow: 'var(--shadow-card)' }}>
-      <p className="text-[10px] text-[var(--text-muted)]">{label}</p>
-      <p className={`mt-1 text-sm font-medium truncate ${toneClass} ${valueClassName}`.trim()}>{value}</p>
-      <p className="mt-1 text-[11px] text-[var(--text-muted)]">{hint}</p>
+    <div className="perf-summary-card card-lift rounded-[var(--radius)] border border-[var(--border-subtle)] px-4 py-3.5" style={{ background: 'var(--surface-card)', boxShadow: 'var(--shadow-card)' }}>
+      <p className="text-xs text-[var(--text-muted)] tracking-wide">{label}</p>
+      <p className={`mt-1.5 text-sm font-semibold truncate tabular-nums ${toneClass} ${valueClassName}`.trim()}>{value}</p>
+      <p className="mt-1 text-xs text-[var(--text-muted)] leading-relaxed">{hint}</p>
     </div>
   );
 }
@@ -41,10 +41,10 @@ export function MiniInfo({ label, value, tone = 'info', trailing }: {
           : 'text-[var(--text-primary)]';
 
   return (
-    <div className="perf-summary-card rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 py-2">
-      <p className="text-[10px] text-[var(--text-muted)]">{label}</p>
+    <div className="perf-summary-card rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 py-2.5">
+      <p className="text-xs text-[var(--text-muted)] tracking-wide">{label}</p>
       <div className="mt-1 flex items-center justify-between gap-2">
-        <p className={`text-sm font-medium ${toneClass}`}>{value}</p>
+        <p className={`text-sm font-semibold tabular-nums ${toneClass}`}>{value}</p>
         {trailing}
       </div>
     </div>

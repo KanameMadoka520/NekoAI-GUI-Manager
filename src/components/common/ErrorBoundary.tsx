@@ -25,19 +25,19 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.error) {
       return (
         <div className="flex items-center justify-center h-full w-full">
-          <div className="w-[480px] rounded-[var(--radius)] p-8 text-center border border-[var(--border-subtle)]" style={{ background: 'var(--surface-card)', boxShadow: 'var(--shadow-card)' }}>
+          <div className="w-[480px] max-w-[90vw] rounded-[var(--radius-lg)] p-8 text-center border border-[var(--border-subtle)]" style={{ background: 'var(--surface-card)', boxShadow: 'var(--shadow-pop)' }}>
             <span className="text-5xl block mb-4">😿</span>
             <h2 className="text-lg font-bold text-[var(--text-primary)] mb-2">界面出错了</h2>
             <p className="text-sm text-[var(--text-secondary)] mb-4">
               别担心，你的数据不受影响。
             </p>
-            <div className="text-left mb-4 px-3 py-2 rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)]">
+            <div className="text-left mb-4 px-3 py-2 rounded-[var(--radius-sm)] bg-[var(--error-soft-bg)] border border-[var(--error-soft-border)]">
               <p className="text-xs text-[var(--error)] mono break-all">{this.state.error.message}</p>
             </div>
             <div className="flex gap-3 justify-center">
               <button
                 onClick={() => this.setState({ error: null })}
-                className="px-4 py-2 text-sm rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-white hover:opacity-90 transition-colors cursor-pointer"
+                className="px-4 py-2 text-sm rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-[var(--on-accent)] hover:opacity-90 transition-colors cursor-pointer"
               >
                 重试
               </button>

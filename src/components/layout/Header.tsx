@@ -15,8 +15,8 @@ export function Header({ title, subtitle, actions }: HeaderProps) {
     >
       <div className="flex items-center gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-[var(--text-primary)] leading-tight">{title}</h2>
-          {subtitle && <p className="text-[11px] text-[var(--text-muted)]">{subtitle}</p>}
+          <h2 className="text-lg font-semibold text-[var(--text-primary)] leading-tight tracking-[0.01em]">{title}</h2>
+          {subtitle && <p className="text-xs text-[var(--text-muted)] mt-0.5">{subtitle}</p>}
         </div>
       </div>
       {actions && <div className="flex items-center gap-2">{actions}</div>}

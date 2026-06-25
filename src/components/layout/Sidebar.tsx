@@ -101,11 +101,11 @@ export function Sidebar({ activePage, onNavigate, onChangeDir, onOpenSettings, o
             style={{ transition: 'background-color 0.18s var(--ease-spring), color 0.18s var(--ease-spring), border-color 0.18s var(--ease-spring), opacity 0.18s var(--ease-spring)' }}
           >
             {activePage === item.id && !collapsed && (
-              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-4 bg-[var(--accent-purple)]" />
+              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-[var(--accent-purple)] rounded-r-[var(--radius-pill)]" />
             )}
             <span className="text-lg leading-none">{item.icon}</span>
             {!collapsed && <span className="flex-1 text-left">{item.label}</span>}
-            {!collapsed && <span className="text-[10px] text-[var(--text-muted)] opacity-50">^{item.shortcut}</span>}
+            {!collapsed && <span className="text-[10px] text-[var(--text-muted)] opacity-50 mono">^{item.shortcut}</span>}
           </button>
         ))}
       </nav>
