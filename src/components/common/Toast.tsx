@@ -19,11 +19,11 @@ export function ToastContainer() {
         return (
           <div
             key={t.id}
-            className="flex items-center gap-3 px-4 py-3 rounded-[var(--radius-sm)] animate-[slideIn_0.2s_ease-out] border border-[var(--border-subtle)]"
+            className="flex items-center gap-3 px-4 py-3 rounded-[var(--radius)] animate-[slideIn_0.2s_var(--ease-spring)] border border-[var(--border-subtle)]"
             style={{
               background: style.bg,
               color: style.text,
-              boxShadow: 'var(--shadow-card)',
+              boxShadow: 'var(--shadow-pop)',
             }}
           >
             <span className="font-bold text-sm">{style.icon}</span>

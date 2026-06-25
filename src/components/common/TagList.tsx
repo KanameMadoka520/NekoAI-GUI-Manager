@@ -26,7 +26,7 @@ export function TagList({ tags, onChange, placeholder = '输入后按回车添�
       {tags.map((tag) => (
         <span
           key={tag}
-          className="flex items-center gap-1 px-2 py-0.5 text-xs rounded-full bg-[rgba(14,165,233,0.15)] text-[var(--accent-purple)] border border-[var(--border-glow)]"
+          className="flex items-center gap-1 px-2.5 py-0.5 text-xs rounded-[var(--radius-pill)] bg-[var(--accent-soft-bg)] text-[var(--accent-purple)] border border-[var(--accent-soft-border)]"
         >
           {tag}
           <button

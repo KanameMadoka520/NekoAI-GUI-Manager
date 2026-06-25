@@ -40,6 +40,24 @@
   --error-soft-bg: rgba(239, 68, 68, 0.14);
   --info-soft-bg: rgba(59, 130, 246, 0.14);
 
+  /* Semantic soft surfaces — derived from semantic colors via color-mix so
+     they automatically track each theme's --success/--warning/--error/--info
+     and the active accent. Replaces scattered hardcoded rgba across pages. */
+  --success-soft-bg: color-mix(in srgb, var(--success) 14%, transparent);
+  --success-soft-border: color-mix(in srgb, var(--success) 40%, transparent);
+  --warning-soft-bg: color-mix(in srgb, var(--warning) 16%, transparent);
+  --warning-soft-border: color-mix(in srgb, var(--warning) 42%, transparent);
+  --error-soft-border: color-mix(in srgb, var(--error) 42%, transparent);
+  --info-soft-border: color-mix(in srgb, var(--info) 42%, transparent);
+  --accent-soft-bg: color-mix(in srgb, var(--accent-purple) 12%, transparent);
+  --accent-soft-border: color-mix(in srgb, var(--accent-purple) 40%, transparent);
+
+  /* Stronger accent for hover, and readable foreground on accent fills */
+  --accent-strong: #2563eb;
+  --on-accent: #ffffff;
+  --scrollbar-thumb: rgba(20, 34, 56, 0.22);
+  --scrollbar-thumb-hover: rgba(20, 34, 56, 0.38);
+
   --chart-1: #3b82f6;
   --chart-2: #6366f1;
   --chart-3: #0ea5e9;
@@ -66,14 +84,17 @@
   --paper-grain: none;
   --paper-grain-opacity: 0;
 
-  --shadow-card: 0 3px 12px rgba(14, 30, 55, 0.07);
-  --shadow-panel: 1px 0 10px rgba(15, 30, 55, 0.06);
+  --shadow-card: 0 1px 2px rgba(14, 30, 55, 0.06), 0 4px 16px rgba(14, 30, 55, 0.08);
+  --shadow-panel: 1px 0 14px rgba(15, 30, 55, 0.07);
   --shadow-3d: var(--shadow-card);
-  --shadow-3d-hover: 0 10px 20px rgba(14, 30, 55, 0.10);
+  --shadow-3d-hover: 0 2px 6px rgba(14, 30, 55, 0.10), 0 14px 32px rgba(14, 30, 55, 0.14);
   --shadow-inset: inset 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-pop: 0 12px 40px rgba(14, 30, 55, 0.18), 0 2px 8px rgba(14, 30, 55, 0.10);
 
-  --radius: 6px;
-  --radius-sm: 4px;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
 
   --header-blur: 10px;
   --sidebar-blur: 14px;
@@ -121,6 +142,11 @@
   --error-soft-bg: rgba(248, 113, 113, 0.18);
   --info-soft-bg: rgba(96, 165, 250, 0.18);
 
+  --accent-strong: #93b8ff;
+  --on-accent: #0b1220;
+  --scrollbar-thumb: rgba(255, 255, 255, 0.18);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.32);
+
   --chart-1: #7aa2ff;
   --chart-2: #9b8cff;
   --chart-3: #60a5fa;
@@ -147,14 +173,17 @@
   --paper-grain: none;
   --paper-grain-opacity: 0;
 
-  --shadow-card: 0 4px 14px rgba(0, 0, 0, 0.35);
-  --shadow-panel: 1px 0 14px rgba(0, 0, 0, 0.4);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.30), 0 6px 20px rgba(0, 0, 0, 0.40);
+  --shadow-panel: 1px 0 16px rgba(0, 0, 0, 0.45);
   --shadow-3d: var(--shadow-card);
-  --shadow-3d-hover: 0 10px 24px rgba(0, 0, 0, 0.45);
+  --shadow-3d-hover: 0 2px 8px rgba(0, 0, 0, 0.40), 0 16px 36px rgba(0, 0, 0, 0.52);
   --shadow-inset: inset 0 1px 2px rgba(0, 0, 0, 0.25);
+  --shadow-pop: 0 16px 48px rgba(0, 0, 0, 0.55), 0 2px 10px rgba(0, 0, 0, 0.40);
 
-  --radius: 6px;
-  --radius-sm: 4px;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
 
   --header-blur: 8px;
   --sidebar-blur: 12px;
@@ -199,6 +228,11 @@
   --error-soft-bg: rgba(169, 74, 57, 0.16);
   --info-soft-bg: rgba(109, 90, 64, 0.16);
 
+  --accent-strong: #8a5220;
+  --on-accent: #fbf3e2;
+  --scrollbar-thumb: rgba(92, 72, 44, 0.30);
+  --scrollbar-thumb-hover: rgba(92, 72, 44, 0.48);
+
   --chart-1: #a26329;
   --chart-2: #8b5a2b;
   --chart-3: #6d5a40;
@@ -224,11 +258,14 @@
   --shadow-card: 0 2px 0 rgba(132, 101, 58, 0.18), 0 8px 18px rgba(83, 60, 28, 0.18);
   --shadow-panel: 1px 0 0 rgba(132, 101, 58, 0.2), 4px 0 10px rgba(83, 60, 28, 0.12);
   --shadow-3d: var(--shadow-card);
-  --shadow-3d-hover: 0 3px 0 rgba(132, 101, 58, 0.24), 0 12px 20px rgba(83, 60, 28, 0.2);
+  --shadow-3d-hover: 0 3px 0 rgba(132, 101, 58, 0.24), 0 14px 26px rgba(83, 60, 28, 0.22);
   --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  --shadow-pop: 0 3px 0 rgba(132, 101, 58, 0.24), 0 18px 44px rgba(83, 60, 28, 0.26);
 
-  --radius: 6px;
-  --radius-sm: 4px;
+  --radius: 11px;
+  --radius-sm: 7px;
+  --radius-lg: 15px;
+  --radius-pill: 999px;
 
   --header-blur: 0px;
   --sidebar-blur: 0px;
@@ -250,6 +287,7 @@
   --shadow-3d: none;
   --shadow-3d-hover: none;
   --shadow-inset: none;
+  --shadow-pop: none;
   --paper-grain: none;
   --paper-grain-opacity: 0;
 }
@@ -296,6 +334,10 @@ body {
   overflow: hidden;
   position: relative;
   line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: 'tnum' 1, 'cv01' 1;
 }
 
 button,
@@ -318,30 +360,46 @@ code, pre, .mono {
   font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
 }
 
-/* Scrollbar — subtle, appears on hover */
-::-webkit-scrollbar { width: 6px; height: 6px; }
+/* Scrollbar — subtle, theme-aware, appears on hover */
+::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: transparent; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.2); }
+::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: var(--radius-pill);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background-color 0.2s var(--ease-spring);
+}
+::-webkit-scrollbar-thumb:hover { background-color: var(--scrollbar-thumb-hover); background-clip: padding-box; }
 *:hover > ::-webkit-scrollbar-thumb,
-*:hover::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.12); }
+*:hover::-webkit-scrollbar-thumb { background-color: var(--scrollbar-thumb); background-clip: padding-box; }
+* { scrollbar-width: thin; scrollbar-color: var(--scrollbar-thumb) transparent; }
 
 /* ===== Global input / interactive enhancements ===== */
 input:not([type="range"]):focus,
 select:focus,
 textarea:focus {
   border-color: var(--accent-purple) !important;
-  box-shadow: 0 0 0 2px var(--focus-ring);
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
-/* Buttons: spring transition */
+/* Visible keyboard focus for interactive controls */
+button:focus-visible,
+a:focus-visible,
+[role="switch"]:focus-visible,
+[role="button"]:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+/* Buttons: spring transition (GPU-friendly props only) */
 button {
   transition-property: background-color, border-color, color, opacity, box-shadow, transform;
-  transition-duration: 0.2s;
+  transition-duration: 0.18s;
   transition-timing-function: var(--ease-spring);
 }
 button:active {
-  transform: scale(0.985);
+  transform: scale(0.97);
 }
 
 :root[data-render-mode='lite'] button:active {
@@ -350,20 +408,35 @@ button:active {
 
 /* ===== Animations ===== */
 @keyframes pulse-accent {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.3); }
-  50% { box-shadow: 0 0 12px 4px rgba(14, 165, 233, 0.15); }
+  0%, 100% { box-shadow: 0 0 0 0 var(--focus-ring); }
+  50% { box-shadow: 0 0 14px 4px var(--accent-soft-bg); }
 }
 @keyframes glow-ring {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5); }
-  50% { box-shadow: 0 0 8px 3px rgba(16, 185, 129, 0.25); }
+  0%, 100% { box-shadow: 0 0 0 0 var(--success-soft-border); }
+  50% { box-shadow: 0 0 10px 3px var(--success-soft-bg); }
 }
 @keyframes slideIn {
   from { opacity: 0; transform: translateX(16px); }
   to { opacity: 1; transform: translateX(0); }
 }
 @keyframes fadeIn {
-  from { opacity: 0; transform: scale(0.95) translateY(8px); }
+  from { opacity: 0; transform: scale(0.97) translateY(8px); }
   to { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes modalPop {
+  from { opacity: 0; transform: scale(0.96) translateY(12px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+/* Save-button "unsaved changes" hint — soft accent breathing ring */
+@keyframes pulseDirty {
+  0%, 100% { box-shadow: 0 0 0 0 var(--focus-ring); }
+  50% { box-shadow: 0 0 0 4px var(--accent-soft-bg); }
+}
+.pulse-dirty {
+  animation: pulseDirty 2s var(--ease-spring) infinite;
+}
+:root[data-render-mode='lite'] .pulse-dirty {
+  animation: none !important;
 }
 @keyframes ambientFloat {
   0% {
@@ -485,6 +558,32 @@ input[type="range"]::-webkit-slider-thumb {
   border-radius: 50%;
   background: var(--accent-purple);
   cursor: pointer;
-  border: 2px solid white;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  border: 2px solid var(--surface-card);
+  box-shadow: var(--shadow-card);
+  transition: transform 0.15s var(--ease-spring), box-shadow 0.15s var(--ease-spring);
+}
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+:root[data-render-mode='lite'] input[type="range"]::-webkit-slider-thumb {
+  transition: none;
+}
+:root[data-render-mode='lite'] input[type="range"]::-webkit-slider-thumb:hover {
+  transform: none;
+}
+
+/* Utility: card hover-lift used by interactive surfaces (auto-disabled in lite) */
+.card-lift {
+  transition: box-shadow 0.2s var(--ease-spring), transform 0.2s var(--ease-spring), border-color 0.2s var(--ease-spring);
+}
+.card-lift:hover {
+  box-shadow: var(--shadow-3d-hover);
+  transform: translateY(-2px);
+}
+:root[data-render-mode='lite'] .card-lift {
+  transition: none !important;
+}
+:root[data-render-mode='lite'] .card-lift:hover {
+  box-shadow: none;
+  transform: none;
 }

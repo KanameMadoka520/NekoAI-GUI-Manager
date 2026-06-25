@@ -8,16 +8,16 @@ interface StatCardProps {
 export function StatCard({ label, value, color = 'var(--accent-purple)', icon }: StatCardProps) {
   return (
     <div
-      className="perf-stat-card relative rounded-[var(--radius)] p-5 flex flex-col gap-2 overflow-hidden transition-all duration-200 border border-[var(--border-subtle)]"
+      className="perf-stat-card card-lift relative rounded-[var(--radius)] p-5 flex flex-col gap-2 overflow-hidden border border-[var(--border-subtle)]"
       style={{ background: 'var(--surface-card)', boxShadow: 'var(--shadow-card)' }}
     >
       {/* Accent left bar */}
-      <div className="absolute top-3 left-0 bottom-3 w-[3px] rounded-r-full" style={{ background: color }} />
+      <div className="absolute top-3 left-0 bottom-3 w-[3px] rounded-r-[var(--radius-pill)]" style={{ background: color }} />
       <div className="flex items-center justify-between pl-3">
-        <span className="text-xs text-[var(--text-muted)] font-medium">{label}</span>
+        <span className="text-xs text-[var(--text-muted)] font-medium tracking-wide">{label}</span>
         {icon && <span className="text-lg opacity-60">{icon}</span>}
       </div>
-      <span className="text-2xl font-bold pl-3" style={{ color }}>{value}</span>
+      <span className="text-2xl font-bold pl-3 tabular-nums" style={{ color }}>{value}</span>
     </div>
   );
 }
