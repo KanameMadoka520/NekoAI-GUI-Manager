@@ -563,7 +563,7 @@ export function HistoryViewer() {
               onClick={() => setViewMode(mode)}
               className={`px-3 py-1.5 text-xs rounded-[var(--radius-sm)] border transition-colors cursor-pointer
                 ${viewMode === mode
-                  ? 'bg-[var(--accent-purple)] text-white border-transparent'
+                  ? 'bg-[var(--accent-purple)] text-[var(--on-accent)] border-transparent'
                   : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
                 }`}
             >
@@ -628,7 +628,7 @@ export function HistoryViewer() {
               <div className="flex-1 min-w-[260px]">
                 <SearchBar value={searchQuery} onChange={setSearchQuery} onEnter={doSearch} placeholder="输入关键词后回车，或者点右侧按钮开始搜索...">
                   <select value={searchType} onChange={(e) => setSearchType(e.target.value)}
-                    className="px-2 py-1 text-xs bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded text-[var(--text-secondary)] outline-none cursor-pointer">
+                    className="px-2 py-1 text-xs bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] text-[var(--text-secondary)] outline-none cursor-pointer">
                     <option value="">全部类型</option>
                     <option value="group">群聊</option>
                     <option value="private">私聊</option>
@@ -636,7 +636,7 @@ export function HistoryViewer() {
                 </SearchBar>
               </div>
               <button onClick={doSearch} disabled={searching}
-                className="px-3 py-1.5 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-white hover:opacity-90 transition-colors cursor-pointer whitespace-nowrap shrink-0 disabled:opacity-60">
+                className="px-3 py-1.5 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-[var(--on-accent)] hover:opacity-90 transition-colors cursor-pointer whitespace-nowrap shrink-0 disabled:opacity-60">
                 {searching ? '搜索中...' : '搜索'}
               </button>
               <button
@@ -649,7 +649,7 @@ export function HistoryViewer() {
 
             <div className="mt-3 flex flex-wrap items-center gap-2">
               {searchStateSummary.length > 0 ? searchStateSummary.map((item) => (
-                <span key={item} className="px-2 py-1 text-[10px] rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)]">
+                <span key={item} className="px-2 py-1 text-[10px] rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)]">
                   {item}
                 </span>
               )) : (
@@ -712,7 +712,7 @@ export function HistoryViewer() {
                           <button
                             key={model}
                             onClick={() => toggleSearchModel(model)}
-                            className={`px-2 py-1 text-[10px] rounded border transition-colors cursor-pointer ${searchModels.has(model) ? 'bg-[var(--nav-active-bg)] border-[var(--accent-purple)] text-[var(--accent-purple)]' : 'bg-[var(--bg-elevated)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+                            className={`px-2 py-1 text-[10px] rounded-[var(--radius-sm)] border transition-colors cursor-pointer ${searchModels.has(model) ? 'bg-[var(--nav-active-bg)] border-[var(--accent-purple)] text-[var(--accent-purple)]' : 'bg-[var(--bg-elevated)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
                           >
                             {model}
                           </button>
@@ -731,7 +731,7 @@ export function HistoryViewer() {
                           <button
                             key={cat}
                             onClick={() => toggleSearchErrorCategory(cat)}
-                            className={`px-2 py-1 text-[10px] rounded border transition-colors cursor-pointer ${searchErrorCategories.has(cat) ? 'bg-[var(--error-soft-bg)] border-[var(--error)] text-[var(--error)]' : 'bg-[var(--bg-elevated)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+                            className={`px-2 py-1 text-[10px] rounded-[var(--radius-sm)] border transition-colors cursor-pointer ${searchErrorCategories.has(cat) ? 'bg-[var(--error-soft-bg)] border-[var(--error)] text-[var(--error)]' : 'bg-[var(--bg-elevated)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
                           >
                             {cat}
                           </button>
@@ -778,7 +778,7 @@ export function HistoryViewer() {
                       />
                       <button
                         onClick={saveCurrentPreset}
-                        className="px-2.5 py-1.5 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-white hover:opacity-90 transition-colors cursor-pointer"
+                        className="px-2.5 py-1.5 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-[var(--on-accent)] hover:opacity-90 transition-colors cursor-pointer"
                       >
                         存成方案
                       </button>
@@ -801,7 +801,7 @@ export function HistoryViewer() {
                             </button>
                             <button
                               onClick={() => deletePreset(preset.id)}
-                              className="px-2 py-1.5 text-xs rounded-[var(--radius-sm)] bg-[rgba(255,82,82,0.12)] text-[var(--error)] hover:bg-[rgba(255,82,82,0.2)] transition-colors cursor-pointer"
+                              className="px-2 py-1.5 text-xs rounded-[var(--radius-sm)] bg-[var(--error-soft-bg)] text-[var(--error)] hover:bg-[color-mix(in_srgb,var(--error)_28%,transparent)] transition-colors cursor-pointer"
                             >
                               删除
                             </button>
@@ -866,7 +866,7 @@ export function HistoryViewer() {
             <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
               <span>每页</span>
               <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(0); }}
-                className="px-1.5 py-0.5 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded text-[var(--text-secondary)] outline-none cursor-pointer">
+                className="px-1.5 py-0.5 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] text-[var(--text-secondary)] outline-none cursor-pointer">
                 {PAGE_SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
               <span className="text-[var(--text-muted)]">
@@ -875,20 +875,20 @@ export function HistoryViewer() {
             </div>
             <div className="flex items-center gap-1.5">
               <button onClick={() => setPage(0)} disabled={page === 0}
-                className="px-2 py-1 text-xs rounded bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-30 cursor-pointer">
+                className="px-2 py-1 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-30 cursor-pointer">
                 ◀◀
               </button>
               <button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}
-                className="px-2 py-1 text-xs rounded bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-30 cursor-pointer">
+                className="px-2 py-1 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-30 cursor-pointer">
                 ◀
               </button>
               <span className="text-xs text-[var(--text-muted)] mono">{page + 1}/{totalPages}</span>
               <button onClick={() => setPage(Math.min(totalPages - 1, page + 1))} disabled={page >= totalPages - 1}
-                className="px-2 py-1 text-xs rounded bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-30 cursor-pointer">
+                className="px-2 py-1 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-30 cursor-pointer">
                 ▶
               </button>
               <button onClick={() => setPage(totalPages - 1)} disabled={page >= totalPages - 1}
-                className="px-2 py-1 text-xs rounded bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-30 cursor-pointer">
+                className="px-2 py-1 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-30 cursor-pointer">
                 ▶▶
               </button>
             </div>
@@ -944,12 +944,12 @@ function TimelineSidebar({ entries, currentPage, pageSize, onJump }: {
             <button
               key={e.index}
               onClick={() => onJump(e.index)}
-              className={`w-full flex items-center gap-1 px-1 py-[2px] rounded transition-colors cursor-pointer
+              className={`w-full flex items-center gap-1 px-1 py-[2px] rounded-[var(--radius-sm)] transition-colors cursor-pointer
                 ${inView ? 'bg-[var(--nav-active-bg)]' : 'hover:bg-[var(--bg-elevated)]'}`}
               title={`#${e.index} ${e.model} ${e.time}`}
             >
               <span
-                className={`w-2 h-2 rounded-full flex-shrink-0 ${e.isError ? 'ring-1 ring-[var(--error)]' : ''}`}
+                className={`w-2 h-2 rounded-[var(--radius-pill)] flex-shrink-0 ${e.isError ? 'ring-1 ring-[var(--error)]' : ''}`}
                 style={{ background: e.isError ? 'var(--error)' : e.color }}
               />
               <span className="text-[9px] text-[var(--text-muted)] truncate mono">{e.time}</span>
@@ -1015,7 +1015,7 @@ function UserView({ groups, renderMd }: { groups: [string, HistoryEntry[]][]; re
               <span className="text-[var(--text-primary)] font-medium">{user}</span>
               <div className="flex items-center gap-2">
                 {errorCount > 0 && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--error-soft-bg)] text-[var(--error)]">
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-sm)] bg-[var(--error-soft-bg)] text-[var(--error)]">
                     {errorCount} 错误
                   </span>
                 )}
@@ -1065,7 +1065,7 @@ function ErrorAnalysisView({ entries, errorCategories, modelErrors, renderMd }: 
               onClick={() => setFilterCat(null)}
               className={`px-3 py-1.5 text-xs rounded-[var(--radius-sm)] transition-colors cursor-pointer border
                 ${filterCat === null
-                  ? 'bg-[var(--accent-purple)] text-white border-[var(--accent-purple)]'
+                  ? 'bg-[var(--accent-purple)] text-[var(--on-accent)] border-[var(--accent-purple)]'
                   : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:text-[var(--text-primary)]'
                 }`}
             >
@@ -1095,11 +1095,11 @@ function ErrorAnalysisView({ entries, errorCategories, modelErrors, renderMd }: 
           <div className="space-y-2">
             {modelErrors.map((m) => (
               <div key={m.name} className="flex items-center gap-3 text-xs">
-                <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: m.color }} />
+                <span className="w-2.5 h-2.5 rounded-[var(--radius-pill)] flex-shrink-0" style={{ background: m.color }} />
                 <span className="w-36 text-[var(--text-secondary)] truncate">{m.name}</span>
-                <div className="flex-1 h-2 rounded-full bg-[var(--bg-elevated)] overflow-hidden">
+                <div className="flex-1 h-2 rounded-[var(--radius-pill)] bg-[var(--bg-elevated)] overflow-hidden">
                   <div
-                    className="h-full rounded-full transition-all"
+                    className="h-full rounded-[var(--radius-pill)] transition-all"
                     style={{
                       width: `${m.rate}%`,
                       background:
@@ -1167,7 +1167,7 @@ function SearchView({ results, renderMd }: { results: SearchResult[]; renderMd: 
           >
             <span className="text-[var(--text-primary)] mono text-xs">{r.filename}</span>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--accent-purple)] text-white">{r.entries.length}</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-[var(--on-accent)]">{r.entries.length}</span>
               <span className="text-xs text-[var(--text-muted)]">{expanded.has(r.filename) ? '▼' : '▶'}</span>
             </div>
           </button>
@@ -1214,7 +1214,7 @@ function ChatBubble({ entry, renderMd: _renderMd, compact, showErrorCategory, en
             )}
             <span className="text-[10px] text-[var(--text-muted)]">{formatTime(e.timestamp)}</span>
             <span className="text-[10px] text-[var(--info)]">{e.username || e.userId || '?'}</span>
-            <span className="text-[10px] px-1 rounded bg-[var(--info-soft-bg)] text-[var(--info)]">
+            <span className="text-[10px] px-1 rounded-[var(--radius-sm)] bg-[var(--info-soft-bg)] text-[var(--info)]">
               {e.type === 'group' ? '群' : '私'}
             </span>
           </div>
@@ -1228,9 +1228,9 @@ function ChatBubble({ entry, renderMd: _renderMd, compact, showErrorCategory, en
       <div className="flex justify-start">
         <div className="max-w-[75%]">
           <div className="flex items-center gap-2 mb-0.5">
-            <span className="text-[10px] px-1 rounded bg-[var(--nav-active-bg)] text-[var(--accent-purple)]">AI</span>
+            <span className="text-[10px] px-1 rounded-[var(--radius-sm)] bg-[var(--nav-active-bg)] text-[var(--accent-purple)]">AI</span>
             {e.modelName && (
-              <span className="text-[10px] mono px-1 rounded" style={{ color: modelColor, background: `${modelColor}15` }}>
+              <span className="text-[10px] mono px-1 rounded-[var(--radius-sm)]" style={{ color: modelColor, background: `color-mix(in srgb, ${modelColor} 12%, transparent)` }}>
                 {e.modelName}
               </span>
             )}

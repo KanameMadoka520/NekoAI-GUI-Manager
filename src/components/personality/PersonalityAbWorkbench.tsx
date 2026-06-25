@@ -232,7 +232,7 @@ export function PersonalityAbWorkbench({ groupList, privateList, runtimeApiIndex
             <button
               onClick={runTest}
               disabled={running || !selectedApi || personalities.length === 0}
-              className={`px-4 py-2 text-sm rounded-[var(--radius-sm)] font-medium transition-colors cursor-pointer ${running || !selectedApi || personalities.length === 0 ? 'bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed' : 'bg-[var(--accent-purple)] text-white hover:opacity-90'}`}
+              className={`px-4 py-2 text-sm rounded-[var(--radius-sm)] font-medium transition-colors cursor-pointer ${running || !selectedApi || personalities.length === 0 ? 'bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed' : 'bg-[var(--accent-purple)] text-[var(--on-accent)] hover:opacity-90'}`}
             >
               {running ? '⏳ 测试中...' : '▶ 运行 A/B 测试'}
             </button>
@@ -300,7 +300,7 @@ export function PersonalityAbWorkbench({ groupList, privateList, runtimeApiIndex
                       e.stopPropagation();
                       setDeleteTarget(item);
                     }}
-                    className="px-2 py-1 text-[10px] rounded border border-[var(--error)] text-[var(--error)] bg-[rgba(255,82,82,0.08)] hover:bg-[rgba(255,82,82,0.18)] transition-colors cursor-pointer"
+                    className="px-2 py-1 text-[10px] rounded-[var(--radius-sm)] border border-[var(--error-soft-border)] text-[var(--error)] bg-[var(--error-soft-bg)] hover:bg-[color-mix(in_srgb,var(--error)_28%,transparent)] transition-colors cursor-pointer"
                     title="删除测试记录"
                   >
                     删除
@@ -343,7 +343,7 @@ function ResultCard({ title, candidate, outcome }: {
           <p className="mt-1 text-[11px] text-[var(--text-muted)]">{candidate ? `#${candidate.index} ${candidate.remark} · ${candidate.prompt.length} 字符` : '尚未执行测试'}</p>
         </div>
         {outcome ? (
-          <span className={`text-[10px] px-2 py-1 rounded ${outcome.ok ? 'bg-[rgba(0,230,118,0.12)] text-[var(--success)]' : 'bg-[rgba(255,82,82,0.12)] text-[var(--error)]'}`}>
+          <span className={`text-[10px] px-2 py-1 rounded-[var(--radius-pill)] ${outcome.ok ? 'bg-[var(--success-soft-bg)] text-[var(--success)]' : 'bg-[var(--error-soft-bg)] text-[var(--error)]'}`}>
             {outcome.ok ? '成功' : '失败'}
           </span>
         ) : null}

@@ -118,11 +118,11 @@ export function Dashboard() {
       {lowPerformanceMode ? (
         <Panel title="快速概览" subtitle="低性能模式下先显示轻量摘要，减少顶部卡片和大字号数值一起参与首屏绘制。" icon="⚡" padding="sm">
           <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--text-secondary)]">
-            <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">API 节点 {apis.length}</span>
-            <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">活跃 #{runtime?.activeApiIndex ?? '-'}</span>
-            <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">记忆会话 {totalMemorySessions}</span>
-            <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">记忆消息 {totalMessages}</span>
-            <span className={`px-2 py-1 rounded border ${runtimeSchema ? 'border-[var(--border-subtle)] bg-[var(--bg-elevated)]' : 'border-[rgba(255,171,64,0.35)] bg-[rgba(255,171,64,0.08)] text-[var(--warning)]'}`}>
+            <span className="px-2 py-1 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">API 节点 {apis.length}</span>
+            <span className="px-2 py-1 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">活跃 #{runtime?.activeApiIndex ?? '-'}</span>
+            <span className="px-2 py-1 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">记忆会话 {totalMemorySessions}</span>
+            <span className="px-2 py-1 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">记忆消息 {totalMessages}</span>
+            <span className={`px-2 py-1 rounded-[var(--radius-sm)] border ${runtimeSchema ? 'border-[var(--border-subtle)] bg-[var(--bg-elevated)]' : 'border-[var(--warning-soft-border)] bg-[var(--warning-soft-bg)] text-[var(--warning)]'}`}>
               Schema {runtimeSchema ? `v${runtimeSchema.schemaVersion}` : '缺失'}
             </span>
             <div className="flex-1" />
@@ -146,11 +146,11 @@ export function Dashboard() {
 
       <div className="rounded-[var(--radius)] border border-[var(--border-subtle)] px-4 py-3" style={{ background: 'var(--surface-card)', boxShadow: 'var(--shadow-card)' }}>
         <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--text-secondary)]">
-          <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">监听群组 {runtime?.groups?.length ?? 0}</span>
-          <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">群聊人格 {groupPersonalities.length}</span>
-          <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">私聊人格 {privatePersonalities.length}</span>
-          <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">Schema {runtimeSchema ? `v${runtimeSchema.schemaVersion}` : '缺失'}</span>
-          <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">配置文件检查 {systemInfo?.files?.length ?? 0}</span>
+          <span className="px-2 py-1 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">监听群组 {runtime?.groups?.length ?? 0}</span>
+          <span className="px-2 py-1 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">群聊人格 {groupPersonalities.length}</span>
+          <span className="px-2 py-1 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">私聊人格 {privatePersonalities.length}</span>
+          <span className="px-2 py-1 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">Schema {runtimeSchema ? `v${runtimeSchema.schemaVersion}` : '缺失'}</span>
+          <span className="px-2 py-1 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">配置文件检查 {systemInfo?.files?.length ?? 0}</span>
           <div className="flex-1" />
           <button
             onClick={loadAll}
@@ -216,7 +216,7 @@ export function Dashboard() {
                     {runtime.groups.map((g) => (
                       <span
                         key={g}
-                        className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-[var(--bg-elevated)] text-[var(--text-secondary)]"
+                        className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--bg-elevated)] text-[var(--text-secondary)]"
                       >
                         {g}
                         {runtime.groupLimits?.[g] !== undefined && <span className="text-[var(--warning)]" title={`限流: ${runtime.groupLimits[g]}`}>⏱</span>}
@@ -305,7 +305,7 @@ export function Dashboard() {
                         <td className="py-2 text-[var(--text-secondary)] mono text-xs">{f.filename}</td>
                         <td className="py-2">
                           <span className="inline-flex items-center gap-1.5 text-xs" style={{ color: f.exists ? 'var(--success)' : 'var(--error)' }}>
-                            <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: f.exists ? 'var(--success)' : 'var(--error)' }} />
+                            <span className="w-1.5 h-1.5 rounded-[var(--radius-pill)] inline-block" style={{ background: f.exists ? 'var(--success)' : 'var(--error)' }} />
                             {f.exists ? '可读取' : '缺失'}
                           </span>
                         </td>
@@ -328,13 +328,13 @@ function StatusRow({ label, value, badge, dot }: { label: string; value: string;
   return (
     <div className="flex items-center justify-between gap-3 text-sm">
       <span className="text-[var(--text-muted)] flex items-center gap-2">
-        {dot && <span className="w-2 h-2 rounded-full inline-block" style={{ background: dot }} />}
+        {dot && <span className="w-2 h-2 rounded-[var(--radius-pill)] inline-block" style={{ background: dot }} />}
         {label}
       </span>
       <span className="text-[var(--text-secondary)] flex items-center gap-2 text-right">
         {value}
         {badge && (
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--bg-elevated)] text-[var(--accent-purple)]">
+          <span className="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--accent-purple)]">
             {badge}
           </span>
         )}
@@ -352,8 +352,8 @@ function TypeCard({ type, count, total, color }: { type: string; count: number; 
         <span className="text-xs text-[var(--text-muted)]">{pct}%</span>
       </div>
       <span className="text-2xl font-bold text-[var(--text-primary)]">{count}</span>
-      <div className="mt-2 h-1.5 bg-[var(--bg-elevated)] rounded-full overflow-hidden">
-        <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: color }} />
+      <div className="mt-2 h-1.5 bg-[var(--bg-elevated)] rounded-[var(--radius-pill)] overflow-hidden">
+        <div className="h-full rounded-[var(--radius-pill)] transition-all duration-500" style={{ width: `${pct}%`, background: color }} />
       </div>
     </div>
   );

@@ -172,7 +172,7 @@ export function CommandManager() {
             </button>
             <button
               onClick={() => setConfirmBulkDelete(true)}
-              className="px-3 py-2 text-sm rounded-[var(--radius-sm)] bg-[rgba(255,82,82,0.15)] text-[var(--error)] hover:bg-[rgba(255,82,82,0.25)] transition-colors cursor-pointer"
+              className="px-3 py-2 text-sm rounded-[var(--radius-sm)] bg-[var(--error-soft-bg)] text-[var(--error)] hover:bg-[color-mix(in_srgb,var(--error)_28%,transparent)] transition-colors cursor-pointer"
             >
               删除选中 ({selected.size})
             </button>
@@ -188,7 +188,7 @@ export function CommandManager() {
           disabled={!dirty}
           className={`px-4 py-2 text-sm rounded-[var(--radius-sm)] font-medium transition-colors cursor-pointer
             ${dirty
-              ? 'bg-[var(--accent-purple)] text-white hover:opacity-90 pulse-dirty'
+              ? 'bg-[var(--accent-purple)] text-[var(--on-accent)] hover:opacity-90 pulse-dirty'
               : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed'
             }`}
         >
@@ -208,7 +208,7 @@ export function CommandManager() {
         />
         <button
           onClick={addCommand}
-          className="px-4 py-2 text-sm rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-white hover:opacity-90 transition-colors cursor-pointer"
+          className="px-4 py-2 text-sm rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-[var(--on-accent)] hover:opacity-90 transition-colors cursor-pointer"
         >
           添加
         </button>
@@ -226,7 +226,7 @@ export function CommandManager() {
               <div
                 key={cmd}
                 className={`flex items-center gap-3 px-5 py-2.5 text-sm border-b border-[var(--border-subtle)] last:border-0 hover:bg-[var(--bg-elevated)] transition-colors rounded-[var(--radius-sm)]
-                  ${selected.has(cmd) ? 'bg-[rgba(14,165,233,0.08)]' : ''}`}
+                  ${selected.has(cmd) ? 'bg-[var(--accent-soft-bg)]' : ''}`}
               >
                 <input
                   type="checkbox"

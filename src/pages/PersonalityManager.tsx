@@ -263,16 +263,16 @@ export function PersonalityManager() {
           <button
             onClick={save}
             disabled={!dirty}
-            className={`px-4 py-2 text-sm rounded-[var(--radius-sm)] font-medium transition-colors cursor-pointer ${dirty ? 'bg-[var(--accent-purple)] text-white hover:opacity-90 pulse-dirty' : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed'}`}
+            className={`px-4 py-2 text-sm rounded-[var(--radius-sm)] font-medium transition-colors cursor-pointer ${dirty ? 'bg-[var(--accent-purple)] text-[var(--on-accent)] hover:opacity-90 pulse-dirty' : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed'}`}
           >
             💾 保存
           </button>
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-          <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)]">群聊显示 {filteredGroup.length}/{groupList.length}</span>
-          <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)]">私聊显示 {filteredPrivate.length}/{privateList.length}</span>
-          {search.trim() ? <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)]">关键词：{search}</span> : null}
+          <span className="px-2 py-1 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)]">群聊显示 {filteredGroup.length}/{groupList.length}</span>
+          <span className="px-2 py-1 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)]">私聊显示 {filteredPrivate.length}/{privateList.length}</span>
+          {search.trim() ? <span className="px-2 py-1 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)]">关键词：{search}</span> : null}
           {dirty ? <span className="ml-auto text-[var(--warning)]">当前有未保存改动，确认没问题后再统一保存。</span> : <span className="ml-auto text-[var(--text-muted)]">一般做法是先改几项，再一起保存，比较不容易漏。</span>}
         </div>
 
@@ -382,7 +382,7 @@ export function PersonalityManager() {
             </button>
             <button
               onClick={saveEdit}
-              className="px-4 py-2 text-sm rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-white hover:opacity-90 transition-colors cursor-pointer"
+              className="px-4 py-2 text-sm rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-[var(--on-accent)] hover:opacity-90 transition-colors cursor-pointer"
             >
               确定
             </button>
@@ -427,7 +427,7 @@ function PersonalityColumn({ title, subtitle, icon, items, activeIndex, side, on
               <div
                 key={origIndex}
                 onClick={() => onEdit(side, origIndex)}
-                className={`rounded-[var(--radius-sm)] border transition-all duration-[300ms] cursor-pointer p-4 ${isActive ? 'border-[var(--accent-purple)] bg-[rgba(14,165,233,0.08)]' : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)] hover:border-[var(--border-hover)]'}`}
+                className={`rounded-[var(--radius-sm)] border transition-all duration-[300ms] cursor-pointer p-4 ${isActive ? 'border-[var(--accent-purple)] bg-[var(--accent-soft-bg)]' : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)] hover:border-[var(--border-hover)]'}`}
                 style={{ transitionTimingFunction: 'var(--ease-spring)' }}
               >
                 <div className="flex items-start justify-between gap-3 mb-2">
@@ -436,7 +436,7 @@ function PersonalityColumn({ title, subtitle, icon, items, activeIndex, side, on
                       <span className="text-xs font-mono text-[var(--text-muted)]">#{origIndex}</span>
                       <span className="text-sm font-medium text-[var(--text-primary)] truncate max-w-[320px]">{item.remark}</span>
                       {isActive && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--accent-purple)] text-white">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-pill)] bg-[var(--accent-purple)] text-[var(--on-accent)]">
                           当前使用
                         </span>
                       )}
@@ -449,7 +449,7 @@ function PersonalityColumn({ title, subtitle, icon, items, activeIndex, side, on
                     {!isActive && (
                       <button
                         onClick={() => onSetActive(side, origIndex)}
-                        className="text-[10px] px-2.5 py-1 rounded border border-[var(--success)] text-[var(--success)] bg-[rgba(0,230,118,0.08)] hover:bg-[rgba(0,230,118,0.18)] transition-colors cursor-pointer"
+                        className="text-[10px] px-2.5 py-1 rounded-[var(--radius-sm)] border border-[var(--success)] text-[var(--success)] bg-[var(--success-soft-bg)] hover:bg-[color-mix(in_srgb,var(--success)_24%,transparent)] transition-colors cursor-pointer"
                         title="设为活跃"
                       >
                         启用
@@ -457,14 +457,14 @@ function PersonalityColumn({ title, subtitle, icon, items, activeIndex, side, on
                     )}
                     <button
                       onClick={() => onClone(side, origIndex)}
-                      className="text-[10px] px-2.5 py-1 rounded border border-[var(--info)] text-[var(--info)] bg-[rgba(147,197,253,0.08)] hover:bg-[rgba(147,197,253,0.18)] transition-colors cursor-pointer"
+                      className="text-[10px] px-2.5 py-1 rounded-[var(--radius-sm)] border border-[var(--info)] text-[var(--info)] bg-[var(--info-soft-bg)] hover:bg-[color-mix(in_srgb,var(--info)_24%,transparent)] transition-colors cursor-pointer"
                       title="克隆"
                     >
                       克隆
                     </button>
                     <button
                       onClick={() => onDelete(origIndex)}
-                      className="text-[10px] px-2.5 py-1 rounded border border-[var(--error)] text-[var(--error)] bg-[rgba(255,82,82,0.08)] hover:bg-[rgba(255,82,82,0.18)] transition-colors cursor-pointer"
+                      className="text-[10px] px-2.5 py-1 rounded-[var(--radius-sm)] border border-[var(--error)] text-[var(--error)] bg-[var(--error-soft-bg)] hover:bg-[color-mix(in_srgb,var(--error)_28%,transparent)] transition-colors cursor-pointer"
                       title="删除"
                     >
                       删除

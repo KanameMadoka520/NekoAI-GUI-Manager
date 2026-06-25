@@ -598,15 +598,15 @@ function valueToDisplay(value: unknown): string {
 function IssueCallout({ label, text, tone = 'warning' }: { label: string; text: string; tone?: 'warning' | 'error' | 'muted' }) {
   const toneClass =
     tone === 'error'
-      ? 'border-[rgba(255,82,82,0.35)] text-[var(--error)]'
+      ? 'border-[var(--error-soft-border)] text-[var(--error)]'
       : tone === 'muted'
         ? 'border-[var(--border-subtle)] text-[var(--text-muted)]'
-        : 'border-[rgba(255,171,64,0.35)] text-[var(--warning)]';
+        : 'border-[var(--warning-soft-border)] text-[var(--warning)]';
 
   return (
     <div className="text-xs text-[var(--text-secondary)] leading-relaxed rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2">
       <div className="flex items-start gap-2 flex-wrap">
-        <span className={`inline-flex items-center px-2 py-0.5 rounded border mono text-[10px] ${toneClass}`}>
+        <span className={`inline-flex items-center px-2 py-0.5 rounded-[var(--radius-sm)] border mono text-[10px] ${toneClass}`}>
           {label}
         </span>
         <span className="flex-1 min-w-[240px]">：{text}</span>
@@ -1019,13 +1019,13 @@ export function ConfigEditor() {
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => setEditorMode('common')}
-              className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] border transition-colors cursor-pointer ${editorMode === 'common' ? 'bg-[var(--accent-purple)] text-white border-transparent' : 'bg-[var(--bg-elevated)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+              className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] border transition-colors cursor-pointer ${editorMode === 'common' ? 'bg-[var(--accent-purple)] text-[var(--on-accent)] border-transparent' : 'bg-[var(--bg-elevated)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
             >
               常用模式
             </button>
             <button
               onClick={() => setEditorMode('full')}
-              className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] border transition-colors cursor-pointer ${editorMode === 'full' ? 'bg-[var(--accent-purple)] text-white border-transparent' : 'bg-[var(--bg-elevated)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+              className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] border transition-colors cursor-pointer ${editorMode === 'full' ? 'bg-[var(--accent-purple)] text-[var(--on-accent)] border-transparent' : 'bg-[var(--bg-elevated)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
             >
               完整模式
             </button>
@@ -1062,14 +1062,14 @@ export function ConfigEditor() {
           />
           <button
             onClick={() => setConfirmReset(true)}
-            className="w-full px-3 py-2 text-xs rounded-[var(--radius-sm)] text-[var(--warning)] hover:bg-[rgba(255,171,64,0.1)] transition-colors cursor-pointer text-left"
+            className="w-full px-3 py-2 text-xs rounded-[var(--radius-sm)] text-[var(--warning)] hover:bg-[var(--warning-soft-bg)] transition-colors cursor-pointer text-left"
           >
             恢复全部默认
           </button>
           <button
             onClick={save}
             disabled={!dirty}
-            className={`w-full px-3 py-2 text-xs rounded-[var(--radius-sm)] font-medium transition-colors cursor-pointer text-left ${dirty ? 'bg-[var(--accent-purple)] text-white hover:opacity-90 pulse-dirty' : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed'}`}
+            className={`w-full px-3 py-2 text-xs rounded-[var(--radius-sm)] font-medium transition-colors cursor-pointer text-left ${dirty ? 'bg-[var(--accent-purple)] text-[var(--on-accent)] hover:opacity-90 pulse-dirty' : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed'}`}
           >
             💾 保存配置
           </button>
@@ -1105,7 +1105,7 @@ export function ConfigEditor() {
         </div>
 
         {schema && (
-          <div className={`rounded-[var(--radius)] border mb-3 px-4 py-3 ${summary.schemaIssues ? 'border-[rgba(255,171,64,0.35)] bg-[rgba(255,171,64,0.08)]' : 'border-[rgba(0,230,118,0.25)] bg-[rgba(0,230,118,0.08)]'}`}>
+          <div className={`rounded-[var(--radius)] border mb-3 px-4 py-3 ${summary.schemaIssues ? 'border-[var(--warning-soft-border)] bg-[var(--warning-soft-bg)]' : 'border-[var(--success-soft-border)] bg-[var(--success-soft-bg)]'}`}>
             <div className="flex items-center gap-2 mb-2">
               <span className="text-sm">{summary.schemaIssues ? '⚠️' : '✅'}</span>
               <p className="text-sm font-medium text-[var(--text-primary)]">
@@ -1148,7 +1148,7 @@ export function ConfigEditor() {
                   {(currentDeprecatedPaths.length > 0 || currentDeprecatedValueIssues.length > 0) && (
                     <button
                       onClick={applyMigrationFixes}
-                      className="px-3 py-1.5 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-white hover:opacity-90 cursor-pointer"
+                      className="px-3 py-1.5 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-[var(--on-accent)] hover:opacity-90 cursor-pointer"
                     >
                       自动修复可修项
                     </button>
@@ -1168,7 +1168,7 @@ export function ConfigEditor() {
 
         {schema && (
           <div
-            className={`rounded-[var(--radius)] border mb-3 px-4 py-3 ${hasConfigOverviewAlert ? 'border-[rgba(255,171,64,0.35)] bg-[rgba(255,171,64,0.08)]' : 'border-[var(--border-subtle)]'}`}
+            className={`rounded-[var(--radius)] border mb-3 px-4 py-3 ${hasConfigOverviewAlert ? 'border-[var(--warning-soft-border)] bg-[var(--warning-soft-bg)]' : 'border-[var(--border-subtle)]'}`}
             style={{ background: hasConfigOverviewAlert ? undefined : 'var(--surface-card)', boxShadow: 'var(--shadow-card)' }}
           >
             <button
@@ -1180,15 +1180,15 @@ export function ConfigEditor() {
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-sm font-medium text-[var(--text-primary)]">配置差异概览</p>
                   {hasConfigOverviewAlert ? (
-                    <span className="px-2 py-0.5 text-[10px] rounded-full bg-[rgba(255,171,64,0.18)] text-[var(--warning)]">需关注</span>
+                    <span className="px-2 py-0.5 text-[10px] rounded-[var(--radius-pill)] bg-[var(--warning-soft-bg)] text-[var(--warning)]">需关注</span>
                   ) : (
-                    <span className="px-2 py-0.5 text-[10px] rounded-full bg-[rgba(0,230,118,0.12)] text-[var(--success)]">正常</span>
+                    <span className="px-2 py-0.5 text-[10px] rounded-[var(--radius-pill)] bg-[var(--success-soft-bg)] text-[var(--success)]">正常</span>
                   )}
                   {summary.savedDiffs > 0 && (
-                    <span className="px-2 py-0.5 text-[10px] rounded-full bg-[rgba(255,171,64,0.18)] text-[var(--warning)]">未保存 {summary.savedDiffs} 项</span>
+                    <span className="px-2 py-0.5 text-[10px] rounded-[var(--radius-pill)] bg-[var(--warning-soft-bg)] text-[var(--warning)]">未保存 {summary.savedDiffs} 项</span>
                   )}
                   {summary.schemaIssues > 0 && (
-                    <span className="px-2 py-0.5 text-[10px] rounded-full bg-[rgba(255,82,82,0.16)] text-[var(--error)]">契约提醒 {summary.schemaIssues} 项</span>
+                    <span className="px-2 py-0.5 text-[10px] rounded-[var(--radius-pill)] bg-[var(--error-soft-bg)] text-[var(--error)]">契约提醒 {summary.schemaIssues} 项</span>
                   )}
                 </div>
                 <p className="mt-1 text-[11px] text-[var(--text-muted)] leading-relaxed">

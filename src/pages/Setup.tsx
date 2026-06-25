@@ -130,7 +130,7 @@ export function Setup({ onComplete }: SetupProps) {
           </div>
 
           {error && (
-            <div className="px-3 py-2 rounded-[var(--radius-sm)] bg-[rgba(255,82,82,0.1)] border border-[var(--error)] text-xs text-[var(--error)]">
+            <div className="px-3 py-2 rounded-[var(--radius-sm)] bg-[var(--error-soft-bg)] border border-[var(--error)] text-xs text-[var(--error)]">
               {error}
             </div>
           )}
@@ -140,7 +140,7 @@ export function Setup({ onComplete }: SetupProps) {
             disabled={validating || !dir.trim()}
             className={`w-full py-3 text-sm font-medium rounded-[var(--radius-sm)] transition-all cursor-pointer
               ${dir.trim()
-                ? 'bg-[var(--accent-purple)] text-white hover:opacity-90'
+                ? 'bg-[var(--accent-purple)] text-[var(--on-accent)] hover:opacity-90'
                 : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed'
               }`}
           >

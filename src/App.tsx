@@ -730,7 +730,7 @@ function App() {
               <button
                 onClick={() => void handleBrowserLogin()}
                 disabled={browserAuthBusy}
-                className="px-4 py-2 text-sm rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-white hover:opacity-90 cursor-pointer disabled:opacity-60"
+                className="px-4 py-2 text-sm rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-[var(--on-accent)] hover:opacity-90 cursor-pointer disabled:opacity-60"
               >
                 {browserAuthBusy ? '登录中...' : '登录并进入管理器'}
               </button>
@@ -785,7 +785,7 @@ function App() {
                   )}
                   {!runningInTauri && browserSession?.authenticated && (
                     <>
-                      <span className={`inline-flex items-center px-2.5 py-1 text-[11px] rounded-[var(--radius-sm)] border ${browserReadOnlySession ? 'border-[rgba(255,171,64,0.35)] bg-[rgba(255,171,64,0.08)] text-[var(--warning)]' : 'border-[rgba(0,230,118,0.35)] bg-[rgba(0,230,118,0.08)] text-[var(--success)]'}`}>
+                      <span className={`inline-flex items-center px-2.5 py-1 text-[11px] rounded-[var(--radius-sm)] border ${browserReadOnlySession ? 'border-[var(--warning-soft-border)] bg-[var(--warning-soft-bg)] text-[var(--warning)]' : 'border-[var(--success-soft-border)] bg-[var(--success-soft-bg)] text-[var(--success)]'}`}>
                         {browserReadOnlySession ? '浏览器只读会话' : '浏览器完整会话'}
                       </span>
                       <button
@@ -809,12 +809,12 @@ function App() {
             />
             <div className="flex-1 overflow-y-auto p-6">
               {lowPerformanceMode && (
-                <div className="mb-4 rounded-[var(--radius-sm)] border border-[rgba(14,165,233,0.28)] bg-[rgba(14,165,233,0.08)] px-4 py-3 text-xs leading-relaxed text-[var(--text-secondary)]">
+                <div className="mb-4 rounded-[var(--radius-sm)] border border-[var(--info-soft-border)] bg-[var(--info-soft-bg)] px-4 py-3 text-xs leading-relaxed text-[var(--text-secondary)]">
                   当前已启用低性能模式：背景动画、模糊、绝大多数过渡动画已关闭，部分重图表和长区块会延迟挂载或默认收起。若你还觉得卡，优先去 API 管理、历史记录、用量管理这些重页面继续收起不需要的区块。
                 </div>
               )}
               {browserReadOnlySession && (
-                <div className="mb-4 rounded-[var(--radius-sm)] border border-[rgba(255,171,64,0.35)] bg-[rgba(255,171,64,0.08)] px-4 py-3 text-xs leading-relaxed text-[var(--text-secondary)]">
+                <div className="mb-4 rounded-[var(--radius-sm)] border border-[var(--warning-soft-border)] bg-[var(--warning-soft-bg)] px-4 py-3 text-xs leading-relaxed text-[var(--text-secondary)]">
                   当前浏览器会话为只读外部视图。左侧只保留概览、历史记录和用量管理；即使后端还能返回部分读取数据，所有写配置、保存和执行修改性操作都会被后端拒绝。
                 </div>
               )}
@@ -921,7 +921,7 @@ function App() {
                 </button>
                 <button
                   onClick={handleRefreshCurrentPage}
-                  className="px-3 py-1.5 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-white hover:opacity-90 transition-colors cursor-pointer"
+                  className="px-3 py-1.5 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-[var(--on-accent)] hover:opacity-90 transition-colors cursor-pointer"
                 >
                   刷新页面
                 </button>
@@ -960,16 +960,16 @@ function App() {
                     return (
                       <div key={`${item.code}-${idx}`} className="text-xs text-[var(--text-secondary)] leading-relaxed rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2">
                         <div className="flex items-start gap-2 flex-wrap">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded border mono text-[10px] ${item.level === 'error' ? 'border-[rgba(255,82,82,0.35)] text-[var(--error)]' : item.level === 'warn' ? 'border-[rgba(255,171,64,0.35)] text-[var(--warning)]' : 'border-[var(--border-subtle)] text-[var(--text-muted)]'}`}>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-[var(--radius-sm)] border mono text-[10px] ${item.level === 'error' ? 'border-[var(--error-soft-border)] text-[var(--error)]' : item.level === 'warn' ? 'border-[var(--warning-soft-border)] text-[var(--warning)]' : 'border-[var(--border-subtle)] text-[var(--text-muted)]'}`}>
                             {explained.techLabel}
                           </span>
                           {item.fixable && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded border border-[rgba(0,230,118,0.35)] text-[var(--success)] text-[10px]">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-[var(--radius-sm)] border border-[var(--success-soft-border)] text-[var(--success)] text-[10px]">
                               可自动修复
                             </span>
                           )}
                           {item.code.startsWith('usageEvents.') && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded border border-[rgba(255,171,64,0.35)] text-[var(--warning)] text-[10px]">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-[var(--radius-sm)] border border-[var(--warning-soft-border)] text-[var(--warning)] text-[10px]">
                               用量日志
                             </span>
                           )}
@@ -990,7 +990,7 @@ function App() {
                 <button
                   onClick={handleStartupAutoFix}
                   disabled={startupCheckBusy}
-                  className="px-3 py-1.5 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-white hover:opacity-90 transition-colors cursor-pointer disabled:opacity-60"
+                  className="px-3 py-1.5 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-[var(--on-accent)] hover:opacity-90 transition-colors cursor-pointer disabled:opacity-60"
                 >
                   {startupCheckBusy ? '修复中...' : '自动修复可修项'}
                 </button>
@@ -1001,13 +1001,13 @@ function App() {
           <Modal open={showWebConsolePanel} onClose={() => setShowWebConsolePanel(false)} title="本地 Web 服务" width="560px">
             <div className="space-y-4">
               {!runningInTauri && (
-                <div className="rounded-[var(--radius-sm)] border border-[rgba(14,165,233,0.28)] bg-[rgba(14,165,233,0.08)] px-3 py-2.5 text-xs text-[var(--text-secondary)] leading-relaxed">
+                <div className="rounded-[var(--radius-sm)] border border-[var(--info-soft-border)] bg-[var(--info-soft-bg)] px-3 py-2.5 text-xs text-[var(--text-secondary)] leading-relaxed">
                   当前正在浏览器模式下访问本地 Web 服务。若在这里关闭服务，当前浏览器页面刷新后会失去连接。
                 </div>
               )}
 
               {webConsoleRemoteBinding && (
-                <div className={`rounded-[var(--radius-sm)] border px-3 py-2.5 text-xs leading-relaxed ${webConsoleAllowRemoteAccessDraft ? 'border-[rgba(255,171,64,0.35)] bg-[rgba(255,171,64,0.08)] text-[var(--text-secondary)]' : 'border-[rgba(255,82,82,0.35)] bg-[rgba(255,82,82,0.08)] text-[var(--text-secondary)]'}`}>
+                <div className={`rounded-[var(--radius-sm)] border px-3 py-2.5 text-xs leading-relaxed ${webConsoleAllowRemoteAccessDraft ? 'border-[var(--warning-soft-border)] bg-[var(--warning-soft-bg)] text-[var(--text-secondary)]' : 'border-[var(--error-soft-border)] bg-[var(--error-soft-bg)] text-[var(--text-secondary)]'}`}>
                   当前监听地址不是本机地址，`/api/invoke/*` 这类管理接口会被同网段其他设备访问到。只有在你明确需要局域网共享 GUI 时，才建议开启远程访问。
                 </div>
               )}
@@ -1020,7 +1020,7 @@ function App() {
                       这里可以配置本地 Web 服务的监听地址。`127.0.0.1` 仅本机可访问，`0.0.0.0` 会监听全部网卡，适合你要让同局域网内其他设备也能进来。
                     </p>
                   </div>
-                  <span className={`inline-flex items-center px-2.5 py-1 rounded border text-xs ${webConsoleRunning ? 'border-[rgba(0,230,118,0.35)] text-[var(--success)] bg-[rgba(0,230,118,0.08)]' : 'border-[var(--border-subtle)] text-[var(--text-muted)] bg-[var(--surface-card)]'}`}>
+                  <span className={`inline-flex items-center px-2.5 py-1 rounded-[var(--radius-sm)] border text-xs ${webConsoleRunning ? 'border-[var(--success-soft-border)] text-[var(--success)] bg-[var(--success-soft-bg)]' : 'border-[var(--border-subtle)] text-[var(--text-muted)] bg-[var(--surface-card)]'}`}>
                     {webConsoleRunning ? '运行中' : '未运行'}
                   </span>
                 </div>
@@ -1085,12 +1085,12 @@ function App() {
                       远端来源规则：{webConsoleAllowedRemoteAddrs.length > 0 ? `${webConsoleAllowedRemoteAddrs.length} 条` : '未限制'}
                     </span>
                     {webConsoleConfigChangedWhileRunning && (
-                      <span className="px-2 py-1 rounded border border-[rgba(255,171,64,0.35)] text-[var(--warning)] bg-[rgba(255,171,64,0.08)]">
+                      <span className="px-2 py-1 rounded-[var(--radius-sm)] border border-[var(--warning-soft-border)] text-[var(--warning)] bg-[var(--warning-soft-bg)]">
                         你修改了本地服务配置，下一次按钮操作会按新配置重启服务
                       </span>
                     )}
                     {webConsoleHostNormalized === '0.0.0.0' && (
-                      <span className="px-2 py-1 rounded border border-[rgba(14,165,233,0.35)] text-[var(--info)] bg-[rgba(14,165,233,0.08)]">
+                      <span className="px-2 py-1 rounded-[var(--radius-sm)] border border-[var(--info-soft-border)] text-[var(--info)] bg-[var(--info-soft-bg)]">
                         当前是全网卡监听。本机浏览器建议访问 {webConsoleUrlPreview}，其他设备请改用这台电脑的局域网 IP
                       </span>
                     )}
@@ -1238,7 +1238,7 @@ function App() {
                 <button
                   onClick={handleToggleWebConsole}
                   disabled={webConsoleBusy || webConsoleToggleNeedsRemoteConfirmation}
-                  className={`px-4 py-2 text-sm rounded-[var(--radius-sm)] text-white disabled:opacity-60 cursor-pointer ${webConsoleRunning && !webConsoleConfigChangedWhileRunning ? 'bg-[var(--error)] hover:opacity-90' : 'bg-[var(--accent-purple)] hover:opacity-90'}`}
+                  className={`px-4 py-2 text-sm rounded-[var(--radius-sm)] text-[var(--on-accent)] disabled:opacity-60 cursor-pointer ${webConsoleRunning && !webConsoleConfigChangedWhileRunning ? 'bg-[var(--error)] hover:opacity-90' : 'bg-[var(--accent-purple)] hover:opacity-90'}`}
                 >
                   {webConsoleBusy
                     ? '处理中...'
@@ -1249,7 +1249,7 @@ function App() {
                         : '开启并打开浏览器'}
                 </button>
                 {webConsoleToggleNeedsRemoteConfirmation && (
-                  <span className="inline-flex items-center px-2.5 py-1 text-[11px] rounded-[var(--radius-sm)] border border-[rgba(255,82,82,0.35)] text-[var(--error)] bg-[rgba(255,82,82,0.08)]">
+                  <span className="inline-flex items-center px-2.5 py-1 text-[11px] rounded-[var(--radius-sm)] border border-[var(--error-soft-border)] text-[var(--error)] bg-[var(--error-soft-bg)]">
                     需先勾选“允许远程访问”
                   </span>
                 )}
@@ -1290,7 +1290,7 @@ function App() {
                       onClick={() => updateSettings({ renderMode: opt.value })}
                       className={`py-2 text-sm rounded-[var(--radius-sm)] font-medium border cursor-pointer
                         ${settings.renderMode === opt.value
-                          ? 'bg-[var(--accent-purple)] text-white border-transparent'
+                          ? 'bg-[var(--accent-purple)] text-[var(--on-accent)] border-transparent'
                           : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
                         }`}
                     >
@@ -1314,7 +1314,7 @@ function App() {
                       onClick={() => updateSettings({ theme: opt.value })}
                       className={`py-2 text-sm rounded-[var(--radius-sm)] font-medium border cursor-pointer
                         ${settings.theme === opt.value
-                          ? 'bg-[var(--accent-purple)] text-white border-transparent'
+                          ? 'bg-[var(--accent-purple)] text-[var(--on-accent)] border-transparent'
                           : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
                         }`}
                     >
@@ -1338,7 +1338,7 @@ function App() {
                       onClick={() => updateSettings({ ambientDensity: opt.value })}
                       className={`py-2 text-sm rounded-[var(--radius-sm)] font-medium border cursor-pointer
                         ${settings.ambientDensity === opt.value
-                          ? 'bg-[var(--accent-purple)] text-white border-transparent'
+                          ? 'bg-[var(--accent-purple)] text-[var(--on-accent)] border-transparent'
                           : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
                         }`}
                     >
@@ -1362,7 +1362,7 @@ function App() {
                       onClick={() => updateSettings({ ambientStyle: opt.value })}
                       className={`py-2 text-sm rounded-[var(--radius-sm)] font-medium border cursor-pointer
                         ${settings.ambientStyle === opt.value
-                          ? 'bg-[var(--accent-purple)] text-white border-transparent'
+                          ? 'bg-[var(--accent-purple)] text-[var(--on-accent)] border-transparent'
                           : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
                         }`}
                     >
@@ -1386,7 +1386,7 @@ function App() {
                       onClick={() => updateSettings({ contentDensity: opt.value })}
                       className={`py-2 text-sm rounded-[var(--radius-sm)] font-medium border cursor-pointer
                         ${settings.contentDensity === opt.value
-                          ? 'bg-[var(--accent-purple)] text-white border-transparent'
+                          ? 'bg-[var(--accent-purple)] text-[var(--on-accent)] border-transparent'
                           : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
                         }`}
                     >
@@ -1410,7 +1410,7 @@ function App() {
                       onClick={() => updateSettings({ uiScale: opt.value })}
                       className={`py-2 text-sm rounded-[var(--radius-sm)] font-medium cursor-pointer
                         ${settings.uiScale === opt.value
-                          ? 'bg-[var(--accent-purple)] text-white'
+                          ? 'bg-[var(--accent-purple)] text-[var(--on-accent)]'
                           : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
                         }`}
                     >

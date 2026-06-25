@@ -247,11 +247,11 @@ export function OpsCenter() {
       {lowPerformanceMode ? (
         <Panel title="快速概览" subtitle="低性能模式下先给你看轻摘要，详细工具区按需展开。" icon="⚡" padding="sm">
           <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--text-secondary)]">
-            <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">快照 {snapshots.length}</span>
-            <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">最新 {latestSnapshot === '-' ? '-' : latestSnapshot.slice(-8)}</span>
-            <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">审计 {auditRows.length}</span>
-            <span className={`px-2 py-1 rounded border ${checkStats.total > 0 ? 'border-[rgba(255,171,64,0.35)] bg-[rgba(255,171,64,0.08)] text-[var(--warning)]' : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)]'}`}>自检 {checkStats.total}</span>
-            <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">先看再动</span>
+            <span className="px-2 py-1 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">快照 {snapshots.length}</span>
+            <span className="px-2 py-1 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">最新 {latestSnapshot === '-' ? '-' : latestSnapshot.slice(-8)}</span>
+            <span className="px-2 py-1 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">审计 {auditRows.length}</span>
+            <span className={`px-2 py-1 rounded-[var(--radius-sm)] border ${checkStats.total > 0 ? 'border-[var(--warning-soft-border)] bg-[var(--warning-soft-bg)] text-[var(--warning)]' : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)]'}`}>自检 {checkStats.total}</span>
+            <span className="px-2 py-1 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">先看再动</span>
           </div>
         </Panel>
       ) : (
@@ -264,7 +264,7 @@ export function OpsCenter() {
         </div>
       )}
 
-      <div className="rounded-[var(--radius)] p-4 border border-[rgba(255,82,82,0.35)]" style={{ background: 'rgba(255,82,82,0.08)' }}>
+      <div className="rounded-[var(--radius)] p-4 border border-[var(--error-soft-border)]" style={{ background: 'var(--error-soft-bg)' }}>
         <p className="text-xs font-semibold text-[var(--error)] mb-1">先确认再分享</p>
         <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
           快照和部署包通常包含 <span className="mono">api_config.json</span>，其中可能有完整 API Key。
@@ -284,10 +284,10 @@ export function OpsCenter() {
             <DeferredVisibleBlock placeholder={<OpsCollapsedHint text="滚动到这一块附近时再加载快照差异工具。" />}>
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center gap-2">
-                  <button onClick={doCreateSnapshot} disabled={busy !== null} className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-white hover:opacity-90 cursor-pointer disabled:opacity-60">
+                  <button onClick={doCreateSnapshot} disabled={busy !== null} className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-[var(--on-accent)] hover:opacity-90 cursor-pointer disabled:opacity-60">
                     创建快照
                   </button>
-                  <button onClick={() => doRollback(selectedRight || selectedLeft)} disabled={busy !== null || snapshots.length === 0} className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[rgba(255,171,64,0.15)] text-[var(--warning)] hover:bg-[rgba(255,171,64,0.25)] cursor-pointer disabled:opacity-60">
+                  <button onClick={() => doRollback(selectedRight || selectedLeft)} disabled={busy !== null || snapshots.length === 0} className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--warning-soft-bg)] text-[var(--warning)] hover:bg-[color-mix(in_srgb,var(--warning)_24%,transparent)] cursor-pointer disabled:opacity-60">
                     回滚到这个快照
                   </button>
                   <button
@@ -299,8 +299,8 @@ export function OpsCenter() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--text-secondary)]">
-                  <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">已加载 {snapshots.length} 个快照</span>
-                  <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">最新 {latestSnapshot === '-' ? '-' : latestSnapshot.slice(-8)}</span>
+                  <span className="px-2 py-1 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">已加载 {snapshots.length} 个快照</span>
+                  <span className="px-2 py-1 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">最新 {latestSnapshot === '-' ? '-' : latestSnapshot.slice(-8)}</span>
                 </div>
 
                 {showSnapshotTools && (
@@ -353,7 +353,7 @@ export function OpsCenter() {
             <DeferredVisibleBlock placeholder={<OpsCollapsedHint text="滚动到这一块附近时再加载部署包与模板工具。" />}>
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center gap-2">
-                  <button onClick={doExportPackage} disabled={busy !== null} className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-white hover:opacity-90 cursor-pointer disabled:opacity-60">
+                  <button onClick={doExportPackage} disabled={busy !== null} className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-[var(--on-accent)] hover:opacity-90 cursor-pointer disabled:opacity-60">
                     导出部署包
                   </button>
                   <button
@@ -371,7 +371,7 @@ export function OpsCenter() {
                         <span className="text-xs text-[var(--text-muted)]">{env.label}</span>
                         <button onClick={() => doSaveEnvTemplate(env.key)} disabled={busy !== null} className="px-2.5 py-1.5 text-xs rounded-[var(--radius-sm)] bg-[var(--surface-card)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer disabled:opacity-60">保存模板</button>
                         <button onClick={() => doPreviewEnv(env.key)} disabled={busy !== null} className="px-2.5 py-1.5 text-xs rounded-[var(--radius-sm)] bg-[var(--surface-card)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer disabled:opacity-60">预览</button>
-                        <button onClick={() => doApplyEnv(env.key)} disabled={busy !== null} className="px-2.5 py-1.5 text-xs rounded-[var(--radius-sm)] bg-[rgba(14,165,233,0.15)] text-[var(--accent-purple)] hover:bg-[rgba(14,165,233,0.25)] cursor-pointer disabled:opacity-60">应用</button>
+                        <button onClick={() => doApplyEnv(env.key)} disabled={busy !== null} className="px-2.5 py-1.5 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-soft-bg)] text-[var(--accent-purple)] hover:bg-[color-mix(in_srgb,var(--accent-purple)_22%,transparent)] cursor-pointer disabled:opacity-60">应用</button>
                       </div>
                     ))}
                   </div>
@@ -393,8 +393,8 @@ export function OpsCenter() {
             <DeferredVisibleBlock placeholder={<OpsCollapsedHint text="滚动到这一块附近时再加载自检明细。" />}>
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center gap-2">
-                  <button onClick={doSelfCheck} disabled={busy !== null} className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-white hover:opacity-90 cursor-pointer disabled:opacity-60">运行自检</button>
-                  <button onClick={doFixSelfCheck} disabled={busy !== null} className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[rgba(255,171,64,0.15)] text-[var(--warning)] hover:bg-[rgba(255,171,64,0.25)] cursor-pointer disabled:opacity-60">自动修复可修项</button>
+                  <button onClick={doSelfCheck} disabled={busy !== null} className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-[var(--on-accent)] hover:opacity-90 cursor-pointer disabled:opacity-60">运行自检</button>
+                  <button onClick={doFixSelfCheck} disabled={busy !== null} className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--warning-soft-bg)] text-[var(--warning)] hover:bg-[color-mix(in_srgb,var(--warning)_24%,transparent)] cursor-pointer disabled:opacity-60">自动修复可修项</button>
                 </div>
 
                 {selfCheck ? (
@@ -407,7 +407,7 @@ export function OpsCenter() {
                       <MiniInfo label="用量日志项" value={String(checkStats.usageEvents)} tone={checkStats.usageEvents > 0 ? 'warning' : 'neutral'} />
                     </div>
                     {usageEventCheckHighlights.length > 0 && (
-                      <div className="rounded-[var(--radius-sm)] border border-[rgba(255,171,64,0.35)] bg-[rgba(255,171,64,0.08)] px-4 py-3">
+                      <div className="rounded-[var(--radius-sm)] border border-[var(--warning-soft-border)] bg-[var(--warning-soft-bg)] px-4 py-3">
                         <p className="text-sm font-medium text-[var(--warning)]">统一用量事件日志存在关注项</p>
                         <div className="mt-2 space-y-1">
                           {usageEventCheckHighlights.map((item, index) => {
@@ -448,16 +448,16 @@ export function OpsCenter() {
                           return (
                             <div key={`${it.code}-${i}`} className="text-xs text-[var(--text-secondary)] leading-relaxed rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2">
                               <div className="flex items-start gap-2 flex-wrap">
-                                <span className={`inline-flex items-center px-2 py-0.5 rounded border mono text-[10px] ${it.level === 'error' ? 'border-[rgba(255,82,82,0.35)] text-[var(--error)]' : it.level === 'warn' ? 'border-[rgba(255,171,64,0.35)] text-[var(--warning)]' : 'border-[var(--border-subtle)] text-[var(--text-muted)]'}`}>
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-[var(--radius-sm)] border mono text-[10px] ${it.level === 'error' ? 'border-[var(--error-soft-border)] text-[var(--error)]' : it.level === 'warn' ? 'border-[var(--warning-soft-border)] text-[var(--warning)]' : 'border-[var(--border-subtle)] text-[var(--text-muted)]'}`}>
                                   {explained.techLabel}
                                 </span>
                                 {it.fixable && (
-                                  <span className="inline-flex items-center px-2 py-0.5 rounded border border-[rgba(0,230,118,0.35)] text-[var(--success)] text-[10px]">
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-[var(--radius-sm)] border border-[var(--success-soft-border)] text-[var(--success)] text-[10px]">
                                     可自动修复
                                   </span>
                                 )}
                                 {it.code.startsWith('usageEvents.') && (
-                                  <span className="inline-flex items-center px-2 py-0.5 rounded border border-[rgba(255,171,64,0.35)] text-[var(--warning)] text-[10px]">
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-[var(--radius-sm)] border border-[var(--warning-soft-border)] text-[var(--warning)] text-[10px]">
                                     用量日志
                                   </span>
                                 )}

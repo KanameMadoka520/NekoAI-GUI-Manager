@@ -486,14 +486,14 @@ export function EvaluationLab() {
                     <div className="flex gap-2">
                       <input value={item.name} onChange={(e) => updateCase(item.id, { name: e.target.value })} placeholder="用例名称" className="flex-1 px-3 py-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] text-sm text-[var(--text-primary)]" />
                       <button onClick={() => duplicateCase(item.id)} className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] cursor-pointer">复制一份</button>
-                      <button onClick={() => setCases((items) => items.length <= 1 ? items : items.filter((x) => x.id !== item.id))} className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[rgba(255,82,82,0.12)] text-[var(--error)] cursor-pointer">删掉</button>
+                      <button onClick={() => setCases((items) => items.length <= 1 ? items : items.filter((x) => x.id !== item.id))} className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--error-soft-bg)] text-[var(--error)] cursor-pointer">删掉</button>
                     </div>
                     <input value={item.tags.join(', ')} onChange={(e) => updateCase(item.id, { tags: e.target.value.split(',').map((x) => x.trim()).filter(Boolean) })} placeholder="标签，用逗号分隔，方便以后筛选" className="w-full px-3 py-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] text-sm text-[var(--text-primary)]" />
                     <textarea value={item.contextText ?? ''} onChange={(e) => updateCase(item.id, { contextText: e.target.value })} placeholder="补充上下文（可选）。适合放人物关系、前文摘要或任务背景。" rows={3} className="w-full px-3 py-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] text-sm text-[var(--text-primary)] resize-y" />
                     <textarea value={item.latestUserMessage} onChange={(e) => updateCase(item.id, { latestUserMessage: e.target.value })} placeholder="用户最后一句会说什么（必填）。尽量写成你真的会拿去问机器人的话。" rows={3} className="w-full px-3 py-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] text-sm text-[var(--text-primary)] resize-y" />
                   </div>
                 ))}
-                <button onClick={() => setCases((items) => [...items, makeCase()])} className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-white cursor-pointer">+ 新增一个用例</button>
+                <button onClick={() => setCases((items) => [...items, makeCase()])} className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-[var(--on-accent)] cursor-pointer">+ 新增一个用例</button>
               </div>
             </DeferredVisibleBlock>
           )}
@@ -504,11 +504,11 @@ export function EvaluationLab() {
         <Panel title="执行与进度" subtitle="这里告诉你这次实验会有多大、能不能跑，以及现在跑到哪一步了。." icon="⚙️">
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--text-secondary)]">
-              <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">人格 {selectedCandidates.length}</span>
-              <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">API {selectedApis.length}</span>
-              <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">用例 {cases.length}</span>
-              <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">轮次 {rounds}</span>
-              <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">总任务 {matrixTotal}</span>
+              <span className="px-2 py-1 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">人格 {selectedCandidates.length}</span>
+              <span className="px-2 py-1 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">API {selectedApis.length}</span>
+              <span className="px-2 py-1 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">用例 {cases.length}</span>
+              <span className="px-2 py-1 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">轮次 {rounds}</span>
+              <span className="px-2 py-1 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">总任务 {matrixTotal}</span>
             </div>
 
             <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 text-xs space-y-1 text-[var(--text-secondary)]">
@@ -521,13 +521,13 @@ export function EvaluationLab() {
             </div>
 
             <div className="flex items-center gap-2">
-              <button onClick={runExperiment} disabled={busy === 'run' || scaleBlocked} className="px-4 py-2 text-sm rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-white disabled:opacity-60 cursor-pointer">{busy === 'run' ? '实验运行中...' : '开始实验'}</button>
+              <button onClick={runExperiment} disabled={busy === 'run' || scaleBlocked} className="px-4 py-2 text-sm rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-[var(--on-accent)] disabled:opacity-60 cursor-pointer">{busy === 'run' ? '实验运行中...' : '开始实验'}</button>
               {progress && <span className="text-xs text-[var(--text-muted)]">已完成 {progress.done}/{progress.total} · 成功 {progress.ok} · 失败 {progress.failed}</span>}
             </div>
 
             {progress && (
               <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-2">
-                <div className="h-2 rounded-full bg-[var(--surface-card)] overflow-hidden">
+                <div className="h-2 rounded-[var(--radius-pill)] bg-[var(--surface-card)] overflow-hidden">
                   <div className="h-full bg-[var(--accent-purple)]" style={{ width: `${progress.total > 0 ? (progress.done / progress.total) * 100 : 0}%` }} />
                 </div>
                 {progress.last && (
@@ -563,7 +563,7 @@ export function EvaluationLab() {
                         </div>
                         <div className="flex items-center gap-2">
                           <button onClick={() => void loadExperiment(item.id)} className="px-3 py-1.5 text-xs rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] cursor-pointer">打开</button>
-                          <button onClick={() => setDeleteTarget(item)} className="px-3 py-1.5 text-xs rounded-[var(--radius-sm)] bg-[rgba(255,82,82,0.12)] text-[var(--error)] cursor-pointer">删掉</button>
+                          <button onClick={() => setDeleteTarget(item)} className="px-3 py-1.5 text-xs rounded-[var(--radius-sm)] bg-[var(--error-soft-bg)] text-[var(--error)] cursor-pointer">删掉</button>
                         </div>
                       </div>
                     </div>
@@ -776,7 +776,7 @@ function RunScoreEditor({
             }
           }}
           disabled={saving}
-          className="px-4 py-2 text-sm rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-white cursor-pointer disabled:opacity-60"
+          className="px-4 py-2 text-sm rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-[var(--on-accent)] cursor-pointer disabled:opacity-60"
         >
           {saving ? '保存中...' : '保存评分'}
         </button>

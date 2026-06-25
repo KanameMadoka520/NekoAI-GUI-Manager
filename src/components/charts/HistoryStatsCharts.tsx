@@ -98,7 +98,7 @@ export function HistoryStatsCharts({
               {stats.errorCategories.map((cat, i) => (
                 <div key={cat.name} className="flex items-center gap-2">
                   <span
-                    className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                    className="w-2.5 h-2.5 rounded-[var(--radius-pill)] flex-shrink-0"
                     style={{ background: ERROR_COLORS[i % ERROR_COLORS.length] }}
                   />
                   <span className="flex-1 text-xs text-[var(--text-secondary)]">{cat.name}</span>
@@ -116,11 +116,11 @@ export function HistoryStatsCharts({
           <div className="space-y-1.5">
             {stats.modelErrors.map((m) => (
               <div key={m.name} className="flex items-center gap-3 text-xs">
-                <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: m.color }} />
+                <span className="w-2.5 h-2.5 rounded-[var(--radius-pill)] flex-shrink-0" style={{ background: m.color }} />
                 <span className="w-36 text-[var(--text-secondary)] truncate">{m.name}</span>
-                <div className="flex-1 h-1.5 rounded-full bg-[var(--bg-elevated)] overflow-hidden">
+                <div className="flex-1 h-1.5 rounded-[var(--radius-pill)] bg-[var(--bg-elevated)] overflow-hidden">
                   <div
-                    className="h-full rounded-full bg-[var(--error)]"
+                    className="h-full rounded-[var(--radius-pill)] bg-[var(--error)]"
                     style={{ width: `${m.rate}%` }}
                   />
                 </div>

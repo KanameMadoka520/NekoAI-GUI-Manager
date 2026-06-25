@@ -345,20 +345,20 @@ function getLevelMeta(level: NodeHealth['level'] | undefined) {
   if (level === 'healthy') {
     return {
       label: '健康',
-      bg: 'rgba(0,230,118,0.15)',
+      bg: 'var(--success-soft-bg)',
       color: 'var(--success)',
     };
   }
   if (level === 'warning') {
     return {
       label: '警告',
-      bg: 'rgba(255,171,64,0.18)',
+      bg: 'var(--warning-soft-bg)',
       color: 'var(--warning)',
     };
   }
   return {
     label: '风险',
-    bg: 'rgba(255,82,82,0.15)',
+    bg: 'var(--error-soft-bg)',
     color: 'var(--error)',
   };
 }
@@ -459,8 +459,8 @@ function MetricBar({ label, score, weight, color, hint }: { label: string; score
         <span className="text-[var(--text-secondary)]">{label}</span>
         <span className="mono text-[var(--text-muted)]">{score ?? '-'} / {weight}%</span>
       </div>
-      <div className="h-1.5 rounded bg-[var(--border-subtle)] overflow-hidden">
-        <div className="h-full rounded" style={{ width: `${value}%`, background: color }} />
+      <div className="h-1.5 rounded-[var(--radius-sm)] bg-[var(--border-subtle)] overflow-hidden">
+        <div className="h-full rounded-[var(--radius-sm)]" style={{ width: `${value}%`, background: color }} />
       </div>
       {hint ? <p className="text-[10px] text-[var(--text-muted)]">{hint}</p> : null}
     </div>
@@ -1375,13 +1375,13 @@ export function ApiManager() {
       <div className="flex flex-wrap gap-2">
         <button
           onClick={() => setManagerMode('chat')}
-          className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] border cursor-pointer ${managerMode === 'chat' ? 'border-transparent bg-[var(--accent-purple)] text-white' : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+          className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] border cursor-pointer ${managerMode === 'chat' ? 'border-transparent bg-[var(--accent-purple)] text-[var(--on-accent)]' : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
         >
           聊天节点列表
         </button>
         <button
           onClick={() => setManagerMode('image')}
-          className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] border cursor-pointer ${managerMode === 'image' ? 'border-transparent bg-[var(--accent-purple)] text-white' : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+          className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] border cursor-pointer ${managerMode === 'image' ? 'border-transparent bg-[var(--accent-purple)] text-[var(--on-accent)]' : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
         >
           图像节点列表
         </button>
@@ -1461,7 +1461,7 @@ export function ApiManager() {
       <Panel title="操作区" subtitle="常规顺序通常是：新增或修改节点 -> 测试可用性 -> 确认默认节点 -> 最后保存。节点健康明细默认收起，可在这里统一展开。" padding="sm">
         <div className="flex flex-wrap items-center gap-2">
           <button onClick={save} disabled={!dirty}
-            className={`px-4 py-2 text-xs rounded-[var(--radius-sm)] font-medium transition-colors cursor-pointer ${dirty ? 'bg-[var(--accent-purple)] text-white hover:opacity-90 pulse-dirty' : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed'}`}
+            className={`px-4 py-2 text-xs rounded-[var(--radius-sm)] font-medium transition-colors cursor-pointer ${dirty ? 'bg-[var(--accent-purple)] text-[var(--on-accent)] hover:opacity-90 pulse-dirty' : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed'}`}
             title="Ctrl+S">
             💾 保存
           </button>
@@ -1505,7 +1505,7 @@ export function ApiManager() {
               title="Ctrl+Y">↪ 重做</button>
             <button
               onClick={() => setShowAdvancedToolbar((v) => !v)}
-              className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] border cursor-pointer ${showAdvancedToolbar ? 'border-transparent bg-[var(--accent-purple)] text-white' : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+              className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] border cursor-pointer ${showAdvancedToolbar ? 'border-transparent bg-[var(--accent-purple)] text-[var(--on-accent)]' : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
             >
               {showAdvancedToolbar ? '收起更多操作' : '展开更多操作'}
             </button>
@@ -1552,7 +1552,7 @@ export function ApiManager() {
                   <>
                     <span className="text-xs text-[var(--text-muted)]">选中 {selected.size} 项</span>
                     <button onClick={() => setConfirmBulkDelete(true)}
-                      className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[rgba(255,82,82,0.15)] text-[var(--error)] hover:bg-[rgba(255,82,82,0.25)] transition-colors cursor-pointer">
+                      className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--error-soft-bg)] text-[var(--error)] hover:bg-[color-mix(in_srgb,var(--error)_28%,transparent)] transition-colors cursor-pointer">
                       批量删除
                     </button>
                   </>
@@ -1574,7 +1574,7 @@ export function ApiManager() {
         )}
       </Panel>
 
-      <div className="rounded-[var(--radius-sm)] border border-[rgba(255,82,82,0.35)] bg-[rgba(255,82,82,0.08)] px-3 py-2">
+      <div className="rounded-[var(--radius-sm)] border border-[var(--error-soft-border)] bg-[var(--error-soft-bg)] px-3 py-2">
         <p className="text-[11px] text-[var(--error)] leading-relaxed">
           这里最敏感的是 <span className="mono">api_config.json</span>。如果你只是想分享界面截图、差异结果或快照摘要，不一定要把这个文件一起带出去。
           一旦把 API Key 发错人，通常就只能去原平台删掉或更换密钥。
@@ -1661,10 +1661,10 @@ export function ApiManager() {
             <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2">
               <p className="text-[10px] text-[var(--text-muted)]">分数怎么看</p>
               <div className="mt-2 flex flex-wrap gap-1.5">
-                <span className="px-1.5 py-0.5 rounded text-[10px]" style={{ background: 'rgba(14,165,233,0.12)', color: 'var(--info)' }}>实时 82分</span>
-                <span className="px-1.5 py-0.5 rounded text-[10px]" style={{ background: 'rgba(251,191,36,0.14)', color: 'var(--warning)' }}>历史 61分</span>
-                <span className="px-1.5 py-0.5 rounded text-[10px]" style={{ background: 'rgba(168,85,247,0.14)', color: 'var(--accent-purple)' }}>混合 88分</span>
-                <span className="px-1.5 py-0.5 rounded text-[10px] bg-[var(--surface-card)] text-[var(--text-muted)]">无数据</span>
+                <span className="px-1.5 py-0.5 rounded-[var(--radius-pill)] text-[10px]" style={{ background: 'var(--info-soft-bg)', color: 'var(--info)' }}>实时 82分</span>
+                <span className="px-1.5 py-0.5 rounded-[var(--radius-pill)] text-[10px]" style={{ background: 'var(--warning-soft-bg)', color: 'var(--warning)' }}>历史 61分</span>
+                <span className="px-1.5 py-0.5 rounded-[var(--radius-pill)] text-[10px]" style={{ background: 'var(--accent-soft-bg)', color: 'var(--accent-purple)' }}>混合 88分</span>
+                <span className="px-1.5 py-0.5 rounded-[var(--radius-pill)] text-[10px] bg-[var(--surface-card)] text-[var(--text-muted)]">无数据</span>
               </div>
               <p className="text-[10px] text-[var(--text-muted)] mt-2 leading-relaxed">这样刷新回来时不会只看到 20、40 这类裸数字。目录、卡片和详情里的健康分都统一带上来源与“分”字。</p>
             </div>
@@ -1673,7 +1673,7 @@ export function ApiManager() {
               {activeDirectoryFilters.length > 0 ? (
                 <div className="flex flex-wrap gap-1.5">
                   {activeDirectoryFilters.map((item) => (
-                    <span key={item} className="px-2 py-1 text-[10px] rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)]">
+                    <span key={item} className="px-2 py-1 text-[10px] rounded-[var(--radius-pill)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)]">
                       {item}
                     </span>
                   ))}
@@ -1718,7 +1718,7 @@ export function ApiManager() {
                     <span className="block truncate text-[10px] text-[var(--text-muted)]">{node.remark || '还没写备注'}</span>
                   </span>
                   <span
-                    className="text-[10px] px-1.5 py-0.5 rounded whitespace-nowrap"
+                    className="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-pill)] whitespace-nowrap"
                     style={{ background: levelMeta.bg, color: levelMeta.color }}
                     title={health ? `健康分 ${health.score} 分；来源：${getHealthSourceLabel(health.source)}（${getHealthSourceHint(health.source)}）${health.reason ? `；${health.reason}` : ''}` : '无数据'}
                   >
@@ -1726,7 +1726,7 @@ export function ApiManager() {
                   </span>
                   {ping && (
                     <span
-                      className="w-2 h-2 rounded-full flex-shrink-0"
+                      className="w-2 h-2 rounded-[var(--radius-pill)] flex-shrink-0"
                       style={{ background: ping.pass ? 'var(--success)' : 'var(--error)' }}
                       title={ping.pass ? `${ping.latency_ms}ms` : ping.error || `HTTP ${ping.status}`}
                     />
@@ -1901,7 +1901,7 @@ function ImageApiManagerPanel({
           <button
             onClick={() => void onSave()}
             disabled={!dirty}
-            className={`px-4 py-2 text-xs rounded-[var(--radius-sm)] font-medium transition-colors cursor-pointer ${dirty ? 'bg-[var(--accent-purple)] text-white hover:opacity-90' : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed'}`}
+            className={`px-4 py-2 text-xs rounded-[var(--radius-sm)] font-medium transition-colors cursor-pointer ${dirty ? 'bg-[var(--accent-purple)] text-[var(--on-accent)] hover:opacity-90' : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed'}`}
           >
             💾 保存图像节点
           </button>
@@ -1967,13 +1967,13 @@ function ImageApiManagerPanel({
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => onViewModeChange('nodes')}
-            className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] border cursor-pointer ${viewMode === 'nodes' ? 'border-transparent bg-[var(--accent-purple)] text-white' : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+            className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] border cursor-pointer ${viewMode === 'nodes' ? 'border-transparent bg-[var(--accent-purple)] text-[var(--on-accent)]' : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
           >
             图像节点列表
           </button>
           <button
             onClick={() => onViewModeChange('router')}
-            className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] border cursor-pointer ${viewMode === 'router' ? 'border-transparent bg-[var(--accent-purple)] text-white' : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+            className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] border cursor-pointer ${viewMode === 'router' ? 'border-transparent bg-[var(--accent-purple)] text-[var(--on-accent)]' : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
           >
             图像路由集群
           </button>
@@ -2015,10 +2015,10 @@ function ImageApiManagerPanel({
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-xs mono text-[var(--text-muted)]">#{index}</span>
                         <span className="text-sm font-medium text-[var(--text-primary)]">{node.modelName || getDefaultImageModel(providerType)}</span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-[rgba(0,188,212,0.14)] text-[var(--info)]">{getImageProviderLabel(providerType)}</span>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${supportsEdit ? 'bg-[rgba(16,185,129,0.14)] text-[var(--success)]' : 'bg-[rgba(251,191,36,0.15)] text-[var(--warning)]'}`}>{getImageCapabilityLabel(node)}</span>
-                        {providerType === 'openai' && node.streamingEnabled ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-[rgba(0,188,212,0.14)] text-[var(--info)]">流式 partial {normalizePartialImages(node.partialImages)}</span> : null}
-                        {index === activeIndex ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--accent-purple)] text-white">活跃</span> : null}
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-pill)] bg-[var(--info-soft-bg)] text-[var(--info)]">{getImageProviderLabel(providerType)}</span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-[var(--radius-pill)] ${supportsEdit ? 'bg-[var(--success-soft-bg)] text-[var(--success)]' : 'bg-[var(--warning-soft-bg)] text-[var(--warning)]'}`}>{getImageCapabilityLabel(node)}</span>
+                        {providerType === 'openai' && node.streamingEnabled ? <span className="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-pill)] bg-[var(--info-soft-bg)] text-[var(--info)]">流式 partial {normalizePartialImages(node.partialImages)}</span> : null}
+                        {index === activeIndex ? <span className="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-pill)] bg-[var(--accent-purple)] text-[var(--on-accent)]">活跃</span> : null}
                         <div className="flex-1" />
                         <button
                           onClick={() => {
@@ -2292,7 +2292,7 @@ function ImageApiManagerPanel({
                         {index !== activeIndex ? (
                           <button
                             onClick={() => onSetActive(index)}
-                            className="px-2.5 py-1.5 text-[10px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--success)] hover:bg-[rgba(0,230,118,0.1)] transition-colors cursor-pointer"
+                            className="px-2.5 py-1.5 text-[10px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--success)] hover:bg-[var(--success-soft-bg)] transition-colors cursor-pointer"
                           >
                             ⚡ 设为活跃
                           </button>
@@ -2302,7 +2302,7 @@ function ImageApiManagerPanel({
                           onClick={() => {
                             if (window.confirm(`确定删除图像节点 #${index}？`)) onRemove(index);
                           }}
-                          className="px-2.5 py-1.5 text-[10px] rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--error)] hover:bg-[rgba(255,82,82,0.1)] transition-colors cursor-pointer"
+                          className="px-2.5 py-1.5 text-[10px] rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--error)] hover:bg-[var(--error-soft-bg)] transition-colors cursor-pointer"
                         >
                           🗑 移除
                         </button>
@@ -2429,14 +2429,14 @@ function ImageRouterPanel({
                 >
                   <span className="mono text-[10px] text-[var(--text-muted)] w-7 text-right">#{index}</span>
                   <span className="text-xs text-[var(--text-primary)]">{node.remark || node.modelName || '未命名节点'}</span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-[rgba(0,188,212,0.14)] text-[var(--info)]">{getImageProviderLabel(providerType)}</span>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded ${imageNodeSupportsEdit(node) ? 'bg-[rgba(16,185,129,0.14)] text-[var(--success)]' : 'bg-[rgba(251,191,36,0.15)] text-[var(--warning)]'}`}>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-pill)] bg-[var(--info-soft-bg)] text-[var(--info)]">{getImageProviderLabel(providerType)}</span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-[var(--radius-pill)] ${imageNodeSupportsEdit(node) ? 'bg-[var(--success-soft-bg)] text-[var(--success)]' : 'bg-[var(--warning-soft-bg)] text-[var(--warning)]'}`}>
                     {imageNodeSupportsEdit(node) ? '支持修图' : '仅生图'}
                   </span>
                   {isInRoute ? (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--accent-purple)] text-white">顺位 {position + 1}</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-pill)] bg-[var(--accent-purple)] text-[var(--on-accent)]">顺位 {position + 1}</span>
                   ) : (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--surface-card)] text-[var(--text-muted)]">未加入</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-pill)] bg-[var(--surface-card)] text-[var(--text-muted)]">未加入</span>
                   )}
                   <div className="flex-1" />
                   <button
@@ -2447,7 +2447,7 @@ function ImageRouterPanel({
                   </button>
                   <button
                     onClick={() => (isInRoute ? removeNode(index) : addNode(index))}
-                    className={`px-2.5 py-1.5 text-[10px] rounded-[var(--radius-sm)] cursor-pointer ${isInRoute ? 'bg-[rgba(255,82,82,0.12)] text-[var(--error)] hover:bg-[rgba(255,82,82,0.2)]' : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+                    className={`px-2.5 py-1.5 text-[10px] rounded-[var(--radius-sm)] cursor-pointer ${isInRoute ? 'bg-[var(--error-soft-bg)] text-[var(--error)] hover:bg-[color-mix(in_srgb,var(--error)_28%,transparent)]' : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
                   >
                     {isInRoute ? '移出路径' : '加入路径'}
                   </button>
@@ -2540,16 +2540,16 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
       style={{
         ...style,
         boxShadow: isActive
-          ? '0 24px 56px rgba(15, 23, 42, 0.16), 0 0 0 1px rgba(168, 85, 247, 0.28)'
+          ? 'var(--shadow-3d-hover), 0 0 0 1px color-mix(in srgb, var(--accent-purple) 28%, transparent)'
           : isSelected
-            ? '0 18px 42px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(14, 165, 233, 0.18)'
-            : '0 14px 32px rgba(15, 23, 42, 0.10), 0 0 0 1px rgba(148, 163, 184, 0.12)',
+            ? 'var(--shadow-3d-hover), 0 0 0 1px color-mix(in srgb, var(--accent-purple) 18%, transparent)'
+            : 'var(--shadow-card), 0 0 0 1px color-mix(in srgb, var(--text-muted) 12%, transparent)',
         background: 'var(--surface-card)',
       }}
-      className={`rounded-[var(--radius)] border-2 hover:border-[var(--border-hover)] transition-all duration-[240ms] overflow-hidden ${densityClass.cardPadding} ${isActive ? 'border-[var(--accent-purple)] ring-1 ring-[rgba(168,85,247,0.16)]' : isSelected ? 'border-[rgba(14,165,233,0.28)]' : 'border-[var(--border-subtle)]'} ${isSelected ? 'bg-[var(--nav-active-bg)]' : ''}`}
+      className={`rounded-[var(--radius)] border-2 hover:border-[var(--border-hover)] transition-all duration-[240ms] overflow-hidden ${densityClass.cardPadding} ${isActive ? 'border-[var(--accent-purple)] ring-1 ring-[color-mix(in_srgb,var(--accent-purple)_18%,transparent)]' : isSelected ? 'border-[var(--accent-soft-border)]' : 'border-[var(--border-subtle)]'} ${isSelected ? 'bg-[var(--nav-active-bg)]' : ''}`}
     >
       <div
-        className="h-1.5 rounded-full mb-4"
+        className="h-1.5 rounded-[var(--radius-pill)] mb-4"
         style={{
           background: isActive
             ? 'var(--accent-purple)'
@@ -2561,7 +2561,7 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
           opacity: isActive ? 1 : 0.6,
         }}
       />
-      <div className={`-mx-5 -mt-5 px-5 pt-5 pb-4 mb-5 flex flex-wrap items-start ${densityClass.cardGap} border-b border-[var(--border-subtle)]`} style={{ background: isActive ? 'rgba(168, 85, 247, 0.05)' : 'rgba(148, 163, 184, 0.05)' }}>
+      <div className={`-mx-5 -mt-5 px-5 pt-5 pb-4 mb-5 flex flex-wrap items-start ${densityClass.cardGap} border-b border-[var(--border-subtle)]`} style={{ background: isActive ? 'color-mix(in srgb, var(--accent-purple) 6%, transparent)' : 'color-mix(in srgb, var(--text-muted) 8%, transparent)' }}>
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <input
             type="checkbox"
@@ -2576,11 +2576,11 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs mono text-[var(--text-muted)]">#{index}</span>
               <span className="text-sm font-medium text-[var(--text-primary)] truncate max-w-[320px]">{node.modelName || '(未命名模型)'}</span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--bg-elevated)]" style={{ color: node.aiType === 'openai' ? 'var(--success)' : node.aiType === 'responses' ? 'var(--accent-purple)' : node.aiType === 'gemini' ? 'var(--info)' : 'var(--accent-pink)' }}>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-pill)] bg-[var(--bg-elevated)]" style={{ color: node.aiType === 'openai' ? 'var(--success)' : node.aiType === 'responses' ? 'var(--accent-purple)' : node.aiType === 'gemini' ? 'var(--info)' : 'var(--accent-pink)' }}>
                 {formatAiTypeLabel(node.aiType)}
               </span>
-              {isActive && <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--accent-purple)] text-white">活跃</span>}
-              {isDuplicate && <span className="text-[10px] px-1.5 py-0.5 rounded bg-[rgba(255,171,64,0.2)] text-[var(--warning)]">重复</span>}
+              {isActive && <span className="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-pill)] bg-[var(--accent-purple)] text-[var(--on-accent)]">活跃</span>}
+              {isDuplicate && <span className="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-pill)] bg-[var(--warning-soft-bg)] text-[var(--warning)]">重复</span>}
             </div>
             <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-[var(--text-muted)]">
               <span className="truncate max-w-[240px]">{node.remark || '还没写备注'}</span>
@@ -2593,9 +2593,9 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
         <div className="flex flex-wrap items-center gap-2 justify-end">
           {pingResult && (
             <span
-              className="text-[10px] px-1.5 py-0.5 rounded"
+              className="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-pill)]"
               style={{
-                background: pingResult.pass ? 'rgba(0,230,118,0.15)' : 'rgba(255,82,82,0.15)',
+                background: pingResult.pass ? 'var(--success-soft-bg)' : 'var(--error-soft-bg)',
                 color: pingResult.pass ? 'var(--success)' : 'var(--error)',
               }}
             >
@@ -2603,7 +2603,7 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
             </span>
           )}
           <span
-            className="text-[10px] px-1.5 py-0.5 rounded"
+            className="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-pill)]"
             style={{ background: levelMeta.bg, color: levelMeta.color }}
             title={`来源: ${getHealthSourceLabel(health?.source)}${health?.reason ? `；${health.reason}` : ''}`}
           >
@@ -2733,7 +2733,7 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
             <div>
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs font-medium text-[var(--text-primary)]">节点健康</p>
-                <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: levelMeta.bg, color: levelMeta.color }} title={`来源: ${getHealthSourceLabel(health?.source)}${health?.reason ? `；${health.reason}` : ''}`}>{formatHealthBadge(health)}</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-pill)]" style={{ background: levelMeta.bg, color: levelMeta.color }} title={`来源: ${getHealthSourceLabel(health?.source)}${health?.reason ? `；${health.reason}` : ''}`}>{formatHealthBadge(health)}</span>
               </div>
               <p className="text-[10px] text-[var(--text-muted)] mt-1">{health?.reason ?? '暂无评分解释'}{health?.source !== 'none' ? `（当前来源：${getHealthSourceLabel(health?.source)}）` : ''}</p>
             </div>
@@ -2762,13 +2762,13 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
         </button>
         {!isActive && (
           <button onClick={() => onSetActive(index)}
-            className="px-2.5 py-1.5 text-[10px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--success)] hover:bg-[rgba(0,230,118,0.1)] transition-colors cursor-pointer">
+            className="px-2.5 py-1.5 text-[10px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--success)] hover:bg-[var(--success-soft-bg)] transition-colors cursor-pointer">
             ⚡ 设为活跃
           </button>
         )}
         <div className="flex-1" />
         <button onClick={() => onRemove(index)}
-          className="px-2.5 py-1.5 text-[10px] rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--error)] hover:bg-[rgba(255,82,82,0.1)] transition-colors cursor-pointer">
+          className="px-2.5 py-1.5 text-[10px] rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--error)] hover:bg-[var(--error-soft-bg)] transition-colors cursor-pointer">
           🗑 移除
         </button>
       </div>

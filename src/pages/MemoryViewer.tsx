@@ -277,10 +277,10 @@ export function MemoryViewer() {
 
       <div className="rounded-[var(--radius)] border border-[var(--border-subtle)] px-4 py-3" style={{ background: 'var(--surface-card)', boxShadow: 'var(--shadow-card)' }}>
         <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--text-secondary)]">
-          <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">群聊会话 {groupMemories.length}</span>
-          <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">私聊会话 {privateMemories.length}</span>
-          <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">容量上限 {MEMORY_CAPACITY} / 会话</span>
-          <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">闲置自动清空 {formatDurationMs(runtime?.contextAutoForgetMs)}</span>
+          <span className="px-2 py-1 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">群聊会话 {groupMemories.length}</span>
+          <span className="px-2 py-1 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">私聊会话 {privateMemories.length}</span>
+          <span className="px-2 py-1 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">容量上限 {MEMORY_CAPACITY} / 会话</span>
+          <span className="px-2 py-1 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">闲置自动清空 {formatDurationMs(runtime?.contextAutoForgetMs)}</span>
           <div className="flex-1" />
           <span className="text-[var(--text-muted)]">打开会话后，你可以先预览，再决定要不要改内容、导出备份，或者手动清空。</span>
         </div>
@@ -336,7 +336,7 @@ export function MemoryViewer() {
                 {detailDirty && (
                   <button
                     onClick={saveDetail}
-                    className="px-3 py-1.5 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-white hover:opacity-90 transition-colors cursor-pointer pulse-dirty"
+                    className="px-3 py-1.5 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-[var(--on-accent)] hover:opacity-90 transition-colors cursor-pointer pulse-dirty"
                   >
                     💾 保存
                   </button>
@@ -344,8 +344,8 @@ export function MemoryViewer() {
               </div>
 
               <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-                {detailSearch ? <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)]">关键词：{detailSearch}</span> : null}
-                <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)]">显示 {filteredMessages.length}/{messages.length}</span>
+                {detailSearch ? <span className="px-2 py-1 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)]">关键词：{detailSearch}</span> : null}
+                <span className="px-2 py-1 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)]">显示 {filteredMessages.length}/{messages.length}</span>
                 <div className="flex-1" />
                 <span className="text-[var(--text-muted)]">这里改的任何内容都只是编辑态，只有点保存之后才会真正写回文件。</span>
               </div>
@@ -369,7 +369,7 @@ export function MemoryViewer() {
                     <p className="text-[11px] text-[var(--text-muted)]">清空会把当前会话里的消息列表直接置空。这里点完还不会立刻生效，只有保存后才会真正写回文件。</p>
                     <button
                       onClick={() => setConfirmClear(true)}
-                      className="px-3 py-1.5 text-xs rounded-[var(--radius-sm)] bg-[rgba(255,82,82,0.15)] text-[var(--error)] hover:bg-[rgba(255,82,82,0.25)] transition-colors cursor-pointer"
+                      className="px-3 py-1.5 text-xs rounded-[var(--radius-sm)] bg-[var(--error-soft-bg)] text-[var(--error)] hover:bg-[color-mix(in_srgb,var(--error)_28%,transparent)] transition-colors cursor-pointer"
                     >
                       清空全部
                     </button>
@@ -386,10 +386,10 @@ export function MemoryViewer() {
               ) : (
                 filteredMessages.map(({ msg, idx }) => {
                   const roleStyle = msg.role === 'user'
-                    ? { bg: 'rgba(147,197,253,0.1)', border: 'var(--info)', label: 'user' }
+                    ? { bg: 'var(--info-soft-bg)', border: 'var(--info)', label: 'user' }
                     : msg.role === 'assistant'
-                      ? { bg: 'rgba(14,165,233,0.1)', border: 'var(--accent-purple)', label: 'assistant' }
-                      : { bg: 'rgba(124,106,154,0.1)', border: 'var(--text-muted)', label: 'system' };
+                      ? { bg: 'var(--accent-soft-bg)', border: 'var(--accent-purple)', label: 'assistant' }
+                      : { bg: 'color-mix(in srgb, var(--text-muted) 14%, transparent)', border: 'var(--text-muted)', label: 'system' };
 
                   return (
                     <div
@@ -400,8 +400,8 @@ export function MemoryViewer() {
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span
-                            className="text-[10px] px-1.5 py-0.5 rounded font-medium"
-                            style={{ color: roleStyle.border, background: `${roleStyle.border}20` }}
+                            className="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-sm)] font-medium"
+                            style={{ color: roleStyle.border, background: `color-mix(in srgb, ${roleStyle.border} 12%, transparent)` }}
                           >
                             {roleStyle.label}
                           </span>
@@ -416,13 +416,13 @@ export function MemoryViewer() {
                         <div className="flex items-center gap-1">
                           <button
                             onClick={() => startEdit(idx)}
-                            className="text-[10px] px-1.5 py-0.5 rounded text-[var(--text-muted)] hover:text-[var(--accent-purple)] hover:bg-[rgba(14,165,233,0.1)] transition-colors cursor-pointer"
+                            className="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--accent-purple)] hover:bg-[var(--accent-soft-bg)] transition-colors cursor-pointer"
                           >
                             编辑
                           </button>
                           <button
                             onClick={() => setConfirmDeleteMsg(idx)}
-                            className="text-[10px] px-1.5 py-0.5 rounded text-[var(--text-muted)] hover:text-[var(--error)] hover:bg-[rgba(255,82,82,0.1)] transition-colors cursor-pointer"
+                            className="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--error)] hover:bg-[var(--error-soft-bg)] transition-colors cursor-pointer"
                           >
                             删除
                           </button>
@@ -434,18 +434,18 @@ export function MemoryViewer() {
                             value={editContent}
                             onChange={(e) => setEditContent(e.target.value)}
                             rows={4}
-                            className="w-full px-2 py-1.5 text-xs rounded bg-[var(--bg-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] mono outline-none focus:border-[var(--accent-purple)] resize-none"
+                            className="w-full px-2 py-1.5 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] mono outline-none focus:border-[var(--accent-purple)] resize-none"
                           />
                           <div className="flex gap-1.5">
                             <button
                               onClick={saveEditMsg}
-                              className="text-[10px] px-2 py-1 rounded bg-[var(--accent-purple)] text-white hover:opacity-90 cursor-pointer"
+                              className="text-[10px] px-2 py-1 rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-[var(--on-accent)] hover:opacity-90 cursor-pointer"
                             >
                               确定
                             </button>
                             <button
                               onClick={() => setEditingIdx(null)}
-                              className="text-[10px] px-2 py-1 rounded bg-[var(--bg-elevated)] text-[var(--text-secondary)] cursor-pointer"
+                              className="text-[10px] px-2 py-1 rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] cursor-pointer"
                             >
                               取消
                             </button>

@@ -1719,19 +1719,19 @@ export function UsageManager() {
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setUsageSection('overview')}
-            className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] border cursor-pointer ${usageSection === 'overview' ? 'border-transparent bg-[var(--accent-purple)] text-white' : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+            className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] border cursor-pointer ${usageSection === 'overview' ? 'border-transparent bg-[var(--accent-purple)] text-[var(--on-accent)]' : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
           >
             总览与事件
           </button>
           <button
             onClick={() => setUsageSection('chat')}
-            className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] border cursor-pointer ${usageSection === 'chat' ? 'border-transparent bg-[var(--accent-purple)] text-white' : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+            className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] border cursor-pointer ${usageSection === 'chat' ? 'border-transparent bg-[var(--accent-purple)] text-[var(--on-accent)]' : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
           >
             聊天额度与群计数
           </button>
           <button
             onClick={() => setUsageSection('image')}
-            className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] border cursor-pointer ${usageSection === 'image' ? 'border-transparent bg-[var(--accent-purple)] text-white' : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+            className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] border cursor-pointer ${usageSection === 'image' ? 'border-transparent bg-[var(--accent-purple)] text-[var(--on-accent)]' : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
           >
             图像额度与计数
           </button>
@@ -1758,7 +1758,7 @@ export function UsageManager() {
             <div className="flex-1" />
             <button
               onClick={() => setShowOverviewCharts((value) => !value)}
-              className={`px-3 py-1.5 text-xs rounded-[var(--radius-sm)] border cursor-pointer ${showOverviewCharts ? 'bg-[var(--bg-elevated)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]' : 'bg-[rgba(255,171,64,0.12)] border-[rgba(255,171,64,0.28)] text-[var(--warning)] hover:text-[var(--text-primary)]'}`}
+              className={`px-3 py-1.5 text-xs rounded-[var(--radius-sm)] border cursor-pointer ${showOverviewCharts ? 'bg-[var(--bg-elevated)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]' : 'bg-[var(--warning-soft-bg)] border-[var(--warning-soft-border)] text-[var(--warning)] hover:text-[var(--text-primary)]'}`}
             >
               {showOverviewCharts ? '收起图表' : '展开图表'}
             </button>
@@ -1768,7 +1768,7 @@ export function UsageManager() {
                   key={item}
                   onClick={() => setUsageChartGranularity(item)}
                   disabled={!showOverviewCharts}
-                  className={`px-3 py-1.5 text-xs rounded-[var(--radius-sm)] border cursor-pointer transition-colors ${usageChartGranularity === item ? 'bg-[var(--accent-purple)] text-white border-transparent' : 'bg-[var(--bg-elevated)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+                  className={`px-3 py-1.5 text-xs rounded-[var(--radius-sm)] border cursor-pointer transition-colors ${usageChartGranularity === item ? 'bg-[var(--accent-purple)] text-[var(--on-accent)] border-transparent' : 'bg-[var(--bg-elevated)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
                 >
                   {{ hour: '时', day: '天', week: '周', month: '月' }[item]}
                 </button>
@@ -1923,7 +1923,7 @@ export function UsageManager() {
                   <button
                     key={item.key}
                     onClick={() => clearUsageEventFilter(item.key)}
-                    className="px-2 py-1 text-[10px] rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+                    className="px-2 py-1 text-[10px] rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
                     title="点击移除这个筛选条件"
                   >
                     {item.label} ×
@@ -1960,7 +1960,7 @@ export function UsageManager() {
                 />
                 <button
                   onClick={saveCurrentUsageEventPreset}
-                  className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-white hover:opacity-90 cursor-pointer"
+                  className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-[var(--on-accent)] hover:opacity-90 cursor-pointer"
                 >
                   保存当前筛选为预设
                 </button>
@@ -2024,12 +2024,12 @@ export function UsageManager() {
                       <div className={`grid h-full grid-cols-[160px_72px_88px_88px_130px_130px_160px_240px_minmax(280px,1fr)] gap-3 px-4 py-3 text-xs items-start ${index < pagedUsageEvents.length - 1 ? 'border-b border-[var(--border-subtle)]' : ''}`}>
                         <span className="mono text-[var(--text-secondary)]">{formatUsageEventTime(event.timestamp)}</span>
                         <span>
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full ${event.category === 'image' ? 'bg-[rgba(251,191,36,0.15)] text-[var(--warning)]' : 'bg-[rgba(14,165,233,0.15)] text-[var(--info)]'}`}>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-[var(--radius-pill)] ${event.category === 'image' ? 'bg-[var(--warning-soft-bg)] text-[var(--warning)]' : 'bg-[var(--info-soft-bg)] text-[var(--info)]'}`}>
                             {getUsageEventCategoryLabel(event.category)}
                           </span>
                         </span>
                         <span>
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full ${event.allowed ? 'bg-[rgba(0,230,118,0.15)] text-[var(--success)]' : 'bg-[rgba(255,82,82,0.15)] text-[var(--error)]'}`}>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-[var(--radius-pill)] ${event.allowed ? 'bg-[var(--success-soft-bg)] text-[var(--success)]' : 'bg-[var(--error-soft-bg)] text-[var(--error)]'}`}>
                             {event.allowed ? '允许' : '拒绝'}
                           </span>
                         </span>
@@ -2048,7 +2048,7 @@ export function UsageManager() {
                             查看限额位置
                           </button>
                           {event.isMasterUser && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(168,85,247,0.15)] text-[var(--accent-purple)]">主人</span>
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--accent-soft-bg)] text-[var(--accent-purple)]">主人</span>
                           )}
                         </div>
                         <span style={CLAMP_TWO_LINES_STYLE} className="mono text-[var(--text-secondary)]">{buildUsageEventSceneLabel(event)}</span>
@@ -2089,7 +2089,7 @@ export function UsageManager() {
                   <select
                     value={usageEventPageSize}
                     onChange={(e) => setUsageEventPageSize(Number(e.target.value) as (typeof USAGE_EVENT_PAGE_SIZES)[number])}
-                    className="px-1.5 py-0.5 bg-[var(--surface-card)] border border-[var(--border-subtle)] rounded text-[var(--text-secondary)] outline-none cursor-pointer"
+                    className="px-1.5 py-0.5 bg-[var(--surface-card)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] text-[var(--text-secondary)] outline-none cursor-pointer"
                   >
                     {USAGE_EVENT_PAGE_SIZES.map((size) => (
                       <option key={size} value={size}>{size}</option>
@@ -2103,14 +2103,14 @@ export function UsageManager() {
                   <button
                     onClick={() => setUsageEventPage(0)}
                     disabled={usageEventPage === 0}
-                    className="px-2 py-1 text-xs rounded bg-[var(--surface-card)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-30 cursor-pointer"
+                    className="px-2 py-1 text-xs rounded-[var(--radius-sm)] bg-[var(--surface-card)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-30 cursor-pointer"
                   >
                     ◀◀
                   </button>
                   <button
                     onClick={() => setUsageEventPage(Math.max(0, usageEventPage - 1))}
                     disabled={usageEventPage === 0}
-                    className="px-2 py-1 text-xs rounded bg-[var(--surface-card)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-30 cursor-pointer"
+                    className="px-2 py-1 text-xs rounded-[var(--radius-sm)] bg-[var(--surface-card)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-30 cursor-pointer"
                   >
                     ◀
                   </button>
@@ -2118,14 +2118,14 @@ export function UsageManager() {
                   <button
                     onClick={() => setUsageEventPage(Math.min(usageEventTotalPages - 1, usageEventPage + 1))}
                     disabled={usageEventPage >= usageEventTotalPages - 1}
-                    className="px-2 py-1 text-xs rounded bg-[var(--surface-card)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-30 cursor-pointer"
+                    className="px-2 py-1 text-xs rounded-[var(--radius-sm)] bg-[var(--surface-card)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-30 cursor-pointer"
                   >
                     ▶
                   </button>
                   <button
                     onClick={() => setUsageEventPage(Math.max(usageEventTotalPages - 1, 0))}
                     disabled={usageEventPage >= usageEventTotalPages - 1}
-                    className="px-2 py-1 text-xs rounded bg-[var(--surface-card)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-30 cursor-pointer"
+                    className="px-2 py-1 text-xs rounded-[var(--radius-sm)] bg-[var(--surface-card)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-30 cursor-pointer"
                   >
                     ▶▶
                   </button>
@@ -2157,14 +2157,14 @@ export function UsageManager() {
             </button>
             <button
               onClick={() => setConfirmResetGroup(true)}
-              className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[rgba(255,82,82,0.15)] text-[var(--error)] hover:bg-[rgba(255,82,82,0.25)] cursor-pointer"
+              className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--error-soft-bg)] text-[var(--error)] hover:bg-[color-mix(in_srgb,var(--error)_28%,transparent)] cursor-pointer"
             >
               重置当前周期
             </button>
             <button
               onClick={() => void saveGroupUsage()}
               disabled={!groupDirty}
-              className={`px-4 py-2 text-xs rounded-[var(--radius-sm)] font-medium transition-colors cursor-pointer ${groupDirty ? 'bg-[var(--accent-purple)] text-white hover:opacity-90 pulse-dirty' : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed'}`}
+              className={`px-4 py-2 text-xs rounded-[var(--radius-sm)] font-medium transition-colors cursor-pointer ${groupDirty ? 'bg-[var(--accent-purple)] text-[var(--on-accent)] hover:opacity-90 pulse-dirty' : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed'}`}
             >
               💾 保存群用量
             </button>
@@ -2203,7 +2203,7 @@ export function UsageManager() {
                 />
                 <button
                   onClick={addCustomGroup}
-                  className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-white hover:opacity-90 cursor-pointer"
+                  className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-[var(--on-accent)] hover:opacity-90 cursor-pointer"
                 >
                   加进去
                 </button>
@@ -2248,7 +2248,7 @@ export function UsageManager() {
                   <div className={`grid h-full grid-cols-[180px_120px_120px_140px_1fr_96px] gap-3 px-4 py-3 text-sm items-center ${index < filteredGroupRows.length - 1 ? 'border-b border-[var(--border-subtle)]' : ''}`}>
                     <span className="mono text-[var(--text-primary)]">{row.gid}</span>
                     <span className="text-xs">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full ${row.listened ? 'bg-[rgba(0,230,118,0.15)] text-[var(--success)]' : 'bg-[var(--bg-elevated)] text-[var(--text-muted)]'}`}>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-[var(--radius-pill)] ${row.listened ? 'bg-[var(--success-soft-bg)] text-[var(--success)]' : 'bg-[var(--bg-elevated)] text-[var(--text-muted)]'}`}>
                         {row.listened ? '监听中' : '未监听'}
                       </span>
                     </span>
@@ -2300,7 +2300,7 @@ export function UsageManager() {
           </div>
 
           {chatAccessConflictUsers.length > 0 && (
-            <div className="rounded-[var(--radius-sm)] border border-[rgba(255,82,82,0.35)] bg-[rgba(255,82,82,0.08)] px-4 py-3">
+            <div className="rounded-[var(--radius-sm)] border border-[var(--error-soft-border)] bg-[var(--error-soft-bg)] px-4 py-3">
               <p className="text-sm font-medium text-[var(--error)]">检测到聊天权限冲突</p>
               <p className="mt-1 text-xs text-[var(--text-secondary)] leading-relaxed">
                 以下 QQ 同时出现在用户黑名单和聊天白名单中：<span className="mono">{chatAccessConflictUsers.join(', ')}</span>。实际运行时黑名单优先，这些人仍然不会收到普通聊天回复。建议你清理其中一侧。
@@ -2333,7 +2333,7 @@ export function UsageManager() {
             <button
               onClick={() => void saveChatRules()}
               disabled={!chatRuleDirty}
-              className={`px-4 py-2 text-xs rounded-[var(--radius-sm)] font-medium transition-colors cursor-pointer ${chatRuleDirty ? 'bg-[var(--accent-purple)] text-white hover:opacity-90 pulse-dirty' : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed'}`}
+              className={`px-4 py-2 text-xs rounded-[var(--radius-sm)] font-medium transition-colors cursor-pointer ${chatRuleDirty ? 'bg-[var(--accent-purple)] text-[var(--on-accent)] hover:opacity-90 pulse-dirty' : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed'}`}
             >
               💾 保存聊天权限与限额规则
             </button>
@@ -2388,7 +2388,7 @@ export function UsageManager() {
                 />
                 <button
                   onClick={addChatWhitelistUser}
-                  className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-white hover:opacity-90 cursor-pointer"
+                  className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-[var(--on-accent)] hover:opacity-90 cursor-pointer"
                 >
                   加入白名单
                 </button>
@@ -2415,7 +2415,7 @@ export function UsageManager() {
               />
               <button
                 onClick={addBlacklistUser}
-                className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-white hover:opacity-90 cursor-pointer"
+                className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-[var(--on-accent)] hover:opacity-90 cursor-pointer"
               >
                 加入黑名单
               </button>
@@ -2454,7 +2454,7 @@ export function UsageManager() {
                 />
                 <button
                   onClick={addCustomChatUser}
-                  className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-white hover:opacity-90 cursor-pointer"
+                  className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-[var(--on-accent)] hover:opacity-90 cursor-pointer"
                 >
                   单独设置
                 </button>
@@ -2489,31 +2489,31 @@ export function UsageManager() {
               getKey={(row) => row.uid}
               renderItem={(row, index) => (
                 <div
-                  className={`grid h-full grid-cols-[180px_120px_140px_140px_140px_180px_120px] gap-3 px-4 py-3 text-sm items-center transition-colors ${highlightedQuotaKey === `chat:${row.uid}` ? 'bg-[rgba(14,165,233,0.08)]' : ''} ${index < filteredChatRows.length - 1 ? 'border-b border-[var(--border-subtle)]' : ''}`}
+                  className={`grid h-full grid-cols-[180px_120px_140px_140px_140px_180px_120px] gap-3 px-4 py-3 text-sm items-center transition-colors ${highlightedQuotaKey === `chat:${row.uid}` ? 'bg-[var(--accent-soft-bg)]' : ''} ${index < filteredChatRows.length - 1 ? 'border-b border-[var(--border-subtle)]' : ''}`}
                 >
                   <span className="mono text-[var(--text-primary)]">{row.uid}</span>
                   <span className="text-xs">
                     {row.isMaster ? (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(0,230,118,0.15)] text-[var(--success)]">主人</span>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--success-soft-bg)] text-[var(--success)]">主人</span>
                     ) : row.hasOverride ? (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(255,171,64,0.18)] text-[var(--warning)]">单独限额</span>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--warning-soft-bg)] text-[var(--warning)]">单独限额</span>
                     ) : (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[var(--bg-elevated)] text-[var(--text-muted)]">全局默认</span>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--bg-elevated)] text-[var(--text-muted)]">全局默认</span>
                     )}
                   </span>
                   <span className="text-xs">
                     {row.isMaster ? (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(0,230,118,0.15)] text-[var(--success)]">主人豁免</span>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--success-soft-bg)] text-[var(--success)]">主人豁免</span>
                     ) : row.inGlobalBlacklist ? (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(255,82,82,0.15)] text-[var(--error)]">黑名单禁止</span>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--error-soft-bg)] text-[var(--error)]">黑名单禁止</span>
                     ) : chatAccess.mode === 'whitelist' ? (
                       row.inChatWhitelist ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(255,171,64,0.18)] text-[var(--warning)]">白名单允许</span>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--warning-soft-bg)] text-[var(--warning)]">白名单允许</span>
                       ) : (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[var(--bg-elevated)] text-[var(--text-muted)]">未在白名单</span>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--bg-elevated)] text-[var(--text-muted)]">未在白名单</span>
                       )
                     ) : (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(14,165,233,0.12)] text-[var(--info)]">黑名单模式默认可用</span>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--info-soft-bg)] text-[var(--info)]">黑名单模式默认可用</span>
                     )}
                   </span>
                   {row.isMaster ? (
@@ -2596,7 +2596,7 @@ export function UsageManager() {
           </div>
 
           {imageAccessConflictUsers.length > 0 && (
-            <div className="rounded-[var(--radius-sm)] border border-[rgba(255,82,82,0.35)] bg-[rgba(255,82,82,0.08)] px-4 py-3">
+            <div className="rounded-[var(--radius-sm)] border border-[var(--error-soft-border)] bg-[var(--error-soft-bg)] px-4 py-3">
               <p className="text-sm font-medium text-[var(--error)]">检测到图像权限冲突</p>
               <p className="mt-1 text-xs text-[var(--text-secondary)] leading-relaxed">
                 以下 QQ 同时出现在用户黑名单和图像白名单中：<span className="mono">{imageAccessConflictUsers.join(', ')}</span>。实际运行时黑名单优先，这些人仍然无法生图或修图。建议你清理其中一侧。
@@ -2626,7 +2626,7 @@ export function UsageManager() {
             <button
               onClick={() => void saveImageQuotaRules()}
               disabled={!imageRuleDirtyWithBlacklist}
-              className={`px-4 py-2 text-xs rounded-[var(--radius-sm)] font-medium transition-colors cursor-pointer ${imageRuleDirtyWithBlacklist ? 'bg-[var(--accent-purple)] text-white hover:opacity-90 pulse-dirty' : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed'}`}
+              className={`px-4 py-2 text-xs rounded-[var(--radius-sm)] font-medium transition-colors cursor-pointer ${imageRuleDirtyWithBlacklist ? 'bg-[var(--accent-purple)] text-[var(--on-accent)] hover:opacity-90 pulse-dirty' : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed'}`}
             >
               💾 保存图像权限与限额规则
             </button>
@@ -2681,7 +2681,7 @@ export function UsageManager() {
                 />
                 <button
                   onClick={addWhitelistUser}
-                  className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-white hover:opacity-90 cursor-pointer"
+                  className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-[var(--on-accent)] hover:opacity-90 cursor-pointer"
                 >
                   加入白名单
                 </button>
@@ -2708,7 +2708,7 @@ export function UsageManager() {
               />
               <button
                 onClick={addBlacklistUser}
-                className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-white hover:opacity-90 cursor-pointer"
+                className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-[var(--on-accent)] hover:opacity-90 cursor-pointer"
               >
                 加入黑名单
               </button>
@@ -2752,7 +2752,7 @@ export function UsageManager() {
                 />
                 <button
                   onClick={addCustomUser}
-                  className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-white hover:opacity-90 cursor-pointer"
+                  className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-[var(--on-accent)] hover:opacity-90 cursor-pointer"
                 >
                   单独设置
                 </button>
@@ -2787,31 +2787,31 @@ export function UsageManager() {
               getKey={(row) => row.uid}
               renderItem={(row, index) => (
                   <div
-                    className={`grid h-full grid-cols-[180px_120px_140px_140px_140px_180px_120px] gap-3 px-4 py-3 text-sm items-center transition-colors ${highlightedQuotaKey === `image:${row.uid}` ? 'bg-[rgba(251,191,36,0.10)]' : ''} ${index < filteredImageRows.length - 1 ? 'border-b border-[var(--border-subtle)]' : ''}`}
+                    className={`grid h-full grid-cols-[180px_120px_140px_140px_140px_180px_120px] gap-3 px-4 py-3 text-sm items-center transition-colors ${highlightedQuotaKey === `image:${row.uid}` ? 'bg-[color-mix(in_srgb,var(--warning)_12%,transparent)]' : ''} ${index < filteredImageRows.length - 1 ? 'border-b border-[var(--border-subtle)]' : ''}`}
                   >
                     <span className="mono text-[var(--text-primary)]">{row.uid}</span>
                     <span className="text-xs">
                       {row.isMaster ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(0,230,118,0.15)] text-[var(--success)]">主人</span>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--success-soft-bg)] text-[var(--success)]">主人</span>
                       ) : row.hasOverride ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(255,171,64,0.18)] text-[var(--warning)]">单独限额</span>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--warning-soft-bg)] text-[var(--warning)]">单独限额</span>
                       ) : (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[var(--bg-elevated)] text-[var(--text-muted)]">全局默认</span>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--bg-elevated)] text-[var(--text-muted)]">全局默认</span>
                       )}
                     </span>
                     <span className="text-xs">
                       {row.isMaster ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(0,230,118,0.15)] text-[var(--success)]">主人豁免</span>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--success-soft-bg)] text-[var(--success)]">主人豁免</span>
                       ) : row.inGlobalBlacklist ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(255,82,82,0.15)] text-[var(--error)]">黑名单禁止</span>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--error-soft-bg)] text-[var(--error)]">黑名单禁止</span>
                       ) : imageAccess.mode === 'whitelist' ? (
                         row.inImageWhitelist ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(255,171,64,0.18)] text-[var(--warning)]">白名单允许</span>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--warning-soft-bg)] text-[var(--warning)]">白名单允许</span>
                         ) : (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[var(--bg-elevated)] text-[var(--text-muted)]">未在白名单</span>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--bg-elevated)] text-[var(--text-muted)]">未在白名单</span>
                         )
                       ) : (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(14,165,233,0.12)] text-[var(--info)]">黑名单模式默认可用</span>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--info-soft-bg)] text-[var(--info)]">黑名单模式默认可用</span>
                       )}
                     </span>
                     {row.isMaster ? (
@@ -2886,14 +2886,14 @@ export function UsageManager() {
             />
             <button
               onClick={() => setConfirmResetImage(true)}
-              className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[rgba(255,82,82,0.15)] text-[var(--error)] hover:bg-[rgba(255,82,82,0.25)] cursor-pointer"
+              className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--error-soft-bg)] text-[var(--error)] hover:bg-[color-mix(in_srgb,var(--error)_28%,transparent)] cursor-pointer"
             >
               重置图像周期
             </button>
             <button
               onClick={() => void saveImageUsage()}
               disabled={!imageDirty}
-              className={`px-4 py-2 text-xs rounded-[var(--radius-sm)] font-medium transition-colors cursor-pointer ${imageDirty ? 'bg-[var(--accent-purple)] text-white hover:opacity-90 pulse-dirty' : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed'}`}
+              className={`px-4 py-2 text-xs rounded-[var(--radius-sm)] font-medium transition-colors cursor-pointer ${imageDirty ? 'bg-[var(--accent-purple)] text-[var(--on-accent)] hover:opacity-90 pulse-dirty' : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed'}`}
             >
               💾 保存图像计数
             </button>
@@ -2959,11 +2959,11 @@ export function UsageManager() {
                   <span className="mono text-[var(--text-primary)]">{row.uid}</span>
                   <span className="text-xs">
                     {row.isMaster ? (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(0,230,118,0.15)] text-[var(--success)]">主人</span>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--success-soft-bg)] text-[var(--success)]">主人</span>
                     ) : row.hasOverride ? (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[rgba(255,171,64,0.18)] text-[var(--warning)]">单独限额</span>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--warning-soft-bg)] text-[var(--warning)]">单独限额</span>
                     ) : (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[var(--bg-elevated)] text-[var(--text-muted)]">全局默认</span>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--bg-elevated)] text-[var(--text-muted)]">全局默认</span>
                     )}
                   </span>
                   <input
