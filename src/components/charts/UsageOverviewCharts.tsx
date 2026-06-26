@@ -64,7 +64,7 @@ export function UsageOverviewCharts({
                   <CartesianGrid stroke="var(--border-subtle)" strokeDasharray="3 3" />
                   <XAxis dataKey="name" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={56} />
                   <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} allowDecimals={false} />
-                  <Tooltip cursor={{ fill: 'rgba(255,255,255,0.03)' }} contentStyle={{ background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: 12, color: 'var(--text-primary)' }} />
+                  <Tooltip cursor={{ fill: 'var(--bg-hover)' }} contentStyle={{ background: 'var(--surface-card-solid)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)' }} />
                   <Bar dataKey="count" radius={[8, 8, 0, 0]} cursor="pointer" isAnimationActive={!lowPerformanceMode} onClick={(data) => onChatUserClick(String(data?.name || ''))}>
                     {chatTopUsersChartData.map((entry, index) => (
                       <Cell key={`${entry.name}-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
@@ -90,7 +90,7 @@ export function UsageOverviewCharts({
                   <CartesianGrid stroke="var(--border-subtle)" strokeDasharray="3 3" />
                   <XAxis dataKey="label" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} interval="preserveStartEnd" minTickGap={18} />
                   <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} allowDecimals={false} />
-                  <Tooltip cursor={{ fill: 'rgba(255,255,255,0.03)' }} contentStyle={{ background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: 12, color: 'var(--text-primary)' }} />
+                  <Tooltip cursor={{ fill: 'var(--bg-hover)' }} contentStyle={{ background: 'var(--surface-card-solid)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)' }} />
                   <Bar dataKey="count" fill="var(--chart-3)" radius={[8, 8, 0, 0]} cursor="pointer" isAnimationActive={!lowPerformanceMode} onClick={(data) => onChatBucketClick(String(data?.payload?.bucket || ''))} />
                 </BarChart>
               </ResponsiveContainer>
@@ -114,7 +114,7 @@ export function UsageOverviewCharts({
                   <CartesianGrid stroke="var(--border-subtle)" strokeDasharray="3 3" />
                   <XAxis dataKey="name" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={56} />
                   <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} allowDecimals={false} />
-                  <Tooltip cursor={{ fill: 'rgba(255,255,255,0.03)' }} contentStyle={{ background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: 12, color: 'var(--text-primary)' }} />
+                  <Tooltip cursor={{ fill: 'var(--bg-hover)' }} contentStyle={{ background: 'var(--surface-card-solid)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)' }} />
                   <Bar dataKey="count" radius={[8, 8, 0, 0]} cursor="pointer" isAnimationActive={!lowPerformanceMode} onClick={(data) => onImageUserClick(String(data?.name || ''))}>
                     {imageTopUsersChartData.map((entry, index) => (
                       <Cell key={`${entry.name}-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
@@ -140,7 +140,7 @@ export function UsageOverviewCharts({
                   <CartesianGrid stroke="var(--border-subtle)" strokeDasharray="3 3" />
                   <XAxis dataKey="label" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} interval="preserveStartEnd" minTickGap={18} />
                   <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} allowDecimals={false} />
-                  <Tooltip cursor={{ fill: 'rgba(255,255,255,0.03)' }} contentStyle={{ background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: 12, color: 'var(--text-primary)' }} />
+                  <Tooltip cursor={{ fill: 'var(--bg-hover)' }} contentStyle={{ background: 'var(--surface-card-solid)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)' }} />
                   <Bar dataKey="count" fill="var(--chart-5)" radius={[8, 8, 0, 0]} cursor="pointer" isAnimationActive={!lowPerformanceMode} onClick={(data) => onImageBucketClick(String(data?.payload?.bucket || ''))} />
                 </BarChart>
               </ResponsiveContainer>

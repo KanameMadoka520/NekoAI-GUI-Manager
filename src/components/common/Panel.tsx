@@ -9,8 +9,7 @@ export function Panel({ title, subtitle, icon, children, padding = 'md' }: {
 }) {
   return (
     <div
-      className={`perf-panel perf-panel-viewport rounded-[var(--radius)] overflow-hidden border border-[var(--border-subtle)] ${padding === 'sm' ? 'p-5' : 'p-6'}`}
-      style={{ background: 'var(--surface-card)', boxShadow: 'var(--shadow-card)' }}
+      className={`perf-panel perf-panel-viewport glass-card rounded-[var(--radius-lg)] overflow-hidden ${padding === 'sm' ? 'p-5' : 'p-6'}`}
     >
       <div className="mb-4 pb-3 border-b border-[var(--border-subtle)]">
         <h3 className="text-sm font-semibold text-[var(--text-primary)] tracking-[0.01em]">{icon ? `${icon} ` : ''}{title}</h3>

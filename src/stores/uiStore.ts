@@ -23,6 +23,8 @@ export type PageJumpRequest =
     userId: string;
   };
 
+export type WallpaperId = 'theme' | 'azure' | 'nebula' | 'amber' | 'graphite' | 'daylight' | 'none' | 'custom';
+
 export interface AppSettings {
   uiScale: number; // 0.8 – 1.5
   theme: 'light' | 'dark' | 'parchment';
@@ -32,6 +34,9 @@ export interface AppSettings {
   ambientDensity: 'low' | 'medium' | 'high';
   ambientStyle: 'network' | 'orbital' | 'blueprint' | 'auto';
   contentDensity: 'compact' | 'standard' | 'spacious';
+  wallpaper: WallpaperId;
+  wallpaperCustomUrl: string;
+  wallpaperDim: 'soft' | 'standard' | 'strong';
   historyFilterPresets: HistoryFilterPreset[];
 }
 
@@ -44,6 +49,9 @@ const defaultSettings: AppSettings = {
   ambientDensity: 'medium',
   ambientStyle: 'auto',
   contentDensity: 'standard',
+  wallpaper: 'theme',
+  wallpaperCustomUrl: '',
+  wallpaperDim: 'standard',
   historyFilterPresets: [],
 };
 

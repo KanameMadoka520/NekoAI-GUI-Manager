@@ -65,14 +65,13 @@ export function Sidebar({ activePage, onNavigate, onChangeDir, onOpenSettings, o
 
   return (
     <aside
-      className="h-full flex flex-col flex-shrink-0"
+      className="glass-shell h-full flex flex-col flex-shrink-0"
       style={{
         width: collapsed ? 64 : width,
         minWidth: collapsed ? 64 : 180,
         background: 'var(--surface-sidebar)',
-        backdropFilter: 'blur(var(--sidebar-blur))',
         boxShadow: 'var(--shadow-panel)',
-        borderRight: '1px solid var(--border-subtle)',
+        borderLeft: '1px solid var(--border-subtle)',
       }}
     >
       <div className="px-4 py-4 border-b border-[var(--border-subtle)]">
@@ -80,7 +79,7 @@ export function Sidebar({ activePage, onNavigate, onChangeDir, onOpenSettings, o
           <span className="text-2xl">🐱</span>
           {!collapsed && (
             <div>
-              <h1 className="text-base font-extrabold text-[var(--accent-purple)] tracking-wide">NekoAI</h1>
+              <h1 className="text-base font-extrabold text-glow-accent tracking-wide">NekoAI</h1>
               <p className="text-[11px] text-[var(--text-muted)]">管理面板 v1.0</p>
             </div>
           )}
@@ -101,7 +100,7 @@ export function Sidebar({ activePage, onNavigate, onChangeDir, onOpenSettings, o
             style={{ transition: 'background-color 0.18s var(--ease-spring), color 0.18s var(--ease-spring), border-color 0.18s var(--ease-spring), opacity 0.18s var(--ease-spring)' }}
           >
             {activePage === item.id && !collapsed && (
-              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-[var(--accent-purple)] rounded-r-[var(--radius-pill)]" />
+              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-[var(--accent-purple)] rounded-r-[var(--radius-pill)]" style={{ boxShadow: '0 0 10px var(--accent-glow)' }} />
             )}
             <span className="text-lg leading-none">{item.icon}</span>
             {!collapsed && <span className="flex-1 text-left">{item.label}</span>}
@@ -116,7 +115,7 @@ export function Sidebar({ activePage, onNavigate, onChangeDir, onOpenSettings, o
           className="w-full flex items-center justify-center gap-2 px-2 py-2 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] cursor-pointer"
           title={collapsed ? '展开侧栏' : '收起侧栏'}
         >
-          <span className="text-xs">{collapsed ? '»' : '«'}</span>
+          <span className="text-xs">{collapsed ? '«' : '»'}</span>
           {!collapsed && <span className="text-[10px]">侧栏</span>}
         </button>
 

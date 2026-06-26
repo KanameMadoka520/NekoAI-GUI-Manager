@@ -51,7 +51,7 @@ export function HistoryStatsCharts({
                 <XAxis type="number" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
                 <YAxis type="category" dataKey="name" tick={{ fill: 'var(--text-secondary)', fontSize: 11 }} axisLine={false} tickLine={false} width={140} />
                 <Tooltip
-                  contentStyle={{ background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: 6, fontSize: 12, color: 'var(--text-primary)' }}
+                  contentStyle={{ background: 'var(--surface-card-solid)', border: '1px solid var(--border-subtle)', borderRadius: 6, fontSize: 12, color: 'var(--text-primary)' }}
                   labelStyle={{ color: 'var(--text-primary)' }}
                   formatter={(value, name) => [value, name === 'count' ? '调用数' : '错误数']}
                 />
@@ -89,7 +89,7 @@ export function HistoryStatsCharts({
                     ))}
                   </Pie>
                   <Tooltip
-                    contentStyle={{ background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: 6, fontSize: 12, color: 'var(--text-primary)' }}
+                    contentStyle={{ background: 'var(--surface-card-solid)', border: '1px solid var(--border-subtle)', borderRadius: 6, fontSize: 12, color: 'var(--text-primary)' }}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -143,13 +143,13 @@ export function HistoryStatsCharts({
               <XAxis dataKey="hour" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} width={30} />
               <Tooltip
-                contentStyle={{ background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: 6, fontSize: 12, color: 'var(--text-primary)' }}
+                contentStyle={{ background: 'var(--surface-card-solid)', border: '1px solid var(--border-subtle)', borderRadius: 6, fontSize: 12, color: 'var(--text-primary)' }}
                 labelStyle={{ color: 'var(--text-primary)' }}
                 itemStyle={{ color: 'var(--accent-purple)' }}
               />
               <Bar dataKey="count" radius={[3, 3, 0, 0]} isAnimationActive={!lowPerformanceMode}>
                 {stats.hours.map((_, i) => (
-                  <Cell key={i} fill={i >= 6 && i < 18 ? 'var(--chart-5)' : 'var(--border-hover)'} />
+                  <Cell key={i} fill={i >= 6 && i < 18 ? 'var(--chart-5)' : 'var(--text-muted)'} />
                 ))}
               </Bar>
             </BarChart>
@@ -171,7 +171,7 @@ function ChartSection({ title, data, lowPerformanceMode }: { title: string; data
             <XAxis type="number" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
             <YAxis type="category" dataKey="name" tick={{ fill: 'var(--text-secondary)', fontSize: 11 }} axisLine={false} tickLine={false} width={110} />
             <Tooltip
-              contentStyle={{ background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: 6, fontSize: 12, color: 'var(--text-primary)' }}
+              contentStyle={{ background: 'var(--surface-card-solid)', border: '1px solid var(--border-subtle)', borderRadius: 6, fontSize: 12, color: 'var(--text-primary)' }}
               labelStyle={{ color: 'var(--text-primary)' }}
               itemStyle={{ color: 'var(--accent-purple)' }}
             />

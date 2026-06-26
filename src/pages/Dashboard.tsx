@@ -7,6 +7,53 @@ import { DeferredVisibleBlock } from '../components/common/DeferredVisibleBlock'
 import { useUiStore } from '../stores/uiStore';
 import { getConfig, getSystemInfo, listMemory } from '../lib/tauri-commands';
 import type { RuntimeConfig, ApiNode, Personality, MemoryMeta, SystemInfo, RuntimeSchema } from '../lib/types';
+import type { PageId } from '../components/layout/Sidebar';
+
+// 启动器首页「快速开始」磁贴 —— 直达其余 9 个功能页（图标 / 文案与侧栏导航一致）。
+const QUICK_TILES: { id: PageId; icon: string; label: string; desc: string }[] = [
+  { id: 'api', icon: '🔌', label: 'API管理', desc: '节点 · 密钥 · 模型' },
+  { id: 'config', icon: '⚙', label: '配置编辑', desc: '运行时可视化配置' },
+  { id: 'personality', icon: '🎭', label: '人格管理', desc: '群聊 / 私聊提示词' },
+  { id: 'evaluation', icon: '📊', label: '人格评测', desc: '多轮次多维打分' },
+  { id: 'memory', icon: '🧠', label: '长期记忆', desc: '对话记忆管理' },
+  { id: 'history', icon: '📜', label: '历史记录', desc: '日志解析分析' },
+  { id: 'usage', icon: '⏱️', label: '用量管理', desc: '周期计数与限流' },
+  { id: 'commands', icon: '📋', label: '命令管理', desc: '命令回避列表' },
+  { id: 'ops', icon: '🛡️', label: '安全发布', desc: '快照 · 部署 · 自检' },
+];
+
+// 大时钟 Hero —— 独立组件，每分钟对齐刷新一次，避免整页随秒级时钟重渲染。
+function HeroClock() {
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    let timer: number | null = null;
+    const schedule = () => {
+      const delay = 60000 - (Date.now() % 60000) + 80;
+      timer = window.setTimeout(() => {
+        setNow(new Date());
+        schedule();
+      }, delay);
+    };
+    schedule();
+    return () => {
+      if (timer !== null) window.clearTimeout(timer);
+    };
+  }, []);
+
+  const h = now.getHours();
+  const greeting = h < 6 ? '凌晨好' : h < 9 ? '早上好' : h < 12 ? '上午好' : h < 14 ? '中午好' : h < 18 ? '下午好' : h < 23 ? '晚上好' : '夜深了';
+  const time = now.toLocaleTimeString('zh-CN', { hour12: false, hour: '2-digit', minute: '2-digit' });
+  const date = now.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+
+  return (
+    <div className="min-w-0">
+      <p className="text-sm text-[var(--text-secondary)] font-medium">{greeting}，欢迎回到 NekoAI 管理面板</p>
+      <div className="mt-2 text-5xl xl:text-6xl font-bold tabular-nums leading-none text-glow-accent">{time}</div>
+      <div className="mt-2.5 text-sm text-[var(--text-secondary)]">{date}</div>
+    </div>
+  );
+}
 
 const MEMORY_CAPACITY = 50;
 
@@ -32,7 +79,7 @@ function formatDurationMs(ms?: number): string {
   return `${Math.round(ms / 60000)} 分钟`;
 }
 
-export function Dashboard() {
+export function Dashboard({ onNavigate }: { onNavigate?: (page: PageId) => void }) {
   const addToast = useUiStore((s) => s.addToast);
   const settings = useUiStore((s) => s.settings);
   const lowPerformanceMode = settings.renderMode === 'lite';
@@ -115,6 +162,45 @@ export function Dashboard() {
 
   return (
     <div className="space-y-4">
+      <section className="hero-rise launcher-tile px-6 py-6 sm:px-8 sm:py-7">
+        <div className="relative z-[1] flex items-start justify-between gap-6 flex-wrap">
+          <HeroClock />
+          <div className="flex flex-col items-stretch sm:items-end gap-2.5">
+            <button
+              onClick={loadAll}
+              className="px-5 py-2.5 text-sm font-semibold rounded-[var(--radius)] bg-[var(--accent-purple)] text-[var(--on-accent)] cursor-pointer glow-soft hover:brightness-110"
+            >
+              🔄 重新读取
+            </button>
+            <span className="text-[11px] text-[var(--text-muted)] sm:text-right max-w-[220px] leading-relaxed">
+              壁纸可在右下角「显示设置 · 壁纸打底」更换或关闭
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div className="flex items-center gap-2 mb-3 px-1">
+          <span className="text-sm font-semibold text-[var(--text-primary)]">快速开始</span>
+          <span className="text-xs text-[var(--text-muted)]">点磁贴直达各功能页</span>
+        </div>
+        <div className="grid grid-cols-3 sm:grid-cols-4 xl:grid-cols-5 gap-3">
+          {QUICK_TILES.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => onNavigate?.(t.id)}
+              className="launcher-tile text-left p-4 cursor-pointer"
+            >
+              <span className="relative z-[1] flex flex-col gap-1.5">
+                <span className="text-2xl leading-none">{t.icon}</span>
+                <span className="mt-1 text-sm font-semibold text-[var(--text-primary)]">{t.label}</span>
+                <span className="text-[11px] text-[var(--text-muted)] leading-snug">{t.desc}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      </section>
+
       {lowPerformanceMode ? (
         <Panel title="快速概览" subtitle="低性能模式下先显示轻量摘要，减少顶部卡片和大字号数值一起参与首屏绘制。" icon="⚡" padding="sm">
           <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--text-secondary)]">
@@ -353,7 +439,7 @@ function TypeCard({ type, count, total, color }: { type: string; count: number; 
       </div>
       <span className="text-2xl font-bold text-[var(--text-primary)]">{count}</span>
       <div className="mt-2 h-1.5 bg-[var(--bg-elevated)] rounded-[var(--radius-pill)] overflow-hidden">
-        <div className="h-full rounded-[var(--radius-pill)] transition-all duration-500" style={{ width: `${pct}%`, background: color }} />
+        <div className="h-full rounded-[var(--radius-pill)] transition-[width] duration-500" style={{ width: `${pct}%`, background: color }} />
       </div>
     </div>
   );

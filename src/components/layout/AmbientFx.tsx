@@ -185,8 +185,9 @@ export function AmbientFx({
     : stylePreset;
 
   const titleZone: Zone = { x0: 0, x1: 100, y0: 0, y1: 6 };
-  const sidebarZone: Zone = { x0: 0, x1: sidebarPct, y0: 6, y1: 100 };
-  const mainZone: Zone = { x0: sidebarPct, x1: 100, y0: 6, y1: 100 };
+  // 侧栏在右侧：把侧栏粒子带放到右边，主区占据左侧。
+  const sidebarZone: Zone = { x0: 100 - sidebarPct, x1: 100, y0: 6, y1: 100 };
+  const mainZone: Zone = { x0: 0, x1: 100 - sidebarPct, y0: 6, y1: 100 };
 
   const glyphs = useMemo<Particle[]>(() => {
     return [

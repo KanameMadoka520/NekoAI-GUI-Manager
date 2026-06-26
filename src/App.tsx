@@ -16,6 +16,7 @@ import { getWebConsoleSessionStatus, isTauriRuntime, loginWebConsoleSession, log
 import type { SelfCheckReport, WebConsoleSessionStatus, WebConsoleStatus } from './lib/types';
 import { explainSelfCheckItem } from './lib/human-issues';
 import { useUiStore } from './stores/uiStore';
+import type { WallpaperId } from './stores/uiStore';
 
 const Dashboard = lazy(() => import('./pages/Dashboard').then((m) => ({ default: m.Dashboard })));
 const CommandManager = lazy(() => import('./pages/CommandManager').then((m) => ({ default: m.CommandManager })));
@@ -125,6 +126,40 @@ const stylePresetOptions = [
   { label: '蓝图', value: 'blueprint' as const },
 ];
 
+const wallpaperOptions: { label: string; value: WallpaperId; swatch: string }[] = [
+  { label: '跟随主题', value: 'theme', swatch: 'var(--wallpaper-default)' },
+  { label: '深蓝', value: 'azure', swatch: 'var(--wp-azure)' },
+  { label: '星云', value: 'nebula', swatch: 'var(--wp-nebula)' },
+  { label: '琥珀', value: 'amber', swatch: 'var(--wp-amber)' },
+  { label: '石墨', value: 'graphite', swatch: 'var(--wp-graphite)' },
+  { label: '晴空', value: 'daylight', swatch: 'var(--wp-daylight)' },
+  { label: '纯色', value: 'none', swatch: 'var(--bg-base)' },
+  { label: '自定义', value: 'custom', swatch: 'var(--bg-elevated)' },
+];
+
+const wallpaperDimOptions = [
+  { label: '柔和', value: 'soft' as const },
+  { label: '标准', value: 'standard' as const },
+  { label: '浓重', value: 'strong' as const },
+];
+
+function resolveWallpaperValue(wallpaper: WallpaperId, customUrl: string): string {
+  switch (wallpaper) {
+    case 'theme': return 'var(--wallpaper-default)';
+    case 'azure': return 'var(--wp-azure)';
+    case 'nebula': return 'var(--wp-nebula)';
+    case 'amber': return 'var(--wp-amber)';
+    case 'graphite': return 'var(--wp-graphite)';
+    case 'daylight': return 'var(--wp-daylight)';
+    case 'none': return 'none';
+    case 'custom': {
+      const url = customUrl.trim();
+      return url ? `url("${url.replace(/"/g, '%22')}")` : 'var(--wallpaper-default)';
+    }
+    default: return 'var(--wallpaper-default)';
+  }
+}
+
 function PageFallback() {
   return (
     <div className="flex items-center justify-center h-full">
@@ -232,6 +267,12 @@ function App() {
   useEffect(() => {
     document.documentElement.setAttribute('data-render-mode', settings.renderMode);
   }, [settings.renderMode]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty('--wallpaper', resolveWallpaperValue(settings.wallpaper, settings.wallpaperCustomUrl));
+    root.setAttribute('data-wallpaper-dim', settings.wallpaper === 'none' ? 'off' : settings.wallpaperDim);
+  }, [settings.wallpaper, settings.wallpaperCustomUrl, settings.wallpaperDim]);
 
   useEffect(() => {
     if (Object.keys(dirtyPages).length === 0) return undefined;
@@ -641,7 +682,8 @@ function App() {
 
     const onMove = (ev: MouseEvent) => {
       if (!resizeRef.current) return;
-      const delta = ev.clientX - resizeRef.current.startX;
+      // 侧栏在右侧：把手向左拖（delta<0）应让侧栏变宽，故取负号。
+      const delta = resizeRef.current.startX - ev.clientX;
       const next = Math.max(180, Math.min(340, resizeRef.current.startWidth + delta));
       updateSettings({ sidebarWidth: next });
     };
@@ -751,24 +793,6 @@ function App() {
     content = (
       <ErrorBoundary onReset={handleChangeDir}>
         <div className="flex h-full w-full overflow-hidden">
-          <Sidebar
-            activePage={activePage}
-            onNavigate={handleNavigate}
-            onChangeDir={handleChangeDir}
-            onOpenSettings={() => setShowSettings(true)}
-            onOpenWebConsole={() => setShowWebConsolePanel(true)}
-            onToggleCollapse={toggleSidebar}
-            collapsed={settings.sidebarCollapsed}
-            width={settings.sidebarWidth}
-            visiblePages={browserVisiblePages}
-          />
-          {!settings.sidebarCollapsed && (
-            <div
-              className="w-1 cursor-col-resize bg-transparent hover:bg-[var(--border-hover)] transition-colors"
-              onMouseDown={beginResize}
-              title="拖动调整侧栏宽度"
-            />
-          )}
           <main className="flex-1 flex flex-col overflow-hidden">
             <Header
               title={title}
@@ -821,7 +845,7 @@ function App() {
               <Suspense fallback={<PageFallback />}>
                 {activePage === 'dashboard' && (
                   <DeferredMount key={`dashboard-${refreshKey}`} fallback={<PageFallback />}>
-                    <Dashboard key={refreshKey} />
+                    <Dashboard key={refreshKey} onNavigate={handleNavigate} />
                   </DeferredMount>
                 )}
                 {activePage === 'commands' && (
@@ -873,6 +897,25 @@ function App() {
             </div>
             <ToastContainer />
           </main>
+
+          {!settings.sidebarCollapsed && (
+            <div
+              className="w-1 cursor-col-resize bg-transparent hover:bg-[var(--border-hover)] transition-colors"
+              onMouseDown={beginResize}
+              title="拖动调整侧栏宽度"
+            />
+          )}
+          <Sidebar
+            activePage={activePage}
+            onNavigate={handleNavigate}
+            onChangeDir={handleChangeDir}
+            onOpenSettings={() => setShowSettings(true)}
+            onOpenWebConsole={() => setShowWebConsolePanel(true)}
+            onToggleCollapse={toggleSidebar}
+            collapsed={settings.sidebarCollapsed}
+            width={settings.sidebarWidth}
+            visiblePages={browserVisiblePages}
+          />
 
           {/* Help modal */}
           <Modal open={showHelp} onClose={() => setShowHelp(false)} title="快捷键" width="360px">
@@ -1330,6 +1373,57 @@ function App() {
               <div className="border-t border-[var(--border-subtle)]" />
 
               <div>
+                <label className="text-sm text-[var(--text-secondary)] mb-3 block">壁纸打底</label>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {wallpaperOptions.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => updateSettings({ wallpaper: opt.value })}
+                      title={opt.label}
+                      className={`relative h-12 rounded-[var(--radius-sm)] overflow-hidden border cursor-pointer
+                        ${settings.wallpaper === opt.value
+                          ? 'border-[var(--accent-purple)] ring-2 ring-[var(--focus-ring)]'
+                          : 'border-[var(--border-subtle)] hover:border-[var(--border-hover)]'
+                        }`}
+                    >
+                      <span className="absolute inset-0" style={{ background: opt.value === 'custom' && settings.wallpaperCustomUrl.trim() ? `url("${settings.wallpaperCustomUrl.trim()}")` : opt.swatch, backgroundSize: 'cover', backgroundPosition: 'center' }} />
+                      <span className="absolute inset-x-0 bottom-0 text-[10px] text-center py-0.5 bg-black/55 text-white">{opt.label}</span>
+                    </button>
+                  ))}
+                </div>
+                {settings.wallpaper === 'custom' && (
+                  <input
+                    type="text"
+                    value={settings.wallpaperCustomUrl}
+                    onChange={(e) => updateSettings({ wallpaperCustomUrl: e.target.value })}
+                    placeholder="粘贴图片地址 https://..."
+                    className="mt-2 w-full px-3 py-2 text-xs rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
+                  />
+                )}
+                <div className="mt-2 grid grid-cols-3 gap-1.5">
+                  {wallpaperDimOptions.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => updateSettings({ wallpaperDim: opt.value })}
+                      disabled={settings.wallpaper === 'none'}
+                      className={`py-1.5 text-xs rounded-[var(--radius-sm)] font-medium border cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed
+                        ${settings.wallpaperDim === opt.value && settings.wallpaper !== 'none'
+                          ? 'bg-[var(--accent-purple)] text-[var(--on-accent)] border-transparent'
+                          : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
+                        }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] text-[var(--text-muted)] mt-2">
+                  壁纸只在底层渲染一层，面板半透明让壁纸透出；暗度档位控制可读性蒙版浓淡。选「纯色」或低性能模式会自动改用不透明底色。
+                </p>
+              </div>
+
+              <div className="border-t border-[var(--border-subtle)]" />
+
+              <div>
                 <label className="text-sm text-[var(--text-secondary)] mb-3 block">漂浮密度</label>
                 <div className="grid grid-cols-3 gap-1.5">
                   {densityOptions.map((opt) => (
@@ -1464,7 +1558,7 @@ function App() {
                   <span>📂</span> 重新选择插件目录
                 </button>
                 <button
-                  onClick={() => updateSettings({ uiScale: 1.0, theme: 'light', renderMode: 'standard', sidebarCollapsed: false, sidebarWidth: 224, ambientDensity: 'medium', ambientStyle: 'auto', contentDensity: 'standard' })}
+                  onClick={() => updateSettings({ uiScale: 1.0, theme: 'light', renderMode: 'standard', sidebarCollapsed: false, sidebarWidth: 224, ambientDensity: 'medium', ambientStyle: 'auto', contentDensity: 'standard', wallpaper: 'theme', wallpaperCustomUrl: '', wallpaperDim: 'standard' })}
                   className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-[var(--radius-sm)] text-sm text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] cursor-pointer"
                 >
                   <span>↩</span> 恢复默认设置
@@ -1480,6 +1574,7 @@ function App() {
   return (
     <div className="h-screen w-screen overflow-hidden">
       <div className="relative h-full w-full overflow-hidden">
+        <div className="app-wallpaper" aria-hidden />
         <AmbientFx sidebarCollapsed={settings.sidebarCollapsed} sidebarWidth={settings.sidebarWidth} theme={settings.theme} density={settings.ambientDensity} stylePreset={settings.ambientStyle} enabled={ambientEnabled} />
         <div className="relative z-10 h-full w-full flex flex-col">
           {runningInTauri && (

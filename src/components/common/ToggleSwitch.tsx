@@ -15,8 +15,9 @@ export function ToggleSwitch({ checked, onChange, label }: ToggleSwitchProps) {
           ${checked ? 'bg-[var(--accent-purple)] border-[var(--accent-purple)]' : 'bg-[var(--bg-elevated)] border-[var(--border-subtle)]'}`}
       >
         <span
-          className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-[var(--radius-pill)] bg-[var(--surface-card)] transition-transform duration-200 border border-[var(--border-subtle)]
+          className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-[var(--radius-pill)] bg-[var(--surface-card-solid)] transition-transform duration-200 border border-[var(--border-hover)]
             ${checked ? 'translate-x-5' : 'translate-x-0'}`}
+          style={{ boxShadow: 'var(--shadow-card)' }}
         />
       </button>
       {label && <span className="text-sm text-[var(--text-secondary)]">{label}</span>}

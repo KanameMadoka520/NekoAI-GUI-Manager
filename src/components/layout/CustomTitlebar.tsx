@@ -55,10 +55,9 @@ export function CustomTitlebar({ title }: CustomTitlebarProps) {
 
   return (
     <div
-      className="h-9 flex items-center justify-between border-b border-[var(--border-subtle)] select-none"
+      className="glass-shell h-9 flex items-center justify-between border-b border-[var(--border-subtle)] select-none"
       style={{
-        background: 'var(--surface-header)',
-        backdropFilter: 'blur(var(--header-blur))',
+        background: 'var(--surface-titlebar)',
       }}
       onDoubleClick={toggleMaximize}
     >

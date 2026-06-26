@@ -17,10 +17,12 @@ export function SummaryCard({ label, value, hint, tone = 'neutral', valueClassNa
           : 'text-[var(--text-primary)]';
 
   return (
-    <div className="perf-summary-card card-lift rounded-[var(--radius)] border border-[var(--border-subtle)] px-4 py-3.5" style={{ background: 'var(--surface-card)' }}>
-      <p className="text-xs text-[var(--text-muted)] tracking-wide">{label}</p>
-      <p className={`mt-1.5 text-sm font-semibold truncate tabular-nums ${toneClass} ${valueClassName}`.trim()}>{value}</p>
-      <p className="mt-1 text-xs text-[var(--text-muted)] leading-relaxed">{hint}</p>
+    <div className="perf-summary-card launcher-tile px-4 py-3.5">
+      <div className="relative z-[1]">
+        <p className="text-xs text-[var(--text-muted)] tracking-wide">{label}</p>
+        <p className={`mt-1.5 text-sm font-semibold truncate tabular-nums ${toneClass} ${valueClassName}`.trim()}>{value}</p>
+        <p className="mt-1 text-xs text-[var(--text-muted)] leading-relaxed">{hint}</p>
+      </div>
     </div>
   );
 }
