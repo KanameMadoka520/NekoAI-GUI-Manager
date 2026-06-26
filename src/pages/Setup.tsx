@@ -138,7 +138,7 @@ export function Setup({ onComplete }: SetupProps) {
           <button
             onClick={validate}
             disabled={validating || !dir.trim()}
-            className={`w-full py-3 text-sm font-medium rounded-[var(--radius-sm)] transition-all cursor-pointer
+            className={`w-full py-3 text-sm font-medium rounded-[var(--radius-sm)] transition-colors cursor-pointer
               ${dir.trim()
                 ? 'bg-[var(--accent-purple)] text-[var(--on-accent)] hover:opacity-90'
                 : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed'

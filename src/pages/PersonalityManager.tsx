@@ -427,7 +427,7 @@ function PersonalityColumn({ title, subtitle, icon, items, activeIndex, side, on
               <div
                 key={origIndex}
                 onClick={() => onEdit(side, origIndex)}
-                className={`rounded-[var(--radius-sm)] border transition-all duration-[300ms] cursor-pointer p-4 ${isActive ? 'border-[var(--accent-purple)] bg-[var(--accent-soft-bg)]' : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)] hover:border-[var(--border-hover)]'}`}
+                className={`rounded-[var(--radius-sm)] border transition-colors duration-[300ms] cursor-pointer p-4 ${isActive ? 'border-[var(--accent-purple)] bg-[var(--accent-soft-bg)]' : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)] hover:border-[var(--border-hover)]'}`}
                 style={{ transitionTimingFunction: 'var(--ease-spring)' }}
               >
                 <div className="flex items-start justify-between gap-3 mb-2">
@@ -471,7 +471,7 @@ function PersonalityColumn({ title, subtitle, icon, items, activeIndex, side, on
                     </button>
                   </div>
                 </div>
-                <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 py-2">
+                <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card-solid)] px-3 py-2">
                   <p className="text-xs text-[var(--text-muted)] leading-relaxed line-clamp-3">
                     {item.prompt ? item.prompt.slice(0, 160) + (item.prompt.length > 160 ? '...' : '') : '(空提示词)'}
                   </p>

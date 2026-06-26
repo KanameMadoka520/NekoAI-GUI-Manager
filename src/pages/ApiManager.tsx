@@ -2546,7 +2546,7 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
             : 'var(--shadow-card), 0 0 0 1px color-mix(in srgb, var(--text-muted) 12%, transparent)',
         background: 'var(--surface-card)',
       }}
-      className={`rounded-[var(--radius)] border-2 hover:border-[var(--border-hover)] transition-all duration-[240ms] overflow-hidden ${densityClass.cardPadding} ${isActive ? 'border-[var(--accent-purple)] ring-1 ring-[color-mix(in_srgb,var(--accent-purple)_18%,transparent)]' : isSelected ? 'border-[var(--accent-soft-border)]' : 'border-[var(--border-subtle)]'} ${isSelected ? 'bg-[var(--nav-active-bg)]' : ''}`}
+      className={`rounded-[var(--radius)] border-2 hover:border-[var(--border-hover)] transition-[border-color,box-shadow] duration-[240ms] overflow-hidden ${densityClass.cardPadding} ${isActive ? 'border-[var(--accent-purple)] ring-1 ring-[color-mix(in_srgb,var(--accent-purple)_18%,transparent)]' : isSelected ? 'border-[var(--accent-soft-border)]' : 'border-[var(--border-subtle)]'} ${isSelected ? 'bg-[var(--nav-active-bg)]' : ''}`}
     >
       <div
         className="h-1.5 rounded-[var(--radius-pill)] mb-4"

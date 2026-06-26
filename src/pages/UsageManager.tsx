@@ -2787,7 +2787,7 @@ export function UsageManager() {
               getKey={(row) => row.uid}
               renderItem={(row, index) => (
                   <div
-                    className={`grid h-full grid-cols-[180px_120px_140px_140px_140px_180px_120px] gap-3 px-4 py-3 text-sm items-center transition-colors ${highlightedQuotaKey === `image:${row.uid}` ? 'bg-[color-mix(in_srgb,var(--warning)_12%,transparent)]' : ''} ${index < filteredImageRows.length - 1 ? 'border-b border-[var(--border-subtle)]' : ''}`}
+                    className={`grid h-full grid-cols-[180px_120px_140px_140px_140px_180px_120px] gap-3 px-4 py-3 text-sm items-center transition-colors ${highlightedQuotaKey === `image:${row.uid}` ? 'bg-[var(--warning-soft-bg)]' : ''} ${index < filteredImageRows.length - 1 ? 'border-b border-[var(--border-subtle)]' : ''}`}
                   >
                     <span className="mono text-[var(--text-primary)]">{row.uid}</span>
                     <span className="text-xs">

@@ -1244,7 +1244,7 @@ function ChatBubble({ entry, renderMd: _renderMd, compact, showErrorCategory, en
           </div>
           <div className={`px-3 py-2 rounded-[var(--radius-sm)] text-xs whitespace-pre-wrap break-words
             ${e.isError
-              ? 'bg-[var(--error-soft-bg)] border border-[var(--error)] text-[var(--text-secondary)]'
+              ? 'bg-[var(--bg-card)] border border-[var(--error)] text-[var(--text-secondary)]'
               : 'bg-[var(--bg-card)] border border-[var(--border-subtle)] text-[var(--text-secondary)]'
             }`}>
             {e.reply || '(空回复)'}

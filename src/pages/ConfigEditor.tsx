@@ -1168,8 +1168,8 @@ export function ConfigEditor() {
 
         {schema && (
           <div
-            className={`rounded-[var(--radius)] border mb-3 px-4 py-3 ${hasConfigOverviewAlert ? 'border-[var(--warning-soft-border)] bg-[var(--warning-soft-bg)]' : 'border-[var(--border-subtle)]'}`}
-            style={{ background: hasConfigOverviewAlert ? undefined : 'var(--surface-card)', boxShadow: 'var(--shadow-card)' }}
+            className={`rounded-[var(--radius)] border mb-3 px-4 py-3 ${hasConfigOverviewAlert ? 'border-[var(--warning-soft-border)]' : 'border-[var(--border-subtle)]'}`}
+            style={{ background: 'var(--surface-card)', boxShadow: 'var(--shadow-card)' }}
           >
             <button
               onClick={() => setDiffOverviewExpanded((v) => !v)}
