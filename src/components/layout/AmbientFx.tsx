@@ -173,7 +173,8 @@ export function AmbientFx({
     };
   }, []);
 
-  if (!enabled || !active) return null;
+  // 注意：所有 Hook（含下方两个 useMemo）必须无条件调用，提前 return 要放到全部 Hook 之后，
+  // 否则窗口失焦/启停时 Hook 数量变化会触发 React #310（Rendered fewer hooks than expected）。
   const baseScale = 0.7;
   const densityScale = (density === 'low' ? 0.65 : density === 'high' ? 1.35 : 1) * baseScale;
   const sidebarPct = sidebarCollapsed
@@ -204,6 +205,8 @@ export function AmbientFx({
       ...buildParticles(Math.max(1, Math.round(6 * densityScale)), 10000, titleZone, false, theme),
     ];
   }, [sidebarPct, theme, densityScale]);
+
+  if (!enabled || !active) return null;
 
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden z-0" aria-hidden>
