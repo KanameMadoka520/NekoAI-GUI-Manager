@@ -877,19 +877,25 @@ function App() {
                   当前浏览器会话为只读外部视图。左侧只保留概览、历史记录和用量管理；即使后端还能返回部分读取数据，所有写配置、保存和执行修改性操作都会被后端拒绝。
                 </div>
               )}
-              {noDirReadOnly && (
-                <div className="mb-4 rounded-[var(--radius-sm)] border border-[var(--warning-soft-border)] bg-[var(--warning-soft-bg)] px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
-                  <span className="text-xs leading-relaxed text-[var(--text-secondary)]">
-                    当前未连接插件目录，处于只读浏览模式：可以查看各个页面与界面，但不会读取或写入任何文件。连接插件目录后即可正常读写。
-                  </span>
-                  <button
-                    onClick={handleChangeDir}
-                    className="px-3.5 py-1.5 text-xs font-medium rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-[var(--on-accent)] hover:opacity-90 cursor-pointer whitespace-nowrap flex-shrink-0"
-                  >
-                    连接插件目录
-                  </button>
+              {noDirReadOnly ? (
+                // 未连接目录的只读浏览：不挂载任何依赖目录的数据页面（它们没有数据会崩/卡成白屏），
+                // 改为各页统一的占位卡。外壳(标题栏/侧栏/导航)始终在，可自由切换查看各页面并随时连接目录。
+                <div className="flex items-center justify-center min-h-[55vh]">
+                  <div className="w-[480px] max-w-[90vw] text-center rounded-[var(--radius-lg)] p-8 border border-[var(--border-subtle)]" style={{ background: 'var(--surface-card)', boxShadow: 'var(--shadow-card)' }}>
+                    <span className="text-5xl block mb-4">📂</span>
+                    <h2 className="text-lg font-bold text-[var(--text-primary)] mb-2">「{title}」· 只读浏览</h2>
+                    <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-5">
+                      当前未连接插件目录，处于只读浏览：可在侧栏切换查看各个页面，但不会读取或写入任何文件。连接插件目录后即可查看并管理本页数据。
+                    </p>
+                    <button
+                      onClick={handleChangeDir}
+                      className="px-5 py-2.5 text-sm font-medium rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-[var(--on-accent)] hover:opacity-90 cursor-pointer"
+                    >
+                      连接插件目录
+                    </button>
+                  </div>
                 </div>
-              )}
+              ) : (
               <Suspense fallback={<PageFallback />}>
                 {activePage === 'dashboard' && (
                   <DeferredMount key={`dashboard-${refreshKey}`} fallback={<PageFallback />}>
@@ -942,6 +948,7 @@ function App() {
                   </DeferredMount>
                 )}
               </Suspense>
+              )}
             </div>
             <ToastContainer />
           </main>
