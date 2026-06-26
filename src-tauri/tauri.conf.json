@@ -19,7 +19,9 @@
         "maximize": true,
         "unmaximize": true,
         "close": true,
-        "startDragging": true
+        "startDragging": true,
+        "setSize": true,
+        "setPosition": true
       },
       "dialog": {
         "all": true,
@@ -77,7 +79,10 @@
       {
         "decorations": false,
         "fullscreen": false,
+        "transparent": true,
         "height": 800,
+        "minHeight": 600,
+        "minWidth": 900,
         "resizable": true,
         "title": "NekoAI Manager",
         "width": 1200

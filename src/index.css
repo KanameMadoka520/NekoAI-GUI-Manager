@@ -150,6 +150,8 @@
   --radius-lg: 18px;
   --radius-tile: 22px;
   --radius-pill: 999px;
+  /* 无边框窗口外壳圆角（最大化时由 App 置 0） */
+  --win-radius: 14px;
 
   --header-blur: 12px;
   --sidebar-blur: 16px;
@@ -448,7 +450,9 @@
 
 body {
   font-family: 'Segoe UI', 'Inter', 'Noto Sans SC', system-ui, -apple-system, sans-serif;
-  background: var(--bg-base);
+  /* 透明：让无边框窗口的圆角之外真正透出桌面，不被不透明底色「露馅」成方角。
+     真正的不透明底色由 App 最外层 .app-shell 容器(圆角+overflow-hidden)承载。 */
+  background: transparent;
   color: var(--text-primary);
   overflow: hidden;
   position: relative;

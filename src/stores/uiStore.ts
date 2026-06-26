@@ -90,6 +90,9 @@ interface UiState {
 export const useUiStore = create<UiState>((set) => ({
   toasts: [],
   addToast: (type, message) => {
+    // 未连接插件目录的只读浏览模式下，页面读取失败属预期；统一抑制这类提示，避免逐页弹窗刷屏。
+    // 该状态已由内容区顶部的只读横幅明确说明。
+    if (message.includes('未连接插件目录')) return;
     const id = Date.now().toString();
     set((s) => ({ toasts: [...s.toasts, { id, type, message }] }));
     setTimeout(() => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })), 3000);

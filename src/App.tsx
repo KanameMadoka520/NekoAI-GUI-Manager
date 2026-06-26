@@ -12,7 +12,9 @@ import { Setup } from './pages/Setup';
 import { useKeyboardShortcuts, shortcutList } from './hooks/useKeyboardShortcuts';
 import { useFileWatcher } from './hooks/useFileWatcher';
 import { setPluginDir, runStartupSelfCheck, applySelfCheckFixes, getManagerContext, getWebConsoleStatus, saveWebConsoleSettings, openUrlInBrowser } from './lib/tauri-commands';
-import { getWebConsoleSessionStatus, isTauriRuntime, loginWebConsoleSession, logoutWebConsoleSession } from './lib/runtime-bridge';
+import { getWebConsoleSessionStatus, isTauriRuntime, loginWebConsoleSession, logoutWebConsoleSession, resetPluginDirConnection } from './lib/runtime-bridge';
+import { appWindow } from '@tauri-apps/api/window';
+import { ResizeHandles } from './components/layout/ResizeHandles';
 import type { SelfCheckReport, WebConsoleSessionStatus, WebConsoleStatus } from './lib/types';
 import { explainSelfCheckItem } from './lib/human-issues';
 import { useUiStore } from './stores/uiStore';
@@ -176,6 +178,7 @@ type PendingLeaveAction = { type: 'page'; page: PageId } | { type: 'change-dir' 
 
 function App() {
   const [phase, setPhase] = useState<AppPhase>('initializing');
+  const [windowMaximized, setWindowMaximized] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [activePage, setActivePage] = useState<PageId>(() => loadLastActivePage());
   const [showHelp, setShowHelp] = useState(false);
@@ -227,6 +230,8 @@ function App() {
     };
   }, [startupCheck]);
   const pluginDirInfo = useMemo(() => getCurrentPluginDirInfo(), [phase, refreshKey]);
+  // 无目录只读浏览：桌面端且未连接任何插件目录。此时可浏览全部页面，但不读写任何文件。
+  const noDirReadOnly = runningInTauri && !pluginDirInfo.fullPath;
   const currentDirtyMessage = dirtyPages[activePage];
   const webConsoleHostNormalized = useMemo(() => webConsoleHostDraft.trim() || '127.0.0.1', [webConsoleHostDraft]);
   const webConsoleAllowedRemoteAddrs = useMemo(() => parseRemoteAddrRules(webConsoleAllowedRemoteAddrsDraft), [webConsoleAllowedRemoteAddrsDraft]);
@@ -267,6 +272,23 @@ function App() {
   useEffect(() => {
     document.documentElement.setAttribute('data-render-mode', settings.renderMode);
   }, [settings.renderMode]);
+
+  // 跟踪窗口是否最大化：最大化时取消外壳圆角与边缘缩放把手（铺满屏幕不该有圆角/透明缝）。
+  useEffect(() => {
+    if (!runningInTauri) return undefined;
+    let mounted = true;
+    appWindow.isMaximized().then((v) => { if (mounted) setWindowMaximized(v); }).catch(() => {});
+    const unlistenPromise = appWindow.onResized(async () => {
+      try {
+        const v = await appWindow.isMaximized();
+        if (mounted) setWindowMaximized(v);
+      } catch { /* not in tauri window context */ }
+    });
+    return () => {
+      mounted = false;
+      unlistenPromise.then((fn) => fn()).catch(() => {});
+    };
+  }, [runningInTauri]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -319,6 +341,7 @@ function App() {
 
   useEffect(() => {
     if (phase !== 'ready') return;
+    if (noDirReadOnly) return; // 无目录只读浏览：不触发依赖目录的启动自检
     let cancelled = false;
 
     async function runCheck() {
@@ -339,7 +362,7 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, [phase, addToast]);
+  }, [phase, addToast, noDirReadOnly]);
 
   const toggleHelp = useCallback(() => setShowHelp((v) => !v), []);
 
@@ -633,7 +656,19 @@ function App() {
     setPhase('ready');
   }
 
+  function handleEnterReadOnly() {
+    // 无目录只读浏览：断开目录连接、清掉本地记录后直接进入 ready。
+    // invokeCompat 会因「未连接目录」拒绝一切依赖目录的读写命令，从而保证「只看不读写」。
+    resetPluginDirConnection();
+    localStorage.removeItem('nekoai-plugin-dir');
+    localStorage.removeItem('nekoai-configured');
+    setRefreshKey((k) => k + 1);
+    setActivePage(loadLastActivePage());
+    setPhase('ready');
+  }
+
   function performChangeDir() {
+    resetPluginDirConnection();
     localStorage.removeItem('nekoai-configured');
     setPhase('setup');
   }
@@ -785,7 +820,7 @@ function App() {
   } else if (phase === 'setup') {
     content = (
       <>
-        <Setup onComplete={handleSetupComplete} />
+        <Setup onComplete={handleSetupComplete} onEnterReadOnly={handleEnterReadOnly} />
         <ToastContainer />
       </>
     );
@@ -840,6 +875,19 @@ function App() {
               {browserReadOnlySession && (
                 <div className="mb-4 rounded-[var(--radius-sm)] border border-[var(--warning-soft-border)] bg-[var(--warning-soft-bg)] px-4 py-3 text-xs leading-relaxed text-[var(--text-secondary)]">
                   当前浏览器会话为只读外部视图。左侧只保留概览、历史记录和用量管理；即使后端还能返回部分读取数据，所有写配置、保存和执行修改性操作都会被后端拒绝。
+                </div>
+              )}
+              {noDirReadOnly && (
+                <div className="mb-4 rounded-[var(--radius-sm)] border border-[var(--warning-soft-border)] bg-[var(--warning-soft-bg)] px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
+                  <span className="text-xs leading-relaxed text-[var(--text-secondary)]">
+                    当前未连接插件目录，处于只读浏览模式：可以查看各个页面与界面，但不会读取或写入任何文件。连接插件目录后即可正常读写。
+                  </span>
+                  <button
+                    onClick={handleChangeDir}
+                    className="px-3.5 py-1.5 text-xs font-medium rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-[var(--on-accent)] hover:opacity-90 cursor-pointer whitespace-nowrap flex-shrink-0"
+                  >
+                    连接插件目录
+                  </button>
                 </div>
               )}
               <Suspense fallback={<PageFallback />}>
@@ -1572,8 +1620,16 @@ function App() {
   }
 
   return (
-    <div className="h-screen w-screen overflow-hidden">
-      <div className="relative h-full w-full overflow-hidden">
+    <div className="h-screen w-screen overflow-hidden relative">
+      {/* .app-shell：承载不透明底色 + 圆角 + overflow-hidden 裁切，圆角之外由透明窗口透出桌面。
+          最大化 / 浏览器端取消圆角，铺满不留缝。 */}
+      <div
+        className="relative h-full w-full overflow-hidden"
+        style={{
+          background: 'var(--bg-base)',
+          borderRadius: runningInTauri && !windowMaximized ? 'var(--win-radius)' : 0,
+        }}
+      >
         <div className="app-wallpaper" aria-hidden />
         <AmbientFx sidebarCollapsed={settings.sidebarCollapsed} sidebarWidth={settings.sidebarWidth} theme={settings.theme} density={settings.ambientDensity} stylePreset={settings.ambientStyle} enabled={ambientEnabled} />
         <div className="relative z-10 h-full w-full flex flex-col">
@@ -1602,6 +1658,7 @@ function App() {
           </div>
         </div>
       </div>
+      {runningInTauri && !windowMaximized && <ResizeHandles />}
     </div>
   );
 }

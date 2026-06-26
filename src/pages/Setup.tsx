@@ -5,9 +5,10 @@ import { isTauriRuntime } from '../lib/runtime-bridge';
 
 interface SetupProps {
   onComplete: () => void;
+  onEnterReadOnly?: () => void;
 }
 
-export function Setup({ onComplete }: SetupProps) {
+export function Setup({ onComplete, onEnterReadOnly }: SetupProps) {
   const addToast = useUiStore((s) => s.addToast);
   const runningInTauri = isTauriRuntime();
   // Pre-fill with previously saved dir (for re-configuration)
@@ -146,6 +147,20 @@ export function Setup({ onComplete }: SetupProps) {
           >
             {validating ? '正在检查这个目录能不能正常使用...' : isReconfig ? '用这个目录重新连接' : '连接这个目录'}
           </button>
+
+          {runningInTauri && onEnterReadOnly && (
+            <div className="space-y-1.5">
+              <button
+                onClick={onEnterReadOnly}
+                className="w-full py-2.5 text-sm rounded-[var(--radius-sm)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-purple)] transition-colors cursor-pointer"
+              >
+                暂不连接，先进入只读浏览
+              </button>
+              <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+                只读浏览下可以查看各个页面与界面布局，但不会读取或写入任何文件；连接插件目录后才能正常读写。
+              </p>
+            </div>
+          )}
 
           {/* Tips */}
           <div className="pt-2 border-t border-[var(--border-subtle)]">
