@@ -1621,15 +1621,7 @@ function App() {
 
   return (
     <div className="h-screen w-screen overflow-hidden relative">
-      {/* .app-shell：承载不透明底色 + 圆角 + overflow-hidden 裁切，圆角之外由透明窗口透出桌面。
-          最大化 / 浏览器端取消圆角，铺满不留缝。 */}
-      <div
-        className="relative h-full w-full overflow-hidden"
-        style={{
-          background: 'var(--bg-base)',
-          borderRadius: runningInTauri && !windowMaximized ? 'var(--win-radius)' : 0,
-        }}
-      >
+      <div className="relative h-full w-full overflow-hidden">
         <div className="app-wallpaper" aria-hidden />
         <AmbientFx sidebarCollapsed={settings.sidebarCollapsed} sidebarWidth={settings.sidebarWidth} theme={settings.theme} density={settings.ambientDensity} stylePreset={settings.ambientStyle} enabled={ambientEnabled} />
         <div className="relative z-10 h-full w-full flex flex-col">

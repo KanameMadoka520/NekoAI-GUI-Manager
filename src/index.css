@@ -450,9 +450,7 @@
 
 body {
   font-family: 'Segoe UI', 'Inter', 'Noto Sans SC', system-ui, -apple-system, sans-serif;
-  /* 透明：让无边框窗口的圆角之外真正透出桌面，不被不透明底色「露馅」成方角。
-     真正的不透明底色由 App 最外层 .app-shell 容器(圆角+overflow-hidden)承载。 */
-  background: transparent;
+  background: var(--bg-base);
   color: var(--text-primary);
   overflow: hidden;
   position: relative;

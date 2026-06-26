@@ -79,7 +79,6 @@
       {
         "decorations": false,
         "fullscreen": false,
-        "transparent": true,
         "height": 800,
         "minHeight": 600,
         "minWidth": 900,
