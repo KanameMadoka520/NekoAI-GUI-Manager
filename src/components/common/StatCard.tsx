@@ -25,8 +25,8 @@ export function StatCard({ label, value, color = 'var(--accent-purple)', icon }:
       >
         {value}
       </div>
-      <div className="mt-2.5 h-[3px] rounded-[2px] overflow-hidden" style={{ background: 'color-mix(in srgb, var(--text-muted) 18%, transparent)' }}>
-        <div className="h-full w-2/3" style={{ background: color, boxShadow: `0 0 8px color-mix(in srgb, ${color} 50%, transparent)` }} />
+      <div className="mt-2.5 h-[5px] rounded-[2px] overflow-hidden" style={{ background: 'color-mix(in srgb, var(--text-muted) 14%, transparent)', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.3)' }}>
+        <div className="h-full w-2/3" style={{ background: `linear-gradient(90deg, color-mix(in srgb, ${color} 60%, #000), ${color})`, boxShadow: `0 0 8px color-mix(in srgb, ${color} 50%, transparent)` }} />
       </div>
     </div>
   );
