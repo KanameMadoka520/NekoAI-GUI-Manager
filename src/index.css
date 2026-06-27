@@ -12,95 +12,95 @@
 :root,
 :root[data-theme='dark'] {
   /* —— 暗色指挥台（HUD 主场）—— */
-  --bg-base: #0A0E14;            /* canvas */
-  --bg-aurora: #0A0E14;
-  --bg-card: #161B23;
-  --bg-card-solid: #161B23;
-  --bg-elevated: #1A2030;        /* panel raised */
-  --bg-hover: #20283a;
+  --bg-base: #0E1730;            /* canvas — 深靛蓝，不再死黑 */
+  --bg-aurora: #0E1730;
+  --bg-card: #1A2440;
+  --bg-card-solid: #1A2440;
+  --bg-elevated: #232F52;        /* panel raised */
+  --bg-hover: #2B3A66;
 
-  --text-primary: #E6E8EB;
-  --text-secondary: #9CA3AF;
-  --text-muted: #5A6680;
+  --text-primary: #EEF3FF;
+  --text-secondary: #A7B4D2;
+  --text-muted: #6E7EA6;
 
-  /* 单一冷青强调（令牌名沿用 accent-purple，实为 HUD 信号青） */
-  --accent-purple: #7CDDFF;
-  --accent-pink: #7DD3A0;        /* accentAlt 薄荷 */
-  --accent-strong: #A6E9FF;
-  --accent-glow: rgba(124, 221, 255, 0.22);
-  --on-accent: #07101a;
+  /* 活泼电青强调 + 紫罗兰副强调（令牌名沿用 accent-purple） */
+  --accent-purple: #3DC8FF;
+  --accent-pink: #A78BFA;        /* accentAlt 紫罗兰 */
+  --accent-strong: #7CDDFF;
+  --accent-glow: rgba(61, 200, 255, 0.34);
+  --on-accent: #06121F;
 
-  --success: #7DE07A;
-  --warning: #FBBF24;
-  --error: #FF7A8A;
-  --info: #7CDDFF;
+  --success: #4FE3A6;
+  --warning: #FFC24B;
+  --error: #FF6F91;
+  --info: #3DC8FF;
 
   /* 结构线(实线) 与 账本式细线(faint) */
-  --border-subtle: #2A2E37;
-  --border-hover: #3a4150;
-  --border-strong: rgba(124, 221, 255, 0.55);
-  --border-glow: rgba(124, 221, 255, 0.30);
-  --hud-rule: rgba(229, 233, 240, 0.08);     /* 账本虚线/细线 */
-  --hud-canvas: #0A0E14;
-  --hud-rail: #0F141C;
-  --hud-terminal: #070809;
-  --text-faint: #5A6680;
-  --data-pos: #7DE07A;
-  --data-neg: #FF7A8A;
+  --border-subtle: #30406A;
+  --border-hover: #46588A;
+  --border-strong: rgba(61, 200, 255, 0.58);
+  --border-glow: rgba(61, 200, 255, 0.34);
+  --hud-rule: rgba(170, 195, 255, 0.10);     /* 账本虚线/细线 */
+  --hud-canvas: #0E1730;
+  --hud-rail: #14203F;
+  --hud-terminal: #0A1124;
+  --text-faint: #6E7EA6;
+  --data-pos: #4FE3A6;
+  --data-neg: #FF6F91;
 
-  /* 面板表面：扁平实色（无玻璃/无渐变），靠描边分层 */
-  --surface-card: #161B23;
-  --surface-card-solid: #161B23;
-  --surface-glass: #13171f;
-  --surface-glass-border: #2A2E37;
-  --surface-sidebar: #0F141C;
-  --surface-header: #11151d;
-  --surface-titlebar: #0F141C;
-  --card-top-highlight: rgba(124, 221, 255, 0.18);
-  --nav-active-bg: rgba(124, 221, 255, 0.08);
+  /* 面板表面：扁平实色，靠描边分层 */
+  --surface-card: #1A2440;
+  --surface-card-solid: #1A2440;
+  --surface-glass: #18223E;
+  --surface-glass-border: #30406A;
+  --surface-sidebar: #14203F;
+  --surface-header: #18254A;
+  --surface-titlebar: #14203F;
+  --card-top-highlight: rgba(120, 200, 255, 0.28);
+  --nav-active-bg: rgba(61, 200, 255, 0.14);
 
-  --surface-tile: #161B23;
-  --surface-tile-hover: #1A2030;
-  --tile-border: #2A2E37;
-  --tile-highlight: rgba(124, 221, 255, 0.14);
+  --surface-tile: #1A2440;
+  --surface-tile-hover: #232F52;
+  --tile-border: #30406A;
+  --tile-highlight: rgba(120, 200, 255, 0.22);
 
-  --toast-success-bg: #0f2418;
-  --toast-success-text: #7DE07A;
-  --toast-error-bg: #2a1116;
-  --toast-error-text: #FF9AA6;
-  --toast-warning-bg: #2a2210;
-  --toast-warning-text: #FBD24E;
+  --toast-success-bg: #103527;
+  --toast-success-text: #6FF0BE;
+  --toast-error-bg: #361722;
+  --toast-error-text: #FFA6BC;
+  --toast-warning-bg: #352a12;
+  --toast-warning-text: #FFD36B;
 
-  --error-soft-bg: rgba(255, 122, 138, 0.14);
-  --info-soft-bg: rgba(124, 221, 255, 0.12);
-  --success-soft-bg: color-mix(in srgb, var(--success) 14%, transparent);
-  --success-soft-border: color-mix(in srgb, var(--success) 40%, transparent);
+  --error-soft-bg: rgba(255, 111, 145, 0.15);
+  --info-soft-bg: rgba(61, 200, 255, 0.14);
+  --success-soft-bg: color-mix(in srgb, var(--success) 15%, transparent);
+  --success-soft-border: color-mix(in srgb, var(--success) 42%, transparent);
   --warning-soft-bg: color-mix(in srgb, var(--warning) 16%, transparent);
-  --warning-soft-border: color-mix(in srgb, var(--warning) 42%, transparent);
-  --error-soft-border: color-mix(in srgb, var(--error) 42%, transparent);
-  --info-soft-border: color-mix(in srgb, var(--info) 42%, transparent);
-  --accent-soft-bg: rgba(124, 221, 255, 0.10);
-  --accent-soft-border: rgba(124, 221, 255, 0.40);
+  --warning-soft-border: color-mix(in srgb, var(--warning) 44%, transparent);
+  --error-soft-border: color-mix(in srgb, var(--error) 44%, transparent);
+  --info-soft-border: color-mix(in srgb, var(--info) 44%, transparent);
+  --accent-soft-bg: rgba(61, 200, 255, 0.12);
+  --accent-soft-border: rgba(61, 200, 255, 0.42);
 
-  --scrollbar-thumb: rgba(124, 221, 255, 0.20);
-  --scrollbar-thumb-hover: rgba(124, 221, 255, 0.40);
+  --scrollbar-thumb: rgba(61, 200, 255, 0.22);
+  --scrollbar-thumb-hover: rgba(61, 200, 255, 0.44);
 
-  --chart-1: #7CDDFF;
-  --chart-2: #7DD3A0;
-  --chart-3: #67E8F9;
-  --chart-4: #FBBF24;
-  --chart-5: #C4B5FD;
-  --chart-6: #FF7A8A;
-  --chart-7: #5EEAD4;
-  --chart-8: #93C5FD;
+  --chart-1: #3DC8FF;
+  --chart-2: #A78BFA;
+  --chart-3: #4FE3A6;
+  --chart-4: #FFC24B;
+  --chart-5: #FF6F91;
+  --chart-6: #5EEAD4;
+  --chart-7: #818CF8;
+  --chart-8: #F0A6FF;
 
-  --model-gpt: #7DD3A0;
-  --model-claude: #C4B5FD;
-  --model-qwen: #FBBF24;
-  --model-gemini: #67E8F9;
-  --model-deepseek: #7CDDFF;
-  --model-glm: #FF7A8A;
-  --model-llama: #93C5FD;
+  --model-gpt: #4FE3A6;
+  --model-claude: #A78BFA;
+  --model-qwen: #FFC24B;
+  --model-gemini: #38D6F2;
+  --model-deepseek: #3DC8FF;
+  --model-glm: #FF6F91;
+  --model-llama: #818CF8;
   --model-mistral: #FDBA74;
 
   --ambient-glyph-color: rgba(124, 221, 255, 0.22);
@@ -471,12 +471,14 @@ button, input, select, textarea { line-height: 1.4; }
   pointer-events: none;
   background-color: var(--hud-canvas);
   background-image:
-    radial-gradient(120% 90% at 50% -10%, color-mix(in srgb, var(--accent-purple) 7%, transparent), transparent 55%),
+    radial-gradient(85% 65% at 10% -8%, color-mix(in srgb, var(--accent-purple) 16%, transparent), transparent 52%),
+    radial-gradient(80% 60% at 94% 2%, color-mix(in srgb, var(--accent-pink) 14%, transparent), transparent 52%),
+    radial-gradient(120% 80% at 50% 116%, color-mix(in srgb, var(--accent-purple) 8%, transparent), transparent 55%),
     linear-gradient(var(--hud-rule) 1px, transparent 1px),
     linear-gradient(90deg, var(--hud-rule) 1px, transparent 1px);
-  background-size: cover, 34px 34px, 34px 34px;
+  background-size: cover, cover, cover, 34px 34px, 34px 34px;
   background-position: center;
-  background-repeat: no-repeat, repeat, repeat;
+  background-repeat: no-repeat, no-repeat, no-repeat, repeat, repeat;
 }
 :root[data-render-mode='lite'] .app-wallpaper { background-image: none; background-color: var(--bg-base); }
 
