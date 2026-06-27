@@ -30,7 +30,7 @@ export function CollapsibleSection({ title, subtitle, icon, defaultOpen = true, 
   });
 
   return (
-    <div className="relative bg-[var(--surface-card)] border border-[var(--border-subtle)] rounded-[var(--radius)] overflow-hidden">
+    <div className="relative bg-[var(--surface-card)] border border-[var(--border-subtle)] rounded-[var(--radius)] overflow-hidden" style={{ boxShadow: 'var(--shadow-card)' }}>
       <div
         role="button"
         tabIndex={0}
@@ -40,8 +40,8 @@ export function CollapsibleSection({ title, subtitle, icon, defaultOpen = true, 
         style={{ background: 'var(--surface-header)' }}
         title={open ? '点击收起' : '点击展开'}
       >
-        <span className="mono text-[12px] text-[var(--accent-purple)] w-3 leading-none select-none">{open ? '▾' : '▸'}</span>
-        <span className="mono text-[12px] text-[var(--accent-purple)] leading-none select-none">::</span>
+        <span className="text-[12px] text-[var(--accent-purple)] w-3 leading-none select-none">{open ? '▾' : '▸'}</span>
+        <span className="text-[12px] text-[var(--accent-purple)] leading-none select-none">✦</span>
         {icon ? <span className="text-sm leading-none opacity-70">{icon}</span> : null}
         <span className="text-[13px] font-semibold tracking-[0.01em] text-[var(--text-primary)]">{title}</span>
         {subtitle ? <InfoHint text={subtitle} /> : null}

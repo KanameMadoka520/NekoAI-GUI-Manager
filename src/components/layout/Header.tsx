@@ -14,7 +14,7 @@ export function Header({ title, subtitle, actions }: HeaderProps) {
       style={{ background: 'var(--surface-header)' }}
     >
       <div className="flex items-baseline gap-2.5 min-w-0">
-        <span className="mono text-[13px] text-[var(--accent-purple)] leading-none select-none">❯</span>
+        <span className="text-[14px] text-[var(--accent-purple)] leading-none select-none">✦</span>
         <h2 className="text-[15px] font-semibold text-[var(--text-primary)] leading-none tracking-[0.01em] truncate">{title}</h2>
         {subtitle && <span className="mono text-[11px] text-[var(--text-muted)] truncate hidden md:inline tracking-[0.02em]">// {subtitle}</span>}
       </div>

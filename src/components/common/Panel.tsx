@@ -13,9 +13,9 @@ export function Panel({ title, subtitle, icon, children, padding = 'md' }: {
   padding?: 'sm' | 'md';
 }) {
   return (
-    <div className="perf-panel perf-panel-viewport relative bg-[var(--surface-card)] border border-[var(--border-subtle)] rounded-[var(--radius)] overflow-hidden">
-      <div className="px-4 py-2 border-b border-dashed border-[var(--border-subtle)] flex items-center gap-2" style={{ background: 'var(--surface-header)' }}>
-        <span className="mono text-[12px] leading-none text-[var(--accent-purple)] select-none">::</span>
+    <div className="perf-panel perf-panel-viewport relative bg-[var(--surface-card)] border border-[var(--border-subtle)] rounded-[var(--radius)] overflow-hidden" style={{ boxShadow: 'var(--shadow-card)' }}>
+      <div className="px-4 py-2.5 border-b border-[var(--border-subtle)] flex items-center gap-2" style={{ background: 'var(--surface-header)' }}>
+        <span className="text-[12px] leading-none text-[var(--accent-purple)] select-none">✦</span>
         {icon ? <span className="text-sm leading-none opacity-70">{icon}</span> : null}
         <h3 className="text-[13px] font-semibold tracking-[0.01em] text-[var(--text-primary)]">{title}</h3>
         {subtitle ? <InfoHint text={subtitle} /> : null}

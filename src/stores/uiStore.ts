@@ -43,7 +43,7 @@ export interface AppSettings {
 
 const defaultSettings: AppSettings = {
   uiScale: 1.1,
-  theme: 'dark',
+  theme: 'light',
   renderMode: 'standard',
   sidebarCollapsed: false,
   sidebarWidth: 208,
@@ -56,7 +56,7 @@ const defaultSettings: AppSettings = {
   historyFilterPresets: [],
 };
 
-const SETTINGS_VERSION = 2;
+const SETTINGS_VERSION = 3;
 function loadSettings(): AppSettings {
   try {
     const raw = localStorage.getItem('nekoai-settings');
@@ -64,8 +64,9 @@ function loadSettings(): AppSettings {
       const parsed = JSON.parse(raw) as Partial<AppSettings>;
       const merged: AppSettings = { ...defaultSettings, ...parsed };
       if (parsed.__v !== SETTINGS_VERSION) {
-        // 迁移老设置：采用新默认缩放 110%，并把已下线的功能字段（壁纸/漂浮/几何）归位默认。
+        // 迁移老设置：采用新默认缩放 110% + 默认粉彩主题，并把已下线的功能字段（壁纸/漂浮/几何）归位默认。
         merged.uiScale = 1.1;
+        merged.theme = 'light';
         merged.wallpaper = 'none';
         merged.ambientDensity = 'low';
         merged.ambientStyle = 'auto';

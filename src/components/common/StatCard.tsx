@@ -13,7 +13,7 @@ export function StatCard({ label, value, color = 'var(--accent-purple)', icon }:
   return (
     <div
       className="perf-stat-card relative bg-[var(--surface-card)] border border-[var(--border-subtle)] rounded-[var(--radius)] pl-3.5 pr-3.5 py-3 overflow-hidden"
-      style={{ borderLeft: `3px solid ${color}` }}
+      style={{ borderLeft: `4px solid ${color}`, boxShadow: 'var(--shadow-card)' }}
     >
       <div className="flex items-center justify-between">
         <span className="text-[11px] text-[var(--text-secondary)] tracking-[0.02em]">{label}</span>

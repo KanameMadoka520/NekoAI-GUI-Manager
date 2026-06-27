@@ -21,7 +21,7 @@ export function SummaryCard({ label, value, hint, tone = 'neutral', valueClassNa
           : 'text-[var(--text-primary)]';
 
   return (
-    <div className="perf-summary-card bg-[var(--surface-card)] border border-[var(--border-subtle)] rounded-[var(--radius)] px-3 py-2.5">
+    <div className="perf-summary-card bg-[var(--surface-card)] border border-[var(--border-subtle)] rounded-[var(--radius)] px-3 py-2.5" style={{ boxShadow: 'var(--shadow-card)' }}>
       <div className="flex items-center gap-1">
         <p className="text-[11px] text-[var(--text-muted)] tracking-[0.02em]">{label}</p>
         {hint ? <InfoHint text={hint} /> : null}
