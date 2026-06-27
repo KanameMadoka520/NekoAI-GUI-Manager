@@ -2036,6 +2036,21 @@ function ImageApiManagerPanel({
                         >
                           {keyVisible ? '收起 Key' : '展开 Key'}
                         </button>
+                        <span className="w-px h-4 self-center bg-[var(--border-subtle)] mx-0.5" />
+                        <button onClick={() => onClone(index)}
+                          className="px-2.5 py-1.5 text-[11px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer">
+                          📋 克隆
+                        </button>
+                        {index !== activeIndex && (
+                          <button onClick={() => onSetActive(index)}
+                            className="px-2.5 py-1.5 text-[11px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--success)] hover:bg-[var(--success-soft-bg)] transition-colors cursor-pointer">
+                            ⚡ 设为活跃
+                          </button>
+                        )}
+                        <button onClick={() => { if (window.confirm(`确定删除图像节点 #${index}？`)) onRemove(index); }}
+                          className="px-2.5 py-1.5 text-[11px] rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--error)] hover:bg-[var(--error-soft-bg)] transition-colors cursor-pointer">
+                          🗑 移除
+                        </button>
                       </div>
 
                       <div className="mt-1 text-[12px] text-[var(--text-muted)]">{node.remark || '还没写备注'}</div>
@@ -2287,31 +2302,6 @@ function ImageApiManagerPanel({
                         </div>
                       </DeferredVisibleBlock>
 
-                      <div className="mt-4 flex flex-wrap items-center gap-1.5">
-                        <button
-                          onClick={() => onClone(index)}
-                          className="px-2.5 py-1.5 text-[11px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-                        >
-                          📋 克隆
-                        </button>
-                        {index !== activeIndex ? (
-                          <button
-                            onClick={() => onSetActive(index)}
-                            className="px-2.5 py-1.5 text-[11px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--success)] hover:bg-[var(--success-soft-bg)] transition-colors cursor-pointer"
-                          >
-                            ⚡ 设为活跃
-                          </button>
-                        ) : null}
-                        <div className="flex-1" />
-                        <button
-                          onClick={() => {
-                            if (window.confirm(`确定删除图像节点 #${index}？`)) onRemove(index);
-                          }}
-                          className="px-2.5 py-1.5 text-[11px] rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--error)] hover:bg-[var(--error-soft-bg)] transition-colors cursor-pointer"
-                        >
-                          🗑 移除
-                        </button>
-                      </div>
                     </div>
                   );
                 })}
@@ -2620,6 +2610,29 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
           >
               {isExpanded ? '收起 Key 区域' : '展开 Key 区域'}
           </button>
+          <span className="w-px h-4 self-center bg-[var(--border-subtle)] mx-0.5" />
+          <button onClick={() => onTest(index)} disabled={isPinging}
+            className="px-2.5 py-1.5 text-[11px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer disabled:opacity-60">
+            {isPinging ? '⏳ 测试中' : '🔍 测试'}
+          </button>
+          <button onClick={() => onClone(index)}
+            className="px-2.5 py-1.5 text-[11px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer">
+            📋 克隆
+          </button>
+          <button onClick={() => onInsert(index)}
+            className="px-2.5 py-1.5 text-[11px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer">
+            ➕ 插入
+          </button>
+          {!isActive && (
+            <button onClick={() => onSetActive(index)}
+              className="px-2.5 py-1.5 text-[11px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--success)] hover:bg-[var(--success-soft-bg)] transition-colors cursor-pointer">
+              ⚡ 设为活跃
+            </button>
+          )}
+          <button onClick={() => onRemove(index)}
+            className="px-2.5 py-1.5 text-[11px] rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--error)] hover:bg-[var(--error-soft-bg)] transition-colors cursor-pointer">
+            🗑 移除
+          </button>
         </div>
       </div>
 
@@ -2752,31 +2765,6 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
         </div>
       </DeferredVisibleBlock>
 
-      <div className="mt-4 flex flex-wrap items-center gap-1.5">
-        <button onClick={() => onTest(index)} disabled={isPinging}
-          className="px-2.5 py-1.5 text-[11px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer">
-          {isPinging ? '⏳ 测试中' : '🔍 测试'}
-        </button>
-        <button onClick={() => onClone(index)}
-          className="px-2.5 py-1.5 text-[11px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer">
-          📋 克隆
-        </button>
-        <button onClick={() => onInsert(index)}
-          className="px-2.5 py-1.5 text-[11px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer">
-          ➕ 插入
-        </button>
-        {!isActive && (
-          <button onClick={() => onSetActive(index)}
-            className="px-2.5 py-1.5 text-[11px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--success)] hover:bg-[var(--success-soft-bg)] transition-colors cursor-pointer">
-            ⚡ 设为活跃
-          </button>
-        )}
-        <div className="flex-1" />
-        <button onClick={() => onRemove(index)}
-          className="px-2.5 py-1.5 text-[11px] rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--error)] hover:bg-[var(--error-soft-bg)] transition-colors cursor-pointer">
-          🗑 移除
-        </button>
-      </div>
     </div>
   );
 });
