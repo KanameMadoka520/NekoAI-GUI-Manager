@@ -101,3 +101,16 @@ npx tauri build    → 出 exe + msi + nsis 安装包
 - 曾因旧 exe 仍在运行导致「看起来没变」误以为编译错 → 编译前先杀进程，编译后核对哈希。
 - 曾过早宣布成功 → 先在磁盘验证再下结论。
 - **曾给无边框窗口加 `transparent:true` 做圆角，未实机验证就交付，导致用户窗口整窗不可见 → 任何改窗口属性的改动必须实机验证；透明窗口在 Windows/WebView2 上尤其高危。**
+
+---
+
+## 八、第二轮迭代（2026-06-28，commits 5a55889 + 8c433a2）
+
+用户反馈：①窗口拖动卡；②UI 没本质变化，希望细分模块并分页、放大过小字体；③无目录时用 demo 演示数据看页面效果。
+
+1. **拖动/缩放性能**：`ResizeHandles` 每帧仅在原点移动（n/w）时才发 `setPosition`，最常见的右/下/右下缩放只发一次 `setSize`；新增 `lib/window-busy.ts`，拖动/缩放期间在 `<html>` 打 `data-window-busy`，CSS 临时关掉壁纸蒙版过渡、磨砂 blur、全部过渡与背景漂浮动画，让每帧重绘变廉价。
+2. **内置 demo 演示数据**：`lib/demo-data.ts` 提供写死、连贯、强类型的假数据；`runtime-bridge` 的 `setDemoMode/isDemoMode` + `invokeCompat` 顶部拦截。未连接目录的只读浏览改为「挂载真实页面 + 演示数据 + 顶部演示横幅」，写操作不落盘、绝不创建真实文件。（取代了上一版的占位卡方案。）
+3. **放大过小字体**：根字号 16→16.5px；批量上调 ≤11px 的字号（约 270 处）。
+4. **页内子标签**：新增 `components/common/SubTabs.tsx`；用量/历史/发布中心/配置编辑四个重页面拆成 2-4 个页内分段。ApiManager 本就有「文本/图像」模式切换作天然分页、聊天模式是左右并排一体编辑流，故未强行加子标签。
+
+校验：`npm run build` 通过；`eslint` rules-of-hooks 计数为 0；`npx tauri build` 产物（**未自动部署，用户自行部署**）已用内容哈希核对 exe 内嵌新前端。
