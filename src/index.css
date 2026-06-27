@@ -388,12 +388,6 @@
   --glow-soft: 0 0 14px -4px var(--accent-glow);
 }
 
-/* —— 壁纸暗度三档（HUD 默认纯画布；选图后控制可读蒙版）—— */
-:root[data-wallpaper-dim='soft'] .app-wallpaper::after { opacity: 0.55; }
-:root[data-wallpaper-dim='standard'] .app-wallpaper::after { opacity: 0.78; }
-:root[data-wallpaper-dim='strong'] .app-wallpaper::after { opacity: 0.92; }
-:root[data-wallpaper-dim='off'] .app-wallpaper::after { opacity: 0; }
-
 /* —— 低性能：关网格/扫描线/发光，纯实色 —— */
 :root[data-render-mode='lite'] {
   --accent-glow: transparent;
@@ -477,22 +471,12 @@ button, input, select, textarea { line-height: 1.4; }
   pointer-events: none;
   background-color: var(--hud-canvas);
   background-image:
+    radial-gradient(120% 90% at 50% -10%, color-mix(in srgb, var(--accent-purple) 7%, transparent), transparent 55%),
     linear-gradient(var(--hud-rule) 1px, transparent 1px),
-    linear-gradient(90deg, var(--hud-rule) 1px, transparent 1px),
-    var(--wallpaper, none);
-  background-size: 34px 34px, 34px 34px, cover;
+    linear-gradient(90deg, var(--hud-rule) 1px, transparent 1px);
+  background-size: cover, 34px 34px, 34px 34px;
   background-position: center;
-  background-repeat: repeat, repeat, no-repeat;
-}
-.app-wallpaper::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(120% 90% at 50% -10%, rgba(124,221,255,0.06), transparent 55%),
-    var(--hud-canvas);
-  opacity: 0;
-  transition: opacity 0.4s var(--ease-spring);
+  background-repeat: no-repeat, repeat, repeat;
 }
 :root[data-render-mode='lite'] .app-wallpaper { background-image: none; background-color: var(--bg-base); }
 

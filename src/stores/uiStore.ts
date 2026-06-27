@@ -38,6 +38,7 @@ export interface AppSettings {
   wallpaperCustomUrl: string;
   wallpaperDim: 'soft' | 'standard' | 'strong';
   historyFilterPresets: HistoryFilterPreset[];
+  __v?: number;
 }
 
 const defaultSettings: AppSettings = {
@@ -55,12 +56,28 @@ const defaultSettings: AppSettings = {
   historyFilterPresets: [],
 };
 
+const SETTINGS_VERSION = 2;
 function loadSettings(): AppSettings {
   try {
     const raw = localStorage.getItem('nekoai-settings');
-    if (raw) return { ...defaultSettings, ...JSON.parse(raw) };
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<AppSettings>;
+      const merged: AppSettings = { ...defaultSettings, ...parsed };
+      if (parsed.__v !== SETTINGS_VERSION) {
+        // 迁移老设置：采用新默认缩放 110%，并把已下线的功能字段（壁纸/漂浮/几何）归位默认。
+        merged.uiScale = 1.1;
+        merged.wallpaper = 'none';
+        merged.ambientDensity = 'low';
+        merged.ambientStyle = 'auto';
+        merged.__v = SETTINGS_VERSION;
+        try { localStorage.setItem('nekoai-settings', JSON.stringify(merged)); } catch { /* ignore */ }
+      } else {
+        merged.__v = SETTINGS_VERSION;
+      }
+      return merged;
+    }
   } catch { /* ignore */ }
-  return defaultSettings;
+  return { ...defaultSettings, __v: SETTINGS_VERSION };
 }
 
 let settingsPersistTimer: ReturnType<typeof setTimeout> | null = null;

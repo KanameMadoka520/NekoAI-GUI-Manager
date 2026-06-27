@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { InfoHint } from './InfoHint';
 
 /**
  * 可收回抽屉：和 HUD 面板同款外观，表头可点击把内容向上收起，给下方更重要的条目腾出高度。
@@ -30,10 +31,12 @@ export function CollapsibleSection({ title, subtitle, icon, defaultOpen = true, 
 
   return (
     <div className="relative bg-[var(--surface-card)] border border-[var(--border-subtle)] rounded-[var(--radius)] overflow-hidden">
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={toggle}
-        className={`w-full flex items-center gap-2 px-4 py-2 cursor-pointer text-left ${open ? 'border-b border-dashed border-[var(--border-subtle)]' : ''}`}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }}
+        className={`w-full flex items-center gap-2 px-4 py-2 cursor-pointer text-left select-none ${open ? 'border-b border-dashed border-[var(--border-subtle)]' : ''}`}
         style={{ background: 'var(--surface-header)' }}
         title={open ? '点击收起' : '点击展开'}
       >
@@ -41,10 +44,10 @@ export function CollapsibleSection({ title, subtitle, icon, defaultOpen = true, 
         <span className="mono text-[12px] text-[var(--accent-purple)] leading-none select-none">::</span>
         {icon ? <span className="text-sm leading-none opacity-70">{icon}</span> : null}
         <span className="text-[13px] font-semibold tracking-[0.01em] text-[var(--text-primary)]">{title}</span>
-        {subtitle && open ? <span className="text-[11px] text-[var(--text-muted)] truncate hidden lg:inline">{subtitle}</span> : null}
+        {subtitle ? <InfoHint text={subtitle} /> : null}
         {!open ? <span className="mono text-[10px] text-[var(--text-muted)] ml-auto whitespace-nowrap tracking-[0.04em]">已收起 · 点击展开</span> : null}
         {right && open ? <span className="ml-auto flex items-center gap-2" onClick={(e) => e.stopPropagation()}>{right}</span> : null}
-      </button>
+      </div>
       <div className="grid transition-[grid-template-rows] duration-200 ease-out" style={{ gridTemplateRows: open ? '1fr' : '0fr' }}>
         <div className="overflow-hidden">
           <div className={padding === 'sm' ? 'p-4' : 'p-5'}>{children}</div>

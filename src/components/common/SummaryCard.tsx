@@ -1,12 +1,13 @@
 import type { ReactNode } from 'react';
+import { InfoHint } from './InfoHint';
 
 /**
- * HUD 概要单元：小标签 + 等宽读数(按 tone 上色) + 说明。扁平描边，账本式紧凑。
+ * HUD 概要单元：小标签 + 等宽读数(按 tone 上色)。说明收进标签旁的 ⓘ，省纵向空间。
  */
 export function SummaryCard({ label, value, hint, tone = 'neutral', valueClassName = '' }: {
   label: string;
   value: string | number;
-  hint: string;
+  hint?: string;
   tone?: 'neutral' | 'warning' | 'success' | 'info';
   valueClassName?: string;
 }) {
@@ -21,9 +22,11 @@ export function SummaryCard({ label, value, hint, tone = 'neutral', valueClassNa
 
   return (
     <div className="perf-summary-card bg-[var(--surface-card)] border border-[var(--border-subtle)] rounded-[var(--radius)] px-3 py-2.5">
-      <p className="text-[11px] text-[var(--text-muted)] tracking-[0.02em]">{label}</p>
+      <div className="flex items-center gap-1">
+        <p className="text-[11px] text-[var(--text-muted)] tracking-[0.02em]">{label}</p>
+        {hint ? <InfoHint text={hint} /> : null}
+      </div>
       <p className={`data-num mt-1 text-[16px] font-bold truncate ${toneClass} ${valueClassName}`.trim()}>{value}</p>
-      <p className="mt-0.5 text-[11px] text-[var(--text-muted)] leading-snug">{hint}</p>
     </div>
   );
 }

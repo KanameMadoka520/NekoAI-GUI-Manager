@@ -15,11 +15,11 @@ import { setPluginDir, runStartupSelfCheck, applySelfCheckFixes, getManagerConte
 import { getWebConsoleSessionStatus, isTauriRuntime, loginWebConsoleSession, logoutWebConsoleSession, resetPluginDirConnection, setDemoMode } from './lib/runtime-bridge';
 import { appWindow } from '@tauri-apps/api/window';
 import { ResizeHandles } from './components/layout/ResizeHandles';
+import { SettingsPanel } from './components/layout/SettingsPanel';
 import { pulseWindowBusy } from './lib/window-busy';
 import type { SelfCheckReport, WebConsoleSessionStatus, WebConsoleStatus } from './lib/types';
 import { explainSelfCheckItem } from './lib/human-issues';
 import { useUiStore } from './stores/uiStore';
-import type { WallpaperId } from './stores/uiStore';
 
 const Dashboard = lazy(() => import('./pages/Dashboard').then((m) => ({ default: m.Dashboard })));
 const CommandManager = lazy(() => import('./pages/CommandManager').then((m) => ({ default: m.CommandManager })));
@@ -98,79 +98,6 @@ function parseRemoteAddrRules(text: string) {
   ));
 }
 
-const scaleOptions = [
-  { label: '80%', value: 0.8 },
-  { label: '90%', value: 0.9 },
-  { label: '100%', value: 1.0 },
-  { label: '110%', value: 1.1 },
-  { label: '120%', value: 1.2 },
-  { label: '130%', value: 1.3 },
-];
-
-const themeOptions = [
-  { label: '暗色', value: 'dark' as const },
-  { label: '亮色', value: 'light' as const },
-  { label: '羊皮纸', value: 'parchment' as const },
-];
-
-const renderModeOptions = [
-  { label: '标准渲染', value: 'standard' as const },
-  { label: '低性能', value: 'lite' as const },
-];
-
-const densityOptions = [
-  { label: '轻', value: 'low' as const },
-  { label: '中', value: 'medium' as const },
-  { label: '重', value: 'high' as const },
-];
-
-const contentDensityOptions = [
-  { label: '紧凑', value: 'compact' as const },
-  { label: '标准', value: 'standard' as const },
-  { label: '舒展', value: 'spacious' as const },
-];
-
-const stylePresetOptions = [
-  { label: '自动', value: 'auto' as const },
-  { label: '网络', value: 'network' as const },
-  { label: '轨道', value: 'orbital' as const },
-  { label: '蓝图', value: 'blueprint' as const },
-];
-
-const wallpaperOptions: { label: string; value: WallpaperId; swatch: string }[] = [
-  { label: '跟随主题', value: 'theme', swatch: 'var(--wallpaper-default)' },
-  { label: '深蓝', value: 'azure', swatch: 'var(--wp-azure)' },
-  { label: '星云', value: 'nebula', swatch: 'var(--wp-nebula)' },
-  { label: '琥珀', value: 'amber', swatch: 'var(--wp-amber)' },
-  { label: '石墨', value: 'graphite', swatch: 'var(--wp-graphite)' },
-  { label: '晴空', value: 'daylight', swatch: 'var(--wp-daylight)' },
-  { label: '纯色', value: 'none', swatch: 'var(--bg-base)' },
-  { label: '自定义', value: 'custom', swatch: 'var(--bg-elevated)' },
-];
-
-const wallpaperDimOptions = [
-  { label: '柔和', value: 'soft' as const },
-  { label: '标准', value: 'standard' as const },
-  { label: '浓重', value: 'strong' as const },
-];
-
-function resolveWallpaperValue(wallpaper: WallpaperId, customUrl: string): string {
-  switch (wallpaper) {
-    case 'theme': return 'var(--wallpaper-default)';
-    case 'azure': return 'var(--wp-azure)';
-    case 'nebula': return 'var(--wp-nebula)';
-    case 'amber': return 'var(--wp-amber)';
-    case 'graphite': return 'var(--wp-graphite)';
-    case 'daylight': return 'var(--wp-daylight)';
-    case 'none': return 'none';
-    case 'custom': {
-      const url = customUrl.trim();
-      return url ? `url("${url.replace(/"/g, '%22')}")` : 'var(--wallpaper-default)';
-    }
-    default: return 'var(--wallpaper-default)';
-  }
-}
-
 function PageFallback() {
   return (
     <div className="flex items-center justify-center h-full">
@@ -221,7 +148,6 @@ function App() {
   const [startupCheck, setStartupCheck] = useState<SelfCheckReport | null>(null);
   const [showStartupCheck, setShowStartupCheck] = useState(false);
   const [startupCheckBusy, setStartupCheckBusy] = useState(false);
-  const [lastPagePaintMs, setLastPagePaintMs] = useState<number | null>(null);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [pendingLeaveAction, setPendingLeaveAction] = useState<PendingLeaveAction>(null);
   const [browserSession, setBrowserSession] = useState<WebConsoleSessionStatus | null>(null);
@@ -332,12 +258,6 @@ function App() {
   }, [runningInTauri]);
 
   useEffect(() => {
-    const root = document.documentElement;
-    root.style.setProperty('--wallpaper', resolveWallpaperValue(settings.wallpaper, settings.wallpaperCustomUrl));
-    root.setAttribute('data-wallpaper-dim', settings.wallpaper === 'none' ? 'off' : settings.wallpaperDim);
-  }, [settings.wallpaper, settings.wallpaperCustomUrl, settings.wallpaperDim]);
-
-  useEffect(() => {
     if (Object.keys(dirtyPages).length === 0) return undefined;
     const handler = (event: BeforeUnloadEvent) => {
       event.preventDefault();
@@ -357,22 +277,6 @@ function App() {
     if (pageJumpRequest.page === activePage) return;
     handleNavigate(pageJumpRequest.page);
   }, [phase, pageJumpRequest, activePage]);
-
-  useEffect(() => {
-    if (phase !== 'ready') return undefined;
-    const startedAt = performance.now();
-    let raf1 = 0;
-    let raf2 = 0;
-    raf1 = window.requestAnimationFrame(() => {
-      raf2 = window.requestAnimationFrame(() => {
-        setLastPagePaintMs(Math.round(performance.now() - startedAt));
-      });
-    });
-    return () => {
-      window.cancelAnimationFrame(raf1);
-      window.cancelAnimationFrame(raf2);
-    };
-  }, [phase, activePage, refreshKey]);
 
   useEffect(() => {
     if (!browserReadOnlySession) return;
@@ -1438,250 +1342,9 @@ function App() {
             </div>
           </Modal>
 
-          {/* Settings modal */}
-          <Modal open={showSettings} onClose={() => setShowSettings(false)} title="显示设置" width="420px">
-            <div className="space-y-5">
-              <div>
-                <label className="text-sm text-[var(--text-secondary)] mb-3 block">渲染方案</label>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {renderModeOptions.map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => updateSettings({ renderMode: opt.value })}
-                      className={`py-2 text-sm rounded-[var(--radius-sm)] font-medium border cursor-pointer
-                        ${settings.renderMode === opt.value
-                          ? 'bg-[var(--accent-purple)] text-[var(--on-accent)] border-transparent'
-                          : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
-                        }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-[12px] text-[var(--text-muted)] mt-2">
-                  低性能模式会关闭背景动画、界面过渡、模糊和图表动画，更适合核显或远程桌面环境。
-                </p>
-              </div>
-
-              <div className="border-t border-[var(--border-subtle)]" />
-
-              <div>
-                <label className="text-sm text-[var(--text-secondary)] mb-3 block">主题</label>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {themeOptions.map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => updateSettings({ theme: opt.value })}
-                      className={`py-2 text-sm rounded-[var(--radius-sm)] font-medium border cursor-pointer
-                        ${settings.theme === opt.value
-                          ? 'bg-[var(--accent-purple)] text-[var(--on-accent)] border-transparent'
-                          : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
-                        }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-[12px] text-[var(--text-muted)] mt-2">
-                  可选亮色、暗色与羊皮纸主题
-                </p>
-              </div>
-
-              <div className="border-t border-[var(--border-subtle)]" />
-
-              <div>
-                <label className="text-sm text-[var(--text-secondary)] mb-3 block">壁纸打底</label>
-                <div className="grid grid-cols-4 gap-1.5">
-                  {wallpaperOptions.map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => updateSettings({ wallpaper: opt.value })}
-                      title={opt.label}
-                      className={`relative h-12 rounded-[var(--radius-sm)] overflow-hidden border cursor-pointer
-                        ${settings.wallpaper === opt.value
-                          ? 'border-[var(--accent-purple)] ring-2 ring-[var(--focus-ring)]'
-                          : 'border-[var(--border-subtle)] hover:border-[var(--border-hover)]'
-                        }`}
-                    >
-                      <span className="absolute inset-0" style={{ background: opt.value === 'custom' && settings.wallpaperCustomUrl.trim() ? `url("${settings.wallpaperCustomUrl.trim()}")` : opt.swatch, backgroundSize: 'cover', backgroundPosition: 'center' }} />
-                      <span className="absolute inset-x-0 bottom-0 text-[11px] text-center py-0.5 bg-black/55 text-white">{opt.label}</span>
-                    </button>
-                  ))}
-                </div>
-                {settings.wallpaper === 'custom' && (
-                  <input
-                    type="text"
-                    value={settings.wallpaperCustomUrl}
-                    onChange={(e) => updateSettings({ wallpaperCustomUrl: e.target.value })}
-                    placeholder="粘贴图片地址 https://..."
-                    className="mt-2 w-full px-3 py-2 text-xs rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
-                  />
-                )}
-                <div className="mt-2 grid grid-cols-3 gap-1.5">
-                  {wallpaperDimOptions.map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => updateSettings({ wallpaperDim: opt.value })}
-                      disabled={settings.wallpaper === 'none'}
-                      className={`py-1.5 text-xs rounded-[var(--radius-sm)] font-medium border cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed
-                        ${settings.wallpaperDim === opt.value && settings.wallpaper !== 'none'
-                          ? 'bg-[var(--accent-purple)] text-[var(--on-accent)] border-transparent'
-                          : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
-                        }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-[12px] text-[var(--text-muted)] mt-2">
-                  壁纸只在底层渲染一层，面板半透明让壁纸透出；暗度档位控制可读性蒙版浓淡。选「纯色」或低性能模式会自动改用不透明底色。
-                </p>
-              </div>
-
-              <div className="border-t border-[var(--border-subtle)]" />
-
-              <div>
-                <label className="text-sm text-[var(--text-secondary)] mb-3 block">漂浮密度</label>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {densityOptions.map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => updateSettings({ ambientDensity: opt.value })}
-                      className={`py-2 text-sm rounded-[var(--radius-sm)] font-medium border cursor-pointer
-                        ${settings.ambientDensity === opt.value
-                          ? 'bg-[var(--accent-purple)] text-[var(--on-accent)] border-transparent'
-                          : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
-                        }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-[12px] text-[var(--text-muted)] mt-2">
-                  控制背景字符与几何漂浮数量
-                </p>
-              </div>
-
-              <div className="border-t border-[var(--border-subtle)]" />
-
-              <div>
-                <label className="text-sm text-[var(--text-secondary)] mb-3 block">几何风格</label>
-                <div className="grid grid-cols-4 gap-1.5">
-                  {stylePresetOptions.map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => updateSettings({ ambientStyle: opt.value })}
-                      className={`py-2 text-sm rounded-[var(--radius-sm)] font-medium border cursor-pointer
-                        ${settings.ambientStyle === opt.value
-                          ? 'bg-[var(--accent-purple)] text-[var(--on-accent)] border-transparent'
-                          : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
-                        }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-[12px] text-[var(--text-muted)] mt-2">
-                  选择高级几何图形风格预设
-                </p>
-              </div>
-
-              <div className="border-t border-[var(--border-subtle)]" />
-
-              <div>
-                <label className="text-sm text-[var(--text-secondary)] mb-3 block">内容密度</label>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {contentDensityOptions.map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => updateSettings({ contentDensity: opt.value })}
-                      className={`py-2 text-sm rounded-[var(--radius-sm)] font-medium border cursor-pointer
-                        ${settings.contentDensity === opt.value
-                          ? 'bg-[var(--accent-purple)] text-[var(--on-accent)] border-transparent'
-                          : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
-                        }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-[12px] text-[var(--text-muted)] mt-2">
-                  调整页面区块间距、卡片留白和表单密度
-                </p>
-              </div>
-
-              <div className="border-t border-[var(--border-subtle)]" />
-
-              <div>
-                <label className="text-sm text-[var(--text-secondary)] mb-3 block">界面缩放</label>
-                <div className="grid grid-cols-6 gap-1.5">
-                  {scaleOptions.map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => updateSettings({ uiScale: opt.value })}
-                      className={`py-2 text-sm rounded-[var(--radius-sm)] font-medium cursor-pointer
-                        ${settings.uiScale === opt.value
-                          ? 'bg-[var(--accent-purple)] text-[var(--on-accent)]'
-                          : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
-                        }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-[12px] text-[var(--text-muted)] mt-2">
-                  调整界面整体大小，包括文字和控件
-                </p>
-              </div>
-
-              <div className="border-t border-[var(--border-subtle)]" />
-
-              <div className="space-y-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <label className="text-sm text-[var(--text-secondary)] block">低性能模式说明</label>
-                    <p className="text-[12px] text-[var(--text-muted)] mt-1 leading-relaxed">
-                      这一模式不是只改动画开关，还会同步关闭模糊、缩小阴影、收窄过渡、让部分重区块默认折叠，并把很多离屏卡片延后到滚动接近时再渲染。
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => updateSettings({ renderMode: 'lite', ambientDensity: 'low', contentDensity: 'compact' })}
-                    className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--accent-purple)] hover:bg-[var(--border-subtle)] cursor-pointer whitespace-nowrap"
-                  >
-                    一键套用省资源组合
-                  </button>
-                </div>
-                <div className="flex flex-wrap gap-2 text-[12px] text-[var(--text-secondary)]">
-                  <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--surface-card)]">当前页：{pageTitles[activePage].title}</span>
-                  <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--surface-card)]">最近切页耗时：{lastPagePaintMs == null ? '-' : `${lastPagePaintMs} ms`}</span>
-                  <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--surface-card)]">背景效果：{ambientEnabled ? '启用' : '关闭'}</span>
-                  <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--surface-card)]">侧栏：{settings.sidebarCollapsed ? '收起' : `展开 ${settings.sidebarWidth}px`}</span>
-                  <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--surface-card)]">内容密度：{settings.contentDensity}</span>
-                  <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--surface-card)]">浏览器会话：{runningInTauri ? '桌面版' : browserReadOnlySession ? '只读' : browserSession?.authenticated ? '完整' : '未登录'}</span>
-                </div>
-                <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 py-3 text-[12px] leading-relaxed text-[var(--text-muted)]">
-                  当前仍然最容易吃性能的页面通常是 `API管理`、`历史记录`、`用量管理` 和 `人格评测实验室`。
-                  如果你在这些页面里仍感觉卡，优先收起图表、长列表、健康栏和多节点编辑区，而不是先继续调主题或缩放。
-                </div>
-              </div>
-
-              <div className="border-t border-[var(--border-subtle)]" />
-
-              <div className="space-y-1">
-                <button
-                  onClick={() => { setShowSettings(false); handleChangeDir(); }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-[var(--radius-sm)] text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] cursor-pointer"
-                >
-                  <span>📂</span> 重新选择插件目录
-                </button>
-                <button
-                  onClick={() => updateSettings({ uiScale: 1.0, theme: 'dark', renderMode: 'standard', sidebarCollapsed: false, sidebarWidth: 208, ambientDensity: 'low', ambientStyle: 'auto', contentDensity: 'standard', wallpaper: 'none', wallpaperCustomUrl: '', wallpaperDim: 'standard' })}
-                  className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-[var(--radius-sm)] text-sm text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] cursor-pointer"
-                >
-                  <span>↩</span> 恢复默认设置
-                </button>
-              </div>
-            </div>
+          {/* 显示设置弹窗（浏览器/独立窗口创建失败时的回退；桌面端正常走独立设置窗口） */}
+          <Modal open={showSettings} onClose={() => setShowSettings(false)} title="显示设置" width="460px">
+            <SettingsPanel onChangeDir={() => { setShowSettings(false); handleChangeDir(); }} />
           </Modal>
         </div>
       </ErrorBoundary>
