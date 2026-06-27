@@ -1778,7 +1778,7 @@ export function UsageManager() {
 
           <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-4 py-3 text-xs text-[var(--text-secondary)]">
             <p>usage_events.json 是聊天和图像共用的长期事件日志。超过 {USAGE_EVENT_RETENTION_LIMIT} 条后，插件会自动删除更早的旧记录，只保留最近的一段。</p>
-            <p className="mt-1 text-[11px] text-[var(--text-muted)]">当前保留范围：{usageEventTimeRange.earliestLabel} 至 {usageEventTimeRange.latestLabel}。如果你要做更长期的统计，建议定期备份这个文件。</p>
+            <p className="mt-1 text-[12px] text-[var(--text-muted)]">当前保留范围：{usageEventTimeRange.earliestLabel} 至 {usageEventTimeRange.latestLabel}。如果你要做更长期的统计，建议定期备份这个文件。</p>
           </div>
 
           {showOverviewCharts ? (
@@ -1786,7 +1786,7 @@ export function UsageManager() {
               fallback={(
                 <div className="rounded-[var(--radius-sm)] border border-dashed border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-4 py-6">
                   <p className="text-sm text-[var(--text-primary)]">正在加载图表模块…</p>
-                  <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-muted)]">为了减轻首屏压力，统计图只会在你真正展开时再加载。</p>
+                  <p className="mt-1 text-[12px] leading-relaxed text-[var(--text-muted)]">为了减轻首屏压力，统计图只会在你真正展开时再加载。</p>
                 </div>
               )}
             >
@@ -1807,7 +1807,7 @@ export function UsageManager() {
           ) : (
             <div className="rounded-[var(--radius-sm)] border border-dashed border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-4 py-6">
               <p className="text-sm text-[var(--text-primary)]">图表已收起</p>
-              <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-muted)]">
+              <p className="mt-1 text-[12px] leading-relaxed text-[var(--text-muted)]">
                 当前只保留事件筛选和明细表，避免首屏直接渲染四张统计图。需要时再点“展开图表”即可。{lowPerformanceMode ? '低性能模式下这里默认收起，优先让核显把滚动和编辑做顺。' : ''}
               </p>
             </div>
@@ -1923,7 +1923,7 @@ export function UsageManager() {
                   <button
                     key={item.key}
                     onClick={() => clearUsageEventFilter(item.key)}
-                    className="px-2 py-1 text-[10px] rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+                    className="px-2 py-1 text-[11px] rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
                     title="点击移除这个筛选条件"
                   >
                     {item.label} ×
@@ -1932,7 +1932,7 @@ export function UsageManager() {
                   <span className="text-xs text-[var(--text-muted)]">当前没有额外筛选。你可以点上面的图表柱子、输入关键词，或按分类/原因缩小范围。</span>
                 )}
               </div>
-              <p className="mt-2 text-[11px] text-[var(--text-muted)]">明细按时间倒序显示。点击表格里的 QQ 会锁定该用户，点击上面的筛选标签可单独移除对应条件；这些筛选和粒度会自动记住，刷新后仍保留。</p>
+              <p className="mt-2 text-[12px] text-[var(--text-muted)]">明细按时间倒序显示。点击表格里的 QQ 会锁定该用户，点击上面的筛选标签可单独移除对应条件；这些筛选和粒度会自动记住，刷新后仍保留。</p>
             </div>
 
             <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] px-4 py-3 space-y-3">
@@ -1942,7 +1942,7 @@ export function UsageManager() {
                   <button
                     key={preset.id}
                     onClick={() => applyUsageEventFilterState(preset.filters)}
-                    className="px-2.5 py-1.5 text-[11px] rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+                    className="px-2.5 py-1.5 text-[12px] rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
                   >
                     {preset.name}
                   </button>
@@ -1971,20 +1971,20 @@ export function UsageManager() {
                   <div key={preset.id} className="inline-flex items-center gap-1 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-2 py-1">
                     <button
                       onClick={() => applyUsageEventFilterState(preset.filters)}
-                      className="text-[11px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+                      className="text-[12px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
                     >
                       {preset.name}
                     </button>
                     <button
                       onClick={() => deleteUsageEventPreset(preset.id)}
-                      className="text-[11px] text-[var(--text-muted)] hover:text-[var(--error)] cursor-pointer"
+                      className="text-[12px] text-[var(--text-muted)] hover:text-[var(--error)] cursor-pointer"
                       title="删除这个自定义预设"
                     >
                       ×
                     </button>
                   </div>
                 )) : (
-                  <span className="text-[11px] text-[var(--text-muted)]">你还没有自定义运维预设。筛好一次后可以直接保存，下次一键套用。</span>
+                  <span className="text-[12px] text-[var(--text-muted)]">你还没有自定义运维预设。筛好一次后可以直接保存，下次一键套用。</span>
                 )}
               </div>
             </div>
@@ -1992,7 +1992,7 @@ export function UsageManager() {
             <div className="overflow-hidden rounded-[var(--radius-sm)] border border-[var(--border-subtle)]">
               <div className="overflow-x-auto">
                 <div className="min-w-[1320px]">
-                  <div className="grid grid-cols-[160px_72px_88px_88px_130px_130px_160px_240px_minmax(280px,1fr)] gap-3 px-4 py-3 text-[11px] text-[var(--text-muted)] bg-[var(--bg-elevated)] border-b border-[var(--border-subtle)]">
+                  <div className="grid grid-cols-[160px_72px_88px_88px_130px_130px_160px_240px_minmax(280px,1fr)] gap-3 px-4 py-3 text-[12px] text-[var(--text-muted)] bg-[var(--bg-elevated)] border-b border-[var(--border-subtle)]">
                     <span>时间</span>
                     <span>分类</span>
                     <span>结果</span>
@@ -2043,7 +2043,7 @@ export function UsageManager() {
                           </button>
                           <button
                             onClick={() => jumpToQuotaUser(event.category, event.userId)}
-                            className="text-[10px] text-left text-[var(--info)] hover:underline cursor-pointer"
+                            className="text-[11px] text-left text-[var(--info)] hover:underline cursor-pointer"
                           >
                             查看限额位置
                           </button>
@@ -2061,12 +2061,12 @@ export function UsageManager() {
                               title={`${event.nodeRemark || '-'} / ${event.modelName || '-'}`}
                             >
                               <div style={CLAMP_TWO_LINES_STYLE} className="text-[var(--text-primary)] break-all">{event.nodeRemark || '-'}</div>
-                              <div style={CLAMP_TWO_LINES_STYLE} className="mono text-[10px] text-[var(--text-muted)] break-all">{event.modelName || '-'}</div>
+                              <div style={CLAMP_TWO_LINES_STYLE} className="mono text-[11px] text-[var(--text-muted)] break-all">{event.modelName || '-'}</div>
                             </button>
                           ) : (
                             <>
                               <div className="text-[var(--text-primary)] break-all">-</div>
-                              <div className="mono text-[10px] text-[var(--text-muted)] break-all">-</div>
+                              <div className="mono text-[11px] text-[var(--text-muted)] break-all">-</div>
                             </>
                           )}
                         </div>
@@ -2208,12 +2208,12 @@ export function UsageManager() {
                   加进去
                 </button>
               </div>
-              <p className="text-[11px] text-[var(--text-muted)]">适合修历史遗留计数，或者先把一个还没进监听列表的群加进来，方便你手工整理数据。</p>
+              <p className="text-[12px] text-[var(--text-muted)]">适合修历史遗留计数，或者先把一个还没进监听列表的群加进来，方便你手工整理数据。</p>
             </div>
           </div>
 
           <div className="overflow-hidden rounded-[var(--radius-sm)] border border-[var(--border-subtle)]">
-            <div className="grid grid-cols-[180px_120px_120px_140px_1fr_96px] gap-3 px-4 py-3 text-[11px] text-[var(--text-muted)] bg-[var(--bg-elevated)] border-b border-[var(--border-subtle)]">
+            <div className="grid grid-cols-[180px_120px_120px_140px_1fr_96px] gap-3 px-4 py-3 text-[12px] text-[var(--text-muted)] bg-[var(--bg-elevated)] border-b border-[var(--border-subtle)]">
               <span>群号</span>
               <span>监听状态</span>
               <span>限额</span>
@@ -2352,7 +2352,7 @@ export function UsageManager() {
                 />
                 <span>
                   黑名单模式
-                  <span className="block text-[11px] text-[var(--text-muted)] leading-relaxed">沿用现有群聊/私聊规则，并额外允许给单独 QQ 设置聊天个人额度。</span>
+                  <span className="block text-[12px] text-[var(--text-muted)] leading-relaxed">沿用现有群聊/私聊规则，并额外允许给单独 QQ 设置聊天个人额度。</span>
                 </span>
               </label>
               <label className="flex items-start gap-2 text-sm text-[var(--text-primary)]">
@@ -2365,7 +2365,7 @@ export function UsageManager() {
                 />
                 <span>
                   白名单模式
-                  <span className="block text-[11px] text-[var(--text-muted)] leading-relaxed">只有聊天白名单里的 QQ 能获得普通聊天回复。黑名单用户依然会被优先拦截。</span>
+                  <span className="block text-[12px] text-[var(--text-muted)] leading-relaxed">只有聊天白名单里的 QQ 能获得普通聊天回复。黑名单用户依然会被优先拦截。</span>
                 </span>
               </label>
             </div>
@@ -2393,7 +2393,7 @@ export function UsageManager() {
                   加入白名单
                 </button>
               </div>
-              <p className="text-[11px] text-[var(--text-muted)]">聊天白名单只影响普通聊天回复，不影响生图 / 修图。用户黑名单始终优先。</p>
+              <p className="text-[12px] text-[var(--text-muted)]">聊天白名单只影响普通聊天回复，不影响生图 / 修图。用户黑名单始终优先。</p>
             </div>
           </div>
 
@@ -2420,7 +2420,7 @@ export function UsageManager() {
                 加入黑名单
               </button>
             </div>
-            <p className="text-[11px] text-[var(--text-muted)]">这里的黑名单是全局黑名单，会同时拦截普通聊天、生图和修图。若某个 QQ 同时在白名单里，实际运行时仍以黑名单优先。</p>
+            <p className="text-[12px] text-[var(--text-muted)]">这里的黑名单是全局黑名单，会同时拦截普通聊天、生图和修图。若某个 QQ 同时在白名单里，实际运行时仍以黑名单优先。</p>
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-[repeat(2,minmax(0,220px))_minmax(0,1fr)] gap-4">
@@ -2433,12 +2433,12 @@ export function UsageManager() {
                 onChange={(e) => setChatQuota({ ...chatQuota, defaultLimit: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
                 className="w-full px-3 py-2 text-sm rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] mono outline-none focus:border-[var(--accent-purple)]"
               />
-              <p className="text-[11px] text-[var(--text-muted)]">0 表示普通用户默认不限额。这里只统计普通聊天，不含生图 / 修图。</p>
+              <p className="text-[12px] text-[var(--text-muted)]">0 表示普通用户默认不限额。这里只统计普通聊天，不含生图 / 修图。</p>
             </div>
 
             <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-2">
               <p className="text-xs font-medium text-[var(--text-primary)]">聊天群总额度数量</p>
-              <p className="text-[11px] text-[var(--text-muted)]">群总额度在上面的“群用量管理”表格里直接编辑。改完后仍需点击这里的“保存聊天权限与限额规则”才会写回。</p>
+              <p className="text-[12px] text-[var(--text-muted)]">群总额度在上面的“群用量管理”表格里直接编辑。改完后仍需点击这里的“保存聊天权限与限额规则”才会写回。</p>
             </div>
 
             <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-3">
@@ -2459,7 +2459,7 @@ export function UsageManager() {
                   单独设置
                 </button>
               </div>
-              <p className="text-[11px] text-[var(--text-muted)]">新增后会先继承当前默认聊天个人额度，你可以在下方表格继续改。</p>
+              <p className="text-[12px] text-[var(--text-muted)]">新增后会先继承当前默认聊天个人额度，你可以在下方表格继续改。</p>
             </div>
           </div>
 
@@ -2468,7 +2468,7 @@ export function UsageManager() {
           </div>
 
           <div className="overflow-hidden rounded-[var(--radius-sm)] border border-[var(--border-subtle)]">
-            <div className="grid grid-cols-[180px_120px_140px_140px_140px_180px_120px] gap-3 px-4 py-3 text-[11px] text-[var(--text-muted)] bg-[var(--bg-elevated)] border-b border-[var(--border-subtle)]">
+            <div className="grid grid-cols-[180px_120px_140px_140px_140px_180px_120px] gap-3 px-4 py-3 text-[12px] text-[var(--text-muted)] bg-[var(--bg-elevated)] border-b border-[var(--border-subtle)]">
               <span>QQ</span>
               <span>身份</span>
               <span>聊天权限</span>
@@ -2537,7 +2537,7 @@ export function UsageManager() {
                       onChange={(e) => updateChatUsageCount(row.uid, Number(e.target.value))}
                       className="w-24 px-2 py-1.5 text-sm rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] mono outline-none focus:border-[var(--accent-purple)]"
                     />
-                    <span className="text-[11px] text-[var(--text-muted)]">{row.isMaster ? '主人无限制' : row.remaining === null ? '不限额' : `剩余 ${row.remaining}`}</span>
+                    <span className="text-[12px] text-[var(--text-muted)]">{row.isMaster ? '主人无限制' : row.remaining === null ? '不限额' : `剩余 ${row.remaining}`}</span>
                   </div>
                   <span className="text-[var(--text-muted)]">{row.isMaster ? '主人豁免' : row.hasOverride ? '单独规则' : row.accessStatus}</span>
                   <div className="flex justify-end gap-2">
@@ -2645,7 +2645,7 @@ export function UsageManager() {
                 />
                 <span>
                   黑名单模式
-                  <span className="block text-[11px] text-[var(--text-muted)] leading-relaxed">只要是群友，且不在用户黑名单中，就可以生图和修图。</span>
+                  <span className="block text-[12px] text-[var(--text-muted)] leading-relaxed">只要是群友，且不在用户黑名单中，就可以生图和修图。</span>
                 </span>
               </label>
               <label className="flex items-start gap-2 text-sm text-[var(--text-primary)]">
@@ -2658,7 +2658,7 @@ export function UsageManager() {
                 />
                 <span>
                   白名单模式
-                  <span className="block text-[11px] text-[var(--text-muted)] leading-relaxed">只有手动加入图像白名单的 QQ 才能生图和修图。黑名单用户依然会被拦截。</span>
+                  <span className="block text-[12px] text-[var(--text-muted)] leading-relaxed">只有手动加入图像白名单的 QQ 才能生图和修图。黑名单用户依然会被拦截。</span>
                 </span>
               </label>
             </div>
@@ -2686,7 +2686,7 @@ export function UsageManager() {
                   加入白名单
                 </button>
               </div>
-              <p className="text-[11px] text-[var(--text-muted)]">这份名单只控制生图 / 修图权限，不影响普通聊天。若同一个 QQ 同时在用户黑名单里，实际运行时仍以黑名单为准。</p>
+              <p className="text-[12px] text-[var(--text-muted)]">这份名单只控制生图 / 修图权限，不影响普通聊天。若同一个 QQ 同时在用户黑名单里，实际运行时仍以黑名单为准。</p>
             </div>
           </div>
 
@@ -2713,7 +2713,7 @@ export function UsageManager() {
                 加入黑名单
               </button>
             </div>
-            <p className="text-[11px] text-[var(--text-muted)]">这里的黑名单是全局黑名单，会同时拦截普通聊天、生图和修图。若某个 QQ 同时在图像白名单里，实际运行时仍以黑名单优先。</p>
+            <p className="text-[12px] text-[var(--text-muted)]">这里的黑名单是全局黑名单，会同时拦截普通聊天、生图和修图。若某个 QQ 同时在图像白名单里，实际运行时仍以黑名单优先。</p>
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-[repeat(2,minmax(0,220px))_minmax(0,1fr)] gap-4">
@@ -2726,7 +2726,7 @@ export function UsageManager() {
                 onChange={(e) => setImageQuota({ ...imageQuota, defaultGenerateLimit: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
                 className="w-full px-3 py-2 text-sm rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] mono outline-none focus:border-[var(--accent-purple)]"
               />
-              <p className="text-[11px] text-[var(--text-muted)]">0 表示普通用户默认不限额。生图若使用 `--count 4`，会按 4 次累计。</p>
+              <p className="text-[12px] text-[var(--text-muted)]">0 表示普通用户默认不限额。生图若使用 `--count 4`，会按 4 次累计。</p>
             </div>
             <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-2">
               <p className="text-xs font-medium text-[var(--text-primary)]">默认修图额度</p>
@@ -2737,7 +2737,7 @@ export function UsageManager() {
                 onChange={(e) => setImageQuota({ ...imageQuota, defaultEditLimit: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
                 className="w-full px-3 py-2 text-sm rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] mono outline-none focus:border-[var(--accent-purple)]"
               />
-              <p className="text-[11px] text-[var(--text-muted)]">0 表示普通用户默认不限额。修图每执行一次命令，默认按 1 次累计。</p>
+              <p className="text-[12px] text-[var(--text-muted)]">0 表示普通用户默认不限额。修图每执行一次命令，默认按 1 次累计。</p>
             </div>
             <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-3">
               <p className="text-xs font-medium text-[var(--text-primary)]">手动补一个单独限额用户</p>
@@ -2757,7 +2757,7 @@ export function UsageManager() {
                   单独设置
                 </button>
               </div>
-              <p className="text-[11px] text-[var(--text-muted)]">这里新增的是“单独限额规则”，不是计数。新增后会先继承当前全局默认值，你可以在下方表格继续改。</p>
+              <p className="text-[12px] text-[var(--text-muted)]">这里新增的是“单独限额规则”，不是计数。新增后会先继承当前全局默认值，你可以在下方表格继续改。</p>
             </div>
           </div>
 
@@ -2766,7 +2766,7 @@ export function UsageManager() {
           </div>
 
           <div className="overflow-hidden rounded-[var(--radius-sm)] border border-[var(--border-subtle)]">
-            <div className="grid grid-cols-[180px_120px_140px_140px_140px_180px_120px] gap-3 px-4 py-3 text-[11px] text-[var(--text-muted)] bg-[var(--bg-elevated)] border-b border-[var(--border-subtle)]">
+            <div className="grid grid-cols-[180px_120px_140px_140px_140px_180px_120px] gap-3 px-4 py-3 text-[12px] text-[var(--text-muted)] bg-[var(--bg-elevated)] border-b border-[var(--border-subtle)]">
               <span>QQ</span>
               <span>身份</span>
               <span>图像权限</span>
@@ -2931,12 +2931,12 @@ export function UsageManager() {
                   <div className="mono text-[var(--text-primary)]">{imageSummary.totalEditUsed}</div>
                 </div>
               </div>
-              <p className="text-[11px] text-[var(--text-muted)]">这里的计数会和上面的图像限额规则一起决定某个 QQ 还能不能继续生图或修图。</p>
+              <p className="text-[12px] text-[var(--text-muted)]">这里的计数会和上面的图像限额规则一起决定某个 QQ 还能不能继续生图或修图。</p>
             </div>
           </div>
 
           <div className="overflow-hidden rounded-[var(--radius-sm)] border border-[var(--border-subtle)]">
-            <div className="grid grid-cols-[180px_120px_120px_140px_140px_120px_120px] gap-3 px-4 py-3 text-[11px] text-[var(--text-muted)] bg-[var(--bg-elevated)] border-b border-[var(--border-subtle)]">
+            <div className="grid grid-cols-[180px_120px_120px_140px_140px_120px_120px] gap-3 px-4 py-3 text-[12px] text-[var(--text-muted)] bg-[var(--bg-elevated)] border-b border-[var(--border-subtle)]">
               <span>QQ</span>
               <span>身份</span>
               <span>生图已用</span>

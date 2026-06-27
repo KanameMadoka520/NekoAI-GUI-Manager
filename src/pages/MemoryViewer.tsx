@@ -354,7 +354,7 @@ export function MemoryViewer() {
                 <div className="mt-4 grid gap-3 xl:grid-cols-2">
                   <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-2">
                     <p className="text-xs font-medium text-[var(--text-primary)]">当前会话的备份 / 导入</p>
-                    <p className="text-[11px] text-[var(--text-muted)]">如果你想先留个备份、把别处的内容搬进来，或者先导出去手工修，再回导，这里最合适。</p>
+                    <p className="text-[12px] text-[var(--text-muted)]">如果你想先留个备份、把别处的内容搬进来，或者先导出去手工修，再回导，这里最合适。</p>
                     <ImportExportActions
                       onExport={exportCurrentSession}
                       onImport={importCurrentSession}
@@ -366,7 +366,7 @@ export function MemoryViewer() {
                   </div>
                   <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-2">
                     <p className="text-xs font-medium text-[var(--text-primary)]">高风险操作</p>
-                    <p className="text-[11px] text-[var(--text-muted)]">清空会把当前会话里的消息列表直接置空。这里点完还不会立刻生效，只有保存后才会真正写回文件。</p>
+                    <p className="text-[12px] text-[var(--text-muted)]">清空会把当前会话里的消息列表直接置空。这里点完还不会立刻生效，只有保存后才会真正写回文件。</p>
                     <button
                       onClick={() => setConfirmClear(true)}
                       className="px-3 py-1.5 text-xs rounded-[var(--radius-sm)] bg-[var(--error-soft-bg)] text-[var(--error)] hover:bg-[color-mix(in_srgb,var(--error)_28%,transparent)] transition-colors cursor-pointer"
@@ -400,13 +400,13 @@ export function MemoryViewer() {
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span
-                            className="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-sm)] font-medium"
+                            className="text-[11px] px-1.5 py-0.5 rounded-[var(--radius-sm)] font-medium"
                             style={{ color: roleStyle.border, background: `color-mix(in srgb, ${roleStyle.border} 12%, transparent)` }}
                           >
                             {roleStyle.label}
                           </span>
                           {(msg.sender || msg.time) && (
-                            <span className="text-[10px] text-[var(--text-muted)]">
+                            <span className="text-[11px] text-[var(--text-muted)]">
                               {msg.sender ? `发送者: ${msg.sender}` : ''}
                               {msg.sender && msg.time ? ' · ' : ''}
                               {msg.time ? `时间: ${msg.time}` : ''}
@@ -416,13 +416,13 @@ export function MemoryViewer() {
                         <div className="flex items-center gap-1">
                           <button
                             onClick={() => startEdit(idx)}
-                            className="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--accent-purple)] hover:bg-[var(--accent-soft-bg)] transition-colors cursor-pointer"
+                            className="text-[11px] px-1.5 py-0.5 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--accent-purple)] hover:bg-[var(--accent-soft-bg)] transition-colors cursor-pointer"
                           >
                             编辑
                           </button>
                           <button
                             onClick={() => setConfirmDeleteMsg(idx)}
-                            className="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--error)] hover:bg-[var(--error-soft-bg)] transition-colors cursor-pointer"
+                            className="text-[11px] px-1.5 py-0.5 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--error)] hover:bg-[var(--error-soft-bg)] transition-colors cursor-pointer"
                           >
                             删除
                           </button>
@@ -439,13 +439,13 @@ export function MemoryViewer() {
                           <div className="flex gap-1.5">
                             <button
                               onClick={saveEditMsg}
-                              className="text-[10px] px-2 py-1 rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-[var(--on-accent)] hover:opacity-90 cursor-pointer"
+                              className="text-[11px] px-2 py-1 rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-[var(--on-accent)] hover:opacity-90 cursor-pointer"
                             >
                               确定
                             </button>
                             <button
                               onClick={() => setEditingIdx(null)}
-                              className="text-[10px] px-2 py-1 rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] cursor-pointer"
+                              className="text-[11px] px-2 py-1 rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] cursor-pointer"
                             >
                               取消
                             </button>
@@ -522,7 +522,7 @@ function MemoryList({ title, subtitle, icon, memories, type, onOpen, onDelete }:
               <div className="flex items-center justify-between gap-3 mb-2">
                 <div className="min-w-0">
                   <p className="text-sm text-[var(--text-primary)] font-medium truncate">{m.id}</p>
-                  <p className="text-[11px] text-[var(--text-muted)] mt-1">
+                  <p className="text-[12px] text-[var(--text-muted)] mt-1">
                     {m.count} 条 · {m.size > 0 ? `${(m.size / 1024).toFixed(1)} KB` : '0 KB'}
                   </p>
                 </div>

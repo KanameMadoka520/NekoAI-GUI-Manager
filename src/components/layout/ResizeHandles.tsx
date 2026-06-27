@@ -1,4 +1,5 @@
 import { appWindow, PhysicalSize, PhysicalPosition } from '@tauri-apps/api/window';
+import { beginWindowBusy, endWindowBusy } from '../../lib/window-busy';
 
 /**
  * 自定义边缘缩放把手。
@@ -51,7 +52,11 @@ export function ResizeHandles() {
         const p = pending;
         pending = null;
         appWindow.setSize(new PhysicalSize(p.w, p.h)).catch(() => {});
-        appWindow.setPosition(new PhysicalPosition(p.x, p.y)).catch(() => {});
+        // 只有真正移动原点的方向（含 n/w）才发 setPosition；e/s/se 不动原点时省掉这次 IPC，
+        // 把最常见的右/下/右下缩放从每帧两次 IPC 降到一次。
+        if (p.x !== ox || p.y !== oy) {
+          appWindow.setPosition(new PhysicalPosition(p.x, p.y)).catch(() => {});
+        }
       };
 
       const onMove = (ev: MouseEvent) => {
@@ -74,9 +79,11 @@ export function ResizeHandles() {
         window.removeEventListener('mouseup', onUp);
         document.body.style.userSelect = '';
         if (raf) { cancelAnimationFrame(raf); flush(); }
+        endWindowBusy();
       };
 
       document.body.style.userSelect = 'none';
+      beginWindowBusy(); // 缩放期间瞬时关 blur/动画，降低每帧重绘成本
       window.addEventListener('mousemove', onMove);
       window.addEventListener('mouseup', onUp);
     })();

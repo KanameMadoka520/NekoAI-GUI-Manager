@@ -172,7 +172,7 @@ export function Dashboard({ onNavigate }: { onNavigate?: (page: PageId) => void 
             >
               🔄 重新读取
             </button>
-            <span className="text-[11px] text-[var(--text-muted)] sm:text-right max-w-[220px] leading-relaxed">
+            <span className="text-[12px] text-[var(--text-muted)] sm:text-right max-w-[220px] leading-relaxed">
               壁纸可在右下角「显示设置 · 壁纸打底」更换或关闭
             </span>
           </div>
@@ -194,7 +194,7 @@ export function Dashboard({ onNavigate }: { onNavigate?: (page: PageId) => void 
               <span className="relative z-[1] flex flex-col gap-1.5">
                 <span className="text-2xl leading-none">{t.icon}</span>
                 <span className="mt-1 text-sm font-semibold text-[var(--text-primary)]">{t.label}</span>
-                <span className="text-[11px] text-[var(--text-muted)] leading-snug">{t.desc}</span>
+                <span className="text-[12px] text-[var(--text-muted)] leading-snug">{t.desc}</span>
               </span>
             </button>
           ))}
@@ -420,7 +420,7 @@ function StatusRow({ label, value, badge, dot }: { label: string; value: string;
       <span className="text-[var(--text-secondary)] flex items-center gap-2 text-right">
         {value}
         {badge && (
-          <span className="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--accent-purple)]">
+          <span className="text-[11px] px-1.5 py-0.5 rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--accent-purple)]">
             {badge}
           </span>
         )}
@@ -485,7 +485,7 @@ function SectionToggleRow({
         {expanded ? '收起明细' : '展开明细'}
       </button>
       {!expanded && (
-        <span className="text-[11px] text-[var(--text-muted)] leading-relaxed">{collapsedText}</span>
+        <span className="text-[12px] text-[var(--text-muted)] leading-relaxed">{collapsedText}</span>
       )}
     </div>
   );
@@ -494,7 +494,7 @@ function SectionToggleRow({
 function CollapsedHint({ text }: { text: string }) {
   return (
     <div className="rounded-[var(--radius-sm)] border border-dashed border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-4 py-3">
-      <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">{text}</p>
+      <p className="text-[12px] text-[var(--text-muted)] leading-relaxed">{text}</p>
     </div>
   );
 }

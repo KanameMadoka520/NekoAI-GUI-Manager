@@ -426,6 +426,24 @@
   will-change: auto !important;
 }
 
+/* ===== 窗口拖动 / 缩放瞬时降载 ===== */
+/* 由 lib/window-busy.ts 在 <html> 上打 data-window-busy。拖动/缩放那几百毫秒里，
+   关掉壁纸蒙版过渡、磨砂 blur、所有过渡与背景漂浮动画，让每帧重绘变廉价、消除拖动卡顿；
+   交互一结束标记移除，精致效果立即恢复。 */
+:root[data-window-busy] .app-wallpaper::after { transition: none !important; }
+:root[data-window-busy] .glass-shell {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+:root[data-window-busy] *,
+:root[data-window-busy] *::before,
+:root[data-window-busy] *::after {
+  animation-play-state: paused !important;
+  transition: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
 .perf-panel-viewport,
 .perf-summary-card,
 .perf-stat-card {
@@ -447,6 +465,10 @@
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* 根字号轻度抬升（16→16.5px）：所有 rem 文字（text-xs/sm/base...）整体放大约 3%，
+   配合下方对 10/11px 极小字号的定点上调，缓解「部分字体太小」。 */
+html { font-size: 16.5px; }
 
 body {
   font-family: 'Segoe UI', 'Inter', 'Noto Sans SC', system-ui, -apple-system, sans-serif;

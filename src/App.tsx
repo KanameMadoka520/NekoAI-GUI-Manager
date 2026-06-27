@@ -12,9 +12,10 @@ import { Setup } from './pages/Setup';
 import { useKeyboardShortcuts, shortcutList } from './hooks/useKeyboardShortcuts';
 import { useFileWatcher } from './hooks/useFileWatcher';
 import { setPluginDir, runStartupSelfCheck, applySelfCheckFixes, getManagerContext, getWebConsoleStatus, saveWebConsoleSettings, openUrlInBrowser } from './lib/tauri-commands';
-import { getWebConsoleSessionStatus, isTauriRuntime, loginWebConsoleSession, logoutWebConsoleSession, resetPluginDirConnection } from './lib/runtime-bridge';
+import { getWebConsoleSessionStatus, isTauriRuntime, loginWebConsoleSession, logoutWebConsoleSession, resetPluginDirConnection, setDemoMode } from './lib/runtime-bridge';
 import { appWindow } from '@tauri-apps/api/window';
 import { ResizeHandles } from './components/layout/ResizeHandles';
+import { pulseWindowBusy } from './lib/window-busy';
 import type { SelfCheckReport, WebConsoleSessionStatus, WebConsoleStatus } from './lib/types';
 import { explainSelfCheckItem } from './lib/human-issues';
 import { useUiStore } from './stores/uiStore';
@@ -230,8 +231,12 @@ function App() {
     };
   }, [startupCheck]);
   const pluginDirInfo = useMemo(() => getCurrentPluginDirInfo(), [phase, refreshKey]);
-  // 无目录只读浏览：桌面端且未连接任何插件目录。此时可浏览全部页面，但不读写任何文件。
+  // 无目录只读浏览：桌面端且未连接任何插件目录。此时可浏览全部页面（用内置演示数据），但不读写任何文件。
   const noDirReadOnly = runningInTauri && !pluginDirInfo.fullPath;
+  // 演示模式只在「真正进入只读浏览（已 ready 且无目录）」时生效；setup/连接校验过程不喂假数据。
+  const demoActive = noDirReadOnly && phase === 'ready';
+  // 渲染期同步镜像给 runtime-bridge：必须早于子页面挂载及其取数 effect，避免子 effect 先读到旧值。
+  setDemoMode(demoActive);
   const currentDirtyMessage = dirtyPages[activePage];
   const webConsoleHostNormalized = useMemo(() => webConsoleHostDraft.trim() || '127.0.0.1', [webConsoleHostDraft]);
   const webConsoleAllowedRemoteAddrs = useMemo(() => parseRemoteAddrRules(webConsoleAllowedRemoteAddrsDraft), [webConsoleAllowedRemoteAddrsDraft]);
@@ -278,15 +283,19 @@ function App() {
     if (!runningInTauri) return undefined;
     let mounted = true;
     appWindow.isMaximized().then((v) => { if (mounted) setWindowMaximized(v); }).catch(() => {});
-    const unlistenPromise = appWindow.onResized(async () => {
+    const unlistenResized = appWindow.onResized(async () => {
+      pulseWindowBusy(); // 缩放/最大化期间瞬时降载
       try {
         const v = await appWindow.isMaximized();
         if (mounted) setWindowMaximized(v);
       } catch { /* not in tauri window context */ }
     });
+    // 原生标题栏拖动移动窗口时也打一拍降载（部分环境下移动会触发重绘）。
+    const unlistenMoved = appWindow.onMoved(() => pulseWindowBusy());
     return () => {
       mounted = false;
-      unlistenPromise.then((fn) => fn()).catch(() => {});
+      unlistenResized.then((fn) => fn()).catch(() => {});
+      unlistenMoved.then((fn) => fn()).catch(() => {});
     };
   }, [runningInTauri]);
 
@@ -836,7 +845,7 @@ function App() {
                 <div className="flex items-center gap-2">
                   {pluginDirInfo.shortName && (
                     <span
-                      className="inline-flex items-center px-2.5 py-1 text-[11px] rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] max-w-[220px] truncate"
+                      className="inline-flex items-center px-2.5 py-1 text-[12px] rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] max-w-[220px] truncate"
                       title={pluginDirInfo.fullPath}
                     >
                       目录：{pluginDirInfo.shortName}
@@ -844,7 +853,7 @@ function App() {
                   )}
                   {!runningInTauri && browserSession?.authenticated && (
                     <>
-                      <span className={`inline-flex items-center px-2.5 py-1 text-[11px] rounded-[var(--radius-sm)] border ${browserReadOnlySession ? 'border-[var(--warning-soft-border)] bg-[var(--warning-soft-bg)] text-[var(--warning)]' : 'border-[var(--success-soft-border)] bg-[var(--success-soft-bg)] text-[var(--success)]'}`}>
+                      <span className={`inline-flex items-center px-2.5 py-1 text-[12px] rounded-[var(--radius-sm)] border ${browserReadOnlySession ? 'border-[var(--warning-soft-border)] bg-[var(--warning-soft-bg)] text-[var(--warning)]' : 'border-[var(--success-soft-border)] bg-[var(--success-soft-bg)] text-[var(--success)]'}`}>
                         {browserReadOnlySession ? '浏览器只读会话' : '浏览器完整会话'}
                       </span>
                       <button
@@ -877,25 +886,22 @@ function App() {
                   当前浏览器会话为只读外部视图。左侧只保留概览、历史记录和用量管理；即使后端还能返回部分读取数据，所有写配置、保存和执行修改性操作都会被后端拒绝。
                 </div>
               )}
-              {noDirReadOnly ? (
-                // 未连接目录的只读浏览：不挂载任何依赖目录的数据页面（它们没有数据会崩/卡成白屏），
-                // 改为各页统一的占位卡。外壳(标题栏/侧栏/导航)始终在，可自由切换查看各页面并随时连接目录。
-                <div className="flex items-center justify-center min-h-[55vh]">
-                  <div className="w-[480px] max-w-[90vw] text-center rounded-[var(--radius-lg)] p-8 border border-[var(--border-subtle)]" style={{ background: 'var(--surface-card)', boxShadow: 'var(--shadow-card)' }}>
-                    <span className="text-5xl block mb-4">📂</span>
-                    <h2 className="text-lg font-bold text-[var(--text-primary)] mb-2">「{title}」· 只读浏览</h2>
-                    <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-5">
-                      当前未连接插件目录，处于只读浏览：可在侧栏切换查看各个页面，但不会读取或写入任何文件。连接插件目录后即可查看并管理本页数据。
-                    </p>
-                    <button
-                      onClick={handleChangeDir}
-                      className="px-5 py-2.5 text-sm font-medium rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-[var(--on-accent)] hover:opacity-90 cursor-pointer"
-                    >
-                      连接插件目录
-                    </button>
-                  </div>
+              {noDirReadOnly && (
+                // 未连接目录：挂载真实页面，但所有依赖目录的命令由内置演示数据应答（绝不触盘）。
+                // 顶部常驻横幅说明这是演示数据、改动不会保存，并提供随时连接目录入口。
+                <div className="mb-4 flex flex-wrap items-center gap-3 rounded-[var(--radius-sm)] border border-[var(--info-soft-border)] bg-[var(--info-soft-bg)] px-4 py-3 text-xs leading-relaxed text-[var(--text-secondary)]">
+                  <span className="text-base">🧪</span>
+                  <span className="flex-1 min-w-[240px]">
+                    当前未连接插件目录，展示的是<b className="text-[var(--text-primary)]">内置演示数据</b>，仅供预览各页面效果；所有保存 / 修改都不会写入任何文件。连接插件目录后即为你的真实数据。
+                  </span>
+                  <button
+                    onClick={handleChangeDir}
+                    className="px-3 py-1.5 text-xs font-medium rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-[var(--on-accent)] hover:opacity-90 cursor-pointer whitespace-nowrap"
+                  >
+                    连接插件目录
+                  </button>
                 </div>
-              ) : (
+              )}
               <Suspense fallback={<PageFallback />}>
                 {activePage === 'dashboard' && (
                   <DeferredMount key={`dashboard-${refreshKey}`} fallback={<PageFallback />}>
@@ -948,7 +954,6 @@ function App() {
                   </DeferredMount>
                 )}
               </Suspense>
-              )}
             </div>
             <ToastContainer />
           </main>
@@ -1041,7 +1046,7 @@ function App() {
                   : '暂无自检结果'}
               </p>
               {startupCheck && (
-                <div className="flex flex-wrap items-center gap-2 text-[11px] text-[var(--text-secondary)]">
+                <div className="flex flex-wrap items-center gap-2 text-[12px] text-[var(--text-secondary)]">
                   <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">可自动修复 {startupCheckStats.fixable} 项</span>
                   <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">用量日志相关 {startupCheckStats.usageEvents} 项</span>
                 </div>
@@ -1058,16 +1063,16 @@ function App() {
                     return (
                       <div key={`${item.code}-${idx}`} className="text-xs text-[var(--text-secondary)] leading-relaxed rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2">
                         <div className="flex items-start gap-2 flex-wrap">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-[var(--radius-sm)] border mono text-[10px] ${item.level === 'error' ? 'border-[var(--error-soft-border)] text-[var(--error)]' : item.level === 'warn' ? 'border-[var(--warning-soft-border)] text-[var(--warning)]' : 'border-[var(--border-subtle)] text-[var(--text-muted)]'}`}>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-[var(--radius-sm)] border mono text-[11px] ${item.level === 'error' ? 'border-[var(--error-soft-border)] text-[var(--error)]' : item.level === 'warn' ? 'border-[var(--warning-soft-border)] text-[var(--warning)]' : 'border-[var(--border-subtle)] text-[var(--text-muted)]'}`}>
                             {explained.techLabel}
                           </span>
                           {item.fixable && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-[var(--radius-sm)] border border-[var(--success-soft-border)] text-[var(--success)] text-[10px]">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-[var(--radius-sm)] border border-[var(--success-soft-border)] text-[var(--success)] text-[11px]">
                               可自动修复
                             </span>
                           )}
                           {item.code.startsWith('usageEvents.') && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-[var(--radius-sm)] border border-[var(--warning-soft-border)] text-[var(--warning)] text-[10px]">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-[var(--radius-sm)] border border-[var(--warning-soft-border)] text-[var(--warning)] text-[11px]">
                               用量日志
                             </span>
                           )}
@@ -1114,7 +1119,7 @@ function App() {
                 <div className="flex items-start justify-between gap-3 flex-wrap">
                   <div>
                     <h3 className="text-sm font-semibold text-[var(--text-primary)]">控制台状态</h3>
-                    <p className="text-[11px] text-[var(--text-muted)] mt-1 leading-relaxed">
+                    <p className="text-[12px] text-[var(--text-muted)] mt-1 leading-relaxed">
                       这里可以配置本地 Web 服务的监听地址。`127.0.0.1` 仅本机可访问，`0.0.0.0` 会监听全部网卡，适合你要让同局域网内其他设备也能进来。
                     </p>
                   </div>
@@ -1149,7 +1154,7 @@ function App() {
                         填 0.0.0.0
                       </button>
                     </div>
-                    <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+                    <p className="text-[12px] text-[var(--text-muted)] leading-relaxed">
                       `127.0.0.1` 只允许当前电脑访问。`0.0.0.0` 表示监听当前电脑所有网卡，其他设备需要用你的局域网 IP 访问，不要直接拿 `0.0.0.0` 当外部访问地址。
                     </p>
                   </div>
@@ -1170,7 +1175,7 @@ function App() {
                   </div>
 
                   <span className="text-xs text-[var(--text-secondary)]">当前说明</span>
-                  <div className="flex flex-wrap gap-2 text-[11px] text-[var(--text-secondary)]">
+                  <div className="flex flex-wrap gap-2 text-[12px] text-[var(--text-secondary)]">
                     <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--surface-card)]">默认冷门端口：32191</span>
                     <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--surface-card)]">当前监听：{webConsoleHostNormalized}:{webConsolePortDraft.trim() || '32191'}</span>
                     <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--surface-card)]">
@@ -1215,7 +1220,7 @@ function App() {
                         : ' 当前是本机地址，不勾选也可以正常使用。'}
                     </span>
                   </label>
-                  <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+                  <p className="text-[12px] text-[var(--text-muted)] leading-relaxed">
                     如果监听 `0.0.0.0` 或其他非本机地址，请确认当前网络可信，并且你知道谁能访问这台机器的端口。
                   </p>
                 </div>
@@ -1223,7 +1228,7 @@ function App() {
                 <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 py-3 space-y-3">
                   <div>
                     <p className="text-sm font-medium text-[var(--text-primary)]">浏览器登录与访问控制</p>
-                    <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-muted)]">
+                    <p className="mt-1 text-[12px] leading-relaxed text-[var(--text-muted)]">
                       这里控制浏览器端是否需要访问口令、是否允许只读登录，以及哪些远端来源地址可以访问当前本地 Web 服务。
                     </p>
                   </div>
@@ -1263,7 +1268,7 @@ function App() {
                           }}
                           className="mt-0.5"
                         />
-                        <span className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+                        <span className="text-[12px] text-[var(--text-muted)] leading-relaxed">
                           清空已保存口令。
                           {webConsoleStatus?.hasPassword ? ' 当前配置里已经存在口令哈希；若勾选这里，保存后会移除它。' : ' 当前还没有已保存口令。'}
                         </span>
@@ -1280,7 +1285,7 @@ function App() {
                         onChange={(e) => setWebConsoleSessionTtlDraft(e.target.value)}
                         className="w-full px-3 py-2 text-sm mono rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
                       />
-                      <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+                      <p className="text-[12px] text-[var(--text-muted)] leading-relaxed">
                         浏览器登录成功后的会话有效时长，单位是分钟。建议至少保留 10 分钟，避免频繁掉登录态。
                       </p>
                     </div>
@@ -1294,7 +1299,7 @@ function App() {
                         className="w-full px-3 py-2 text-sm mono rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)] resize-y"
                         placeholder={'留空表示不额外限制远端来源地址。\n每行或每个逗号分隔一个规则，例如：\n192.168.1.23\n192.168.1.*'}
                       />
-                      <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+                      <p className="text-[12px] text-[var(--text-muted)] leading-relaxed">
                         只有远端来源地址命中规则时，浏览器才能访问本地 Web 服务。支持完整 IP，也支持 `192.168.1.*` 这种前缀规则。回环地址 `127.0.0.1 / ::1` 始终允许。
                       </p>
                     </div>
@@ -1347,7 +1352,7 @@ function App() {
                         : '开启并打开浏览器'}
                 </button>
                 {webConsoleToggleNeedsRemoteConfirmation && (
-                  <span className="inline-flex items-center px-2.5 py-1 text-[11px] rounded-[var(--radius-sm)] border border-[var(--error-soft-border)] text-[var(--error)] bg-[var(--error-soft-bg)]">
+                  <span className="inline-flex items-center px-2.5 py-1 text-[12px] rounded-[var(--radius-sm)] border border-[var(--error-soft-border)] text-[var(--error)] bg-[var(--error-soft-bg)]">
                     需先勾选“允许远程访问”
                   </span>
                 )}
@@ -1396,7 +1401,7 @@ function App() {
                     </button>
                   ))}
                 </div>
-                <p className="text-[11px] text-[var(--text-muted)] mt-2">
+                <p className="text-[12px] text-[var(--text-muted)] mt-2">
                   低性能模式会关闭背景动画、界面过渡、模糊和图表动画，更适合核显或远程桌面环境。
                 </p>
               </div>
@@ -1420,7 +1425,7 @@ function App() {
                     </button>
                   ))}
                 </div>
-                <p className="text-[11px] text-[var(--text-muted)] mt-2">
+                <p className="text-[12px] text-[var(--text-muted)] mt-2">
                   可选亮色、暗色与羊皮纸主题
                 </p>
               </div>
@@ -1442,7 +1447,7 @@ function App() {
                         }`}
                     >
                       <span className="absolute inset-0" style={{ background: opt.value === 'custom' && settings.wallpaperCustomUrl.trim() ? `url("${settings.wallpaperCustomUrl.trim()}")` : opt.swatch, backgroundSize: 'cover', backgroundPosition: 'center' }} />
-                      <span className="absolute inset-x-0 bottom-0 text-[10px] text-center py-0.5 bg-black/55 text-white">{opt.label}</span>
+                      <span className="absolute inset-x-0 bottom-0 text-[11px] text-center py-0.5 bg-black/55 text-white">{opt.label}</span>
                     </button>
                   ))}
                 </div>
@@ -1471,7 +1476,7 @@ function App() {
                     </button>
                   ))}
                 </div>
-                <p className="text-[11px] text-[var(--text-muted)] mt-2">
+                <p className="text-[12px] text-[var(--text-muted)] mt-2">
                   壁纸只在底层渲染一层，面板半透明让壁纸透出；暗度档位控制可读性蒙版浓淡。选「纯色」或低性能模式会自动改用不透明底色。
                 </p>
               </div>
@@ -1495,7 +1500,7 @@ function App() {
                     </button>
                   ))}
                 </div>
-                <p className="text-[11px] text-[var(--text-muted)] mt-2">
+                <p className="text-[12px] text-[var(--text-muted)] mt-2">
                   控制背景字符与几何漂浮数量
                 </p>
               </div>
@@ -1519,7 +1524,7 @@ function App() {
                     </button>
                   ))}
                 </div>
-                <p className="text-[11px] text-[var(--text-muted)] mt-2">
+                <p className="text-[12px] text-[var(--text-muted)] mt-2">
                   选择高级几何图形风格预设
                 </p>
               </div>
@@ -1543,7 +1548,7 @@ function App() {
                     </button>
                   ))}
                 </div>
-                <p className="text-[11px] text-[var(--text-muted)] mt-2">
+                <p className="text-[12px] text-[var(--text-muted)] mt-2">
                   调整页面区块间距、卡片留白和表单密度
                 </p>
               </div>
@@ -1567,7 +1572,7 @@ function App() {
                     </button>
                   ))}
                 </div>
-                <p className="text-[11px] text-[var(--text-muted)] mt-2">
+                <p className="text-[12px] text-[var(--text-muted)] mt-2">
                   调整界面整体大小，包括文字和控件
                 </p>
               </div>
@@ -1578,7 +1583,7 @@ function App() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <label className="text-sm text-[var(--text-secondary)] block">低性能模式说明</label>
-                    <p className="text-[11px] text-[var(--text-muted)] mt-1 leading-relaxed">
+                    <p className="text-[12px] text-[var(--text-muted)] mt-1 leading-relaxed">
                       这一模式不是只改动画开关，还会同步关闭模糊、缩小阴影、收窄过渡、让部分重区块默认折叠，并把很多离屏卡片延后到滚动接近时再渲染。
                     </p>
                   </div>
@@ -1589,7 +1594,7 @@ function App() {
                     一键套用省资源组合
                   </button>
                 </div>
-                <div className="flex flex-wrap gap-2 text-[11px] text-[var(--text-secondary)]">
+                <div className="flex flex-wrap gap-2 text-[12px] text-[var(--text-secondary)]">
                   <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--surface-card)]">当前页：{pageTitles[activePage].title}</span>
                   <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--surface-card)]">最近切页耗时：{lastPagePaintMs == null ? '-' : `${lastPagePaintMs} ms`}</span>
                   <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--surface-card)]">背景效果：{ambientEnabled ? '启用' : '关闭'}</span>
@@ -1597,7 +1602,7 @@ function App() {
                   <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--surface-card)]">内容密度：{settings.contentDensity}</span>
                   <span className="px-2 py-1 rounded border border-[var(--border-subtle)] bg-[var(--surface-card)]">浏览器会话：{runningInTauri ? '桌面版' : browserReadOnlySession ? '只读' : browserSession?.authenticated ? '完整' : '未登录'}</span>
                 </div>
-                <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 py-3 text-[11px] leading-relaxed text-[var(--text-muted)]">
+                <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 py-3 text-[12px] leading-relaxed text-[var(--text-muted)]">
                   当前仍然最容易吃性能的页面通常是 `API管理`、`历史记录`、`用量管理` 和 `人格评测实验室`。
                   如果你在这些页面里仍感觉卡，优先收起图表、长列表、健康栏和多节点编辑区，而不是先继续调主题或缩放。
                 </div>

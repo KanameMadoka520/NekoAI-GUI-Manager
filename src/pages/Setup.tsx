@@ -124,7 +124,7 @@ export function Setup({ onComplete, onEnterReadOnly }: SetupProps) {
               </button>
             </div>
             {!runningInTauri && (
-              <p className="text-[11px] text-[var(--text-muted)] mt-2">
+              <p className="text-[12px] text-[var(--text-muted)] mt-2">
                 当前是浏览器访问模式，无法直接弹出本地文件选择器，请手动填写插件目录绝对路径。
               </p>
             )}
@@ -156,7 +156,7 @@ export function Setup({ onComplete, onEnterReadOnly }: SetupProps) {
               >
                 暂不连接，先进入只读浏览
               </button>
-              <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+              <p className="text-[12px] text-[var(--text-muted)] leading-relaxed">
                 只读浏览下可以查看各个页面与界面布局，但不会读取或写入任何文件；连接插件目录后才能正常读写。
               </p>
             </div>
@@ -164,13 +164,13 @@ export function Setup({ onComplete, onEnterReadOnly }: SetupProps) {
 
           {/* Tips */}
           <div className="pt-2 border-t border-[var(--border-subtle)]">
-            <p className="text-[10px] text-[var(--text-muted)] leading-relaxed">
+            <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
               💡 常见位置：插件目录通常在 Koishi 的 <code className="mono">plugins</code> 文件夹下，例如 <code className="mono text-[var(--accent-purple)]">Koishi\\plugins\\koishi-plugin-Enhanced-NekoAI</code>。如果你不确定，就先打开 Koishi 的插件目录，再从里面找到 NekoAI。
             </p>
           </div>
         </div>
 
-        <p className="text-[10px] text-[var(--text-muted)] text-center mt-6">
+        <p className="text-[11px] text-[var(--text-muted)] text-center mt-6">
           🐾 NekoAI GUI Manager v1.0 — by KanameMadoka520
         </p>
       </div>

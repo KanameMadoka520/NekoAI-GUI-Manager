@@ -1,4 +1,5 @@
 import type { WebConsoleLoginResult, WebConsoleSessionStatus } from './types';
+import { getDemoResponse } from './demo-data';
 
 type EventHandler<T> = (event: { payload: T }) => void;
 
@@ -33,6 +34,16 @@ export function hasConnectedPluginDir() {
 
 export function resetPluginDirConnection() {
   connectedPluginDir = '';
+}
+
+// ===== 演示模式（未连接目录的只读浏览）=====
+// 开启后，依赖目录的命令改由内置 demo-data 提供假数据（绝不触盘）；与目录无关的命令仍走真实通道。
+let demoMode = false;
+export function setDemoMode(on: boolean) {
+  demoMode = on;
+}
+export function isDemoMode() {
+  return demoMode;
 }
 
 function getStoredBrowserToken() {
@@ -91,6 +102,13 @@ function ensureBrowserEventSource() {
 }
 
 export async function invokeCompat<T = unknown>(command: string, params: Record<string, unknown> = {}): Promise<T> {
+  // 演示模式优先：依赖目录的命令由内置假数据应答，绝不触盘；
+  // 目录无关命令（如 set_plugin_dir / 打开链接）会 handled=false，落回真实通道。
+  if (demoMode) {
+    const demo = getDemoResponse(command, params);
+    if (demo.handled) return demo.value as T;
+  }
+
   if (isTauriRuntime()) {
     if (!hasConnectedPluginDir() && !DIR_OPTIONAL_COMMANDS.has(command)) {
       throw new Error('未连接插件目录，连接后才能读写文件');

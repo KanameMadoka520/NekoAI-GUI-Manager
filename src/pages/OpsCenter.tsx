@@ -433,7 +433,7 @@ export function OpsCenter() {
                         <button
                           key={item.key}
                           onClick={() => setSelfCheckFilter(item.key)}
-                          className={`px-2.5 py-1 text-[11px] rounded-[var(--radius-sm)] border transition-colors cursor-pointer ${selfCheckFilter === item.key ? 'bg-[var(--nav-active-bg)] text-[var(--accent-purple)] border-[var(--accent-purple)]' : 'bg-[var(--surface-card)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:text-[var(--text-primary)]'}`}
+                          className={`px-2.5 py-1 text-[12px] rounded-[var(--radius-sm)] border transition-colors cursor-pointer ${selfCheckFilter === item.key ? 'bg-[var(--nav-active-bg)] text-[var(--accent-purple)] border-[var(--accent-purple)]' : 'bg-[var(--surface-card)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:text-[var(--text-primary)]'}`}
                         >
                           {item.label}
                         </button>
@@ -448,16 +448,16 @@ export function OpsCenter() {
                           return (
                             <div key={`${it.code}-${i}`} className="text-xs text-[var(--text-secondary)] leading-relaxed rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2">
                               <div className="flex items-start gap-2 flex-wrap">
-                                <span className={`inline-flex items-center px-2 py-0.5 rounded-[var(--radius-sm)] border mono text-[10px] ${it.level === 'error' ? 'border-[var(--error-soft-border)] text-[var(--error)]' : it.level === 'warn' ? 'border-[var(--warning-soft-border)] text-[var(--warning)]' : 'border-[var(--border-subtle)] text-[var(--text-muted)]'}`}>
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-[var(--radius-sm)] border mono text-[11px] ${it.level === 'error' ? 'border-[var(--error-soft-border)] text-[var(--error)]' : it.level === 'warn' ? 'border-[var(--warning-soft-border)] text-[var(--warning)]' : 'border-[var(--border-subtle)] text-[var(--text-muted)]'}`}>
                                   {explained.techLabel}
                                 </span>
                                 {it.fixable && (
-                                  <span className="inline-flex items-center px-2 py-0.5 rounded-[var(--radius-sm)] border border-[var(--success-soft-border)] text-[var(--success)] text-[10px]">
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-[var(--radius-sm)] border border-[var(--success-soft-border)] text-[var(--success)] text-[11px]">
                                     可自动修复
                                   </span>
                                 )}
                                 {it.code.startsWith('usageEvents.') && (
-                                  <span className="inline-flex items-center px-2 py-0.5 rounded-[var(--radius-sm)] border border-[var(--warning-soft-border)] text-[var(--warning)] text-[10px]">
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-[var(--radius-sm)] border border-[var(--warning-soft-border)] text-[var(--warning)] text-[11px]">
                                     用量日志
                                   </span>
                                 )}
@@ -535,7 +535,7 @@ function PanelToggleRow({
       >
         {expanded ? '收起明细' : '展开明细'}
       </button>
-      {!expanded && <span className="text-[11px] text-[var(--text-muted)] leading-relaxed">{collapsedText}</span>}
+      {!expanded && <span className="text-[12px] text-[var(--text-muted)] leading-relaxed">{collapsedText}</span>}
     </div>
   );
 }
@@ -543,7 +543,7 @@ function PanelToggleRow({
 function OpsCollapsedHint({ text }: { text: string }) {
   return (
     <div className="rounded-[var(--radius-sm)] border border-dashed border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-4 py-3">
-      <p className="text-[11px] leading-relaxed text-[var(--text-muted)]">{text}</p>
+      <p className="text-[12px] leading-relaxed text-[var(--text-muted)]">{text}</p>
     </div>
   );
 }

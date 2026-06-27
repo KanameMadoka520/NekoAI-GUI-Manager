@@ -455,14 +455,14 @@ function MetricBar({ label, score, weight, color, hint }: { label: string; score
   const value = score ?? 0;
   return (
     <div className="space-y-1">
-      <div className="flex items-center justify-between gap-2 text-[10px]">
+      <div className="flex items-center justify-between gap-2 text-[11px]">
         <span className="text-[var(--text-secondary)]">{label}</span>
         <span className="mono text-[var(--text-muted)]">{score ?? '-'} / {weight}%</span>
       </div>
       <div className="h-1.5 rounded-[var(--radius-sm)] bg-[var(--border-subtle)] overflow-hidden">
         <div className="h-full rounded-[var(--radius-sm)]" style={{ width: `${value}%`, background: color }} />
       </div>
-      {hint ? <p className="text-[10px] text-[var(--text-muted)]">{hint}</p> : null}
+      {hint ? <p className="text-[11px] text-[var(--text-muted)]">{hint}</p> : null}
     </div>
   );
 }
@@ -477,7 +477,7 @@ function DeferredCardPlaceholder({
   return (
     <div className="mt-4 rounded-[var(--radius-sm)] border border-dashed border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-4 py-3">
       <p className="text-xs text-[var(--text-primary)]">{title}</p>
-      <p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">{subtitle}</p>
+      <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-muted)]">{subtitle}</p>
     </div>
   );
 }
@@ -1563,19 +1563,19 @@ export function ApiManager() {
             <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-3">
               <div>
                 <p className="text-xs font-medium text-[var(--text-primary)]">评分权重</p>
-                <p className="text-[11px] text-[var(--text-muted)] mt-1">这些权重只影响 GUI 里“健康分怎么看”，不会改插件本身的运行行为，也不会写回 `runtime_config.json`。</p>
+                <p className="text-[12px] text-[var(--text-muted)] mt-1">这些权重只影响 GUI 里“健康分怎么看”，不会改插件本身的运行行为，也不会写回 `runtime_config.json`。</p>
               </div>
               <WeightSlider label="实时" value={weightLive} onChange={setWeightLive} />
               <WeightSlider label="超时" value={weightTimeout} onChange={setWeightTimeout} />
               <WeightSlider label="抖动" value={weightJitter} onChange={setWeightJitter} />
-              <div className="text-[11px] text-[var(--text-muted)] mono">历史 自动补足为 {historyWeight}%</div>
+              <div className="text-[12px] text-[var(--text-muted)] mono">历史 自动补足为 {historyWeight}%</div>
             </div>
           </div>
         )}
       </Panel>
 
       <div className="rounded-[var(--radius-sm)] border border-[var(--error-soft-border)] bg-[var(--error-soft-bg)] px-3 py-2">
-        <p className="text-[11px] text-[var(--error)] leading-relaxed">
+        <p className="text-[12px] text-[var(--error)] leading-relaxed">
           这里最敏感的是 <span className="mono">api_config.json</span>。如果你只是想分享界面截图、差异结果或快照摘要，不一定要把这个文件一起带出去。
           一旦把 API Key 发错人，通常就只能去原平台删掉或更换密钥。
         </p>
@@ -1591,7 +1591,7 @@ export function ApiManager() {
               <select
                 value={healthSort}
                 onChange={(e) => setHealthSort(e.target.value as 'none' | 'desc' | 'asc')}
-                className="px-2 py-2 text-[11px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)]"
+                className="px-2 py-2 text-[12px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)]"
                 title="按健康分排序"
               >
                 <option value="none">排序：默认</option>
@@ -1601,7 +1601,7 @@ export function ApiManager() {
               <select
                 value={healthFilter}
                 onChange={(e) => setHealthFilter(e.target.value as 'all' | 'healthy' | 'warning' | 'risk')}
-                className="px-2 py-2 text-[11px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)]"
+                className="px-2 py-2 text-[12px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)]"
                 title="按健康等级筛选"
               >
                 <option value="all">等级：全部</option>
@@ -1615,7 +1615,7 @@ export function ApiManager() {
               <select
                 value={healthSourceFilter}
                 onChange={(e) => setHealthSourceFilter(e.target.value as 'all' | 'live' | 'history' | 'mixed' | 'none')}
-                className="px-2 py-2 text-[11px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)]"
+                className="px-2 py-2 text-[12px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)]"
                 title="按健康分来源筛选"
               >
                 <option value="all">来源：全部</option>
@@ -1627,7 +1627,7 @@ export function ApiManager() {
               <button
                 onClick={resetDirectoryFilters}
                 disabled={activeDirectoryFilters.length === 0}
-                className={`px-2 py-2 text-[11px] rounded-[var(--radius-sm)] border transition-colors ${activeDirectoryFilters.length > 0 ? 'bg-[var(--surface-card)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer' : 'bg-[var(--bg-elevated)] border-[var(--border-subtle)] text-[var(--text-muted)] cursor-not-allowed opacity-60'}`}
+                className={`px-2 py-2 text-[12px] rounded-[var(--radius-sm)] border transition-colors ${activeDirectoryFilters.length > 0 ? 'bg-[var(--surface-card)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer' : 'bg-[var(--bg-elevated)] border-[var(--border-subtle)] text-[var(--text-muted)] cursor-not-allowed opacity-60'}`}
                 title="清空目录筛选"
               >
                 清空筛选
@@ -1636,50 +1636,50 @@ export function ApiManager() {
 
             <div className="grid grid-cols-2 gap-2">
               <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2">
-                <p className="text-[10px] text-[var(--text-muted)]">目录 / 右侧</p>
+                <p className="text-[11px] text-[var(--text-muted)]">目录 / 右侧</p>
                 <p className="text-sm font-medium text-[var(--text-primary)]">{displayedIndices.length}/{visibleNodeIndices.length}</p>
               </div>
               <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2">
-                <p className="text-[10px] text-[var(--text-muted)]">风险节点</p>
+                <p className="text-[11px] text-[var(--text-muted)]">风险节点</p>
                 <p className="text-sm font-medium text-[var(--error)]">{summary.risk}</p>
               </div>
             </div>
 
             <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2">
-              <p className="text-[10px] text-[var(--text-muted)]">评分权重</p>
-              <p className="text-[11px] text-[var(--text-secondary)] mt-1 mono break-all">
+              <p className="text-[11px] text-[var(--text-muted)]">评分权重</p>
+              <p className="text-[12px] text-[var(--text-secondary)] mt-1 mono break-all">
                 实时 / 历史 / 超时 / 抖动 = {weightLive} / {historyWeight} / {weightTimeout} / {weightJitter}
               </p>
             </div>
 
             <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2">
-              <p className="text-[10px] text-[var(--text-muted)]">来源概览</p>
-              <p className="text-[11px] text-[var(--text-secondary)] mt-1">实时 {sourceSummary.live} · 历史 {sourceSummary.history} · 混合 {sourceSummary.mixed} · 无数据 {sourceSummary.none}</p>
-              <p className="text-[10px] text-[var(--text-muted)] mt-1 leading-relaxed">实时表示本窗口刚测过，历史表示沿用历史统计，混合表示两边都参与了评分。</p>
+              <p className="text-[11px] text-[var(--text-muted)]">来源概览</p>
+              <p className="text-[12px] text-[var(--text-secondary)] mt-1">实时 {sourceSummary.live} · 历史 {sourceSummary.history} · 混合 {sourceSummary.mixed} · 无数据 {sourceSummary.none}</p>
+              <p className="text-[11px] text-[var(--text-muted)] mt-1 leading-relaxed">实时表示本窗口刚测过，历史表示沿用历史统计，混合表示两边都参与了评分。</p>
             </div>
 
             <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2">
-              <p className="text-[10px] text-[var(--text-muted)]">分数怎么看</p>
+              <p className="text-[11px] text-[var(--text-muted)]">分数怎么看</p>
               <div className="mt-2 flex flex-wrap gap-1.5">
-                <span className="px-1.5 py-0.5 rounded-[var(--radius-pill)] text-[10px]" style={{ background: 'var(--info-soft-bg)', color: 'var(--info)' }}>实时 82分</span>
-                <span className="px-1.5 py-0.5 rounded-[var(--radius-pill)] text-[10px]" style={{ background: 'var(--warning-soft-bg)', color: 'var(--warning)' }}>历史 61分</span>
-                <span className="px-1.5 py-0.5 rounded-[var(--radius-pill)] text-[10px]" style={{ background: 'var(--accent-soft-bg)', color: 'var(--accent-purple)' }}>混合 88分</span>
-                <span className="px-1.5 py-0.5 rounded-[var(--radius-pill)] text-[10px] bg-[var(--surface-card)] text-[var(--text-muted)]">无数据</span>
+                <span className="px-1.5 py-0.5 rounded-[var(--radius-pill)] text-[11px]" style={{ background: 'var(--info-soft-bg)', color: 'var(--info)' }}>实时 82分</span>
+                <span className="px-1.5 py-0.5 rounded-[var(--radius-pill)] text-[11px]" style={{ background: 'var(--warning-soft-bg)', color: 'var(--warning)' }}>历史 61分</span>
+                <span className="px-1.5 py-0.5 rounded-[var(--radius-pill)] text-[11px]" style={{ background: 'var(--accent-soft-bg)', color: 'var(--accent-purple)' }}>混合 88分</span>
+                <span className="px-1.5 py-0.5 rounded-[var(--radius-pill)] text-[11px] bg-[var(--surface-card)] text-[var(--text-muted)]">无数据</span>
               </div>
-              <p className="text-[10px] text-[var(--text-muted)] mt-2 leading-relaxed">这样刷新回来时不会只看到 20、40 这类裸数字。目录、卡片和详情里的健康分都统一带上来源与“分”字。</p>
+              <p className="text-[11px] text-[var(--text-muted)] mt-2 leading-relaxed">这样刷新回来时不会只看到 20、40 这类裸数字。目录、卡片和详情里的健康分都统一带上来源与“分”字。</p>
             </div>
 
             <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 py-2">
               {activeDirectoryFilters.length > 0 ? (
                 <div className="flex flex-wrap gap-1.5">
                   {activeDirectoryFilters.map((item) => (
-                    <span key={item} className="px-2 py-1 text-[10px] rounded-[var(--radius-pill)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)]">
+                    <span key={item} className="px-2 py-1 text-[11px] rounded-[var(--radius-pill)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)]">
                       {item}
                     </span>
                   ))}
                 </div>
               ) : (
-                <p className="text-[10px] text-[var(--text-muted)] leading-relaxed">当前目录未额外筛选，显示的是全部聊天节点。这里的筛选条件会自动记住，刷新后还能延续。</p>
+                <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">当前目录未额外筛选，显示的是全部聊天节点。这里的筛选条件会自动记住，刷新后还能延续。</p>
               )}
             </div>
           </div>
@@ -1696,8 +1696,8 @@ export function ApiManager() {
               if (item.kind === 'group') {
                 return (
                   <div className="flex h-full items-center justify-between px-2">
-                    <p className="text-[10px] uppercase text-[var(--text-muted)]">{item.provider}</p>
-                    <span className="text-[10px] text-[var(--text-muted)]">{item.count}</span>
+                    <p className="text-[11px] uppercase text-[var(--text-muted)]">{item.provider}</p>
+                    <span className="text-[11px] text-[var(--text-muted)]">{item.count}</span>
                   </div>
                 );
               }
@@ -1712,13 +1712,13 @@ export function ApiManager() {
                   onClick={() => scrollToNode(item.index)}
                   className={`w-full flex h-full items-center gap-2 rounded-[var(--radius-sm)] px-2.5 py-2 text-left transition-colors cursor-pointer ${item.index === activeIndex ? 'bg-[var(--nav-active-bg)] text-[var(--accent-purple)]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)]'}`}
                 >
-                  <span className="mono text-[10px] text-[var(--text-muted)] w-6 text-right">#{item.index}</span>
+                  <span className="mono text-[11px] text-[var(--text-muted)] w-6 text-right">#{item.index}</span>
                   <span className="flex-1 min-w-0">
                     <span className="block truncate text-xs text-[var(--text-primary)]">{node.modelName || '(空)'}</span>
-                    <span className="block truncate text-[10px] text-[var(--text-muted)]">{node.remark || '还没写备注'}</span>
+                    <span className="block truncate text-[11px] text-[var(--text-muted)]">{node.remark || '还没写备注'}</span>
                   </span>
                   <span
-                    className="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-pill)] whitespace-nowrap"
+                    className="text-[11px] px-1.5 py-0.5 rounded-[var(--radius-pill)] whitespace-nowrap"
                     style={{ background: levelMeta.bg, color: levelMeta.color }}
                     title={health ? `健康分 ${health.score} 分；来源：${getHealthSourceLabel(health.source)}（${getHealthSourceHint(health.source)}）${health.reason ? `；${health.reason}` : ''}` : '无数据'}
                   >
@@ -1752,7 +1752,7 @@ export function ApiManager() {
                     : '当前筛选条件下没有匹配节点。可以清掉搜索词，或者放宽健康等级 / 来源筛选再试一次。'}
                 </p>
                 {activeDirectoryFilters.length > 0 && (
-                  <p className="mt-2 text-[11px] text-[var(--text-muted)]">当前条件：{activeDirectoryFilters.join(' / ')}</p>
+                  <p className="mt-2 text-[12px] text-[var(--text-muted)]">当前条件：{activeDirectoryFilters.join(' / ')}</p>
                 )}
               </div>
             </div>
@@ -1930,7 +1930,7 @@ function ImageApiManagerPanel({
             🧩 下载图像模板
           </button>
           <div className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-1.5">
-            <span className="text-[11px] text-[var(--text-muted)]">图像超时</span>
+            <span className="text-[12px] text-[var(--text-muted)]">图像超时</span>
             <input
               type="number"
               min={1}
@@ -1940,7 +1940,7 @@ function ImageApiManagerPanel({
               className="w-20 px-2 py-1 text-xs mono rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
               title="按秒填写，保存后写入 runtime_config.json 的 imageApiTimeoutMs"
             />
-            <span className="text-[11px] text-[var(--text-muted)]">秒</span>
+            <span className="text-[12px] text-[var(--text-muted)]">秒</span>
           </div>
           <div className="flex-1" />
           <button
@@ -1958,7 +1958,7 @@ function ImageApiManagerPanel({
             ↪ 重做
           </button>
         </div>
-        <p className="mt-2 text-[11px] leading-relaxed text-[var(--text-muted)]">
+        <p className="mt-2 text-[12px] leading-relaxed text-[var(--text-muted)]">
           图像超时只影响 <span className="mono">neko.生图</span> / <span className="mono">neko.修图</span> 的下游图像接口等待时间；聊天 API 仍使用 <span className="mono">apiTimeoutMs</span>。例如填 300 就是 5 分钟。
         </p>
       </Panel>
@@ -2015,10 +2015,10 @@ function ImageApiManagerPanel({
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-xs mono text-[var(--text-muted)]">#{index}</span>
                         <span className="text-sm font-medium text-[var(--text-primary)]">{node.modelName || getDefaultImageModel(providerType)}</span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-pill)] bg-[var(--info-soft-bg)] text-[var(--info)]">{getImageProviderLabel(providerType)}</span>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-[var(--radius-pill)] ${supportsEdit ? 'bg-[var(--success-soft-bg)] text-[var(--success)]' : 'bg-[var(--warning-soft-bg)] text-[var(--warning)]'}`}>{getImageCapabilityLabel(node)}</span>
-                        {providerType === 'openai' && node.streamingEnabled ? <span className="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-pill)] bg-[var(--info-soft-bg)] text-[var(--info)]">流式 partial {normalizePartialImages(node.partialImages)}</span> : null}
-                        {index === activeIndex ? <span className="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-pill)] bg-[var(--accent-purple)] text-[var(--on-accent)]">活跃</span> : null}
+                        <span className="text-[11px] px-1.5 py-0.5 rounded-[var(--radius-pill)] bg-[var(--info-soft-bg)] text-[var(--info)]">{getImageProviderLabel(providerType)}</span>
+                        <span className={`text-[11px] px-1.5 py-0.5 rounded-[var(--radius-pill)] ${supportsEdit ? 'bg-[var(--success-soft-bg)] text-[var(--success)]' : 'bg-[var(--warning-soft-bg)] text-[var(--warning)]'}`}>{getImageCapabilityLabel(node)}</span>
+                        {providerType === 'openai' && node.streamingEnabled ? <span className="text-[11px] px-1.5 py-0.5 rounded-[var(--radius-pill)] bg-[var(--info-soft-bg)] text-[var(--info)]">流式 partial {normalizePartialImages(node.partialImages)}</span> : null}
+                        {index === activeIndex ? <span className="text-[11px] px-1.5 py-0.5 rounded-[var(--radius-pill)] bg-[var(--accent-purple)] text-[var(--on-accent)]">活跃</span> : null}
                         <div className="flex-1" />
                         <button
                           onClick={() => {
@@ -2027,13 +2027,13 @@ function ImageApiManagerPanel({
                             else next.add(index);
                             setShowKey(next);
                           }}
-                          className="px-2.5 py-1.5 text-[10px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+                          className="px-2.5 py-1.5 text-[11px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
                         >
                           {keyVisible ? '收起 Key' : '展开 Key'}
                         </button>
                       </div>
 
-                      <div className="mt-1 text-[11px] text-[var(--text-muted)]">{node.remark || '还没写备注'}</div>
+                      <div className="mt-1 text-[12px] text-[var(--text-muted)]">{node.remark || '还没写备注'}</div>
 
                       <DeferredVisibleBlock
                         forceMount={index === activeIndex || keyVisible}
@@ -2046,7 +2046,7 @@ function ImageApiManagerPanel({
                       >
                         <div className="mt-4 grid gap-3 xl:grid-cols-2">
                           <div>
-                            <label className="text-[10px] text-[var(--text-muted)] mb-1 block">Provider</label>
+                            <label className="text-[11px] text-[var(--text-muted)] mb-1 block">Provider</label>
                             <select
                               value={providerType}
                               onChange={(e) => onChangeProvider(index, e.target.value as ImageApiProviderType)}
@@ -2055,12 +2055,12 @@ function ImageApiManagerPanel({
                               <option value="openai">openai</option>
                               <option value="xai">xai</option>
                             </select>
-                            <p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">
+                            <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-muted)]">
                               OpenAI 图像默认模型是 `gpt-image-2`。该模型支持引用带图消息后用 `neko.生图 提示词` 参考生成。
                             </p>
                           </div>
                           <div>
-                            <label className="text-[10px] text-[var(--text-muted)] mb-1 block">节点能力</label>
+                            <label className="text-[11px] text-[var(--text-muted)] mb-1 block">节点能力</label>
                             <select
                               value={supportsEdit ? 'true' : 'false'}
                               onChange={(e) => onUpdate(index, 'supportsEdit', e.target.value === 'true')}
@@ -2069,12 +2069,12 @@ function ImageApiManagerPanel({
                               <option value="false">仅生图</option>
                               <option value="true">生图 + 修图</option>
                             </select>
-                            <p className={`mt-1 text-[10px] leading-relaxed ${gptImage2Node ? 'text-[var(--info)]' : 'text-[var(--text-muted)]'}`}>
+                            <p className={`mt-1 text-[11px] leading-relaxed ${gptImage2Node ? 'text-[var(--info)]' : 'text-[var(--text-muted)]'}`}>
                               {gptImage2Node ? '`gpt-image-2` 开启该能力并填写修图 URL 后，可直接引用带图消息进行参考图生图。' : '支持该能力的节点会被 `neko.修图` 使用，也可在 `neko.生图` 中接收引用图片作为参考。'}
                             </p>
                           </div>
                           <div>
-                            <label className="text-[10px] text-[var(--text-muted)] mb-1 block">备注</label>
+                            <label className="text-[11px] text-[var(--text-muted)] mb-1 block">备注</label>
                             <input
                               value={node.remark}
                               onChange={(e) => onUpdate(index, 'remark', e.target.value)}
@@ -2083,7 +2083,7 @@ function ImageApiManagerPanel({
                             />
                           </div>
                           <div>
-                            <label className="text-[10px] text-[var(--text-muted)] mb-1 block">图像模型</label>
+                            <label className="text-[11px] text-[var(--text-muted)] mb-1 block">图像模型</label>
                             <input
                               value={node.modelName}
                               onChange={(e) => onUpdate(index, 'modelName', e.target.value)}
@@ -2091,15 +2091,15 @@ function ImageApiManagerPanel({
                               placeholder={getDefaultImageModel(providerType)}
                             />
                             {providerType === 'xai' && String(node.modelName || '').trim().toLowerCase() === 'grok-imagine-image-pro' ? (
-                              <p className="mt-1 text-[10px] leading-relaxed text-[var(--warning)]">
+                              <p className="mt-1 text-[11px] leading-relaxed text-[var(--warning)]">
                                 当前已知 `grok-imagine-image-pro` 可能阶段性返回 500 / 503。插件现在会在这种“模型暂时不可用”的场景下，自动回退到 `grok-imagine-image` 再重试一次，并在日志与完成提示里明确写出回退情况。
                               </p>
                             ) : providerType === 'openai' ? (
-                              <p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">
+                              <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-muted)]">
                                 OpenAI 图像渠道目前默认使用 `gpt-image-2`。检测到该模型时，建议保留修图 URL，用于引用图片后的参考图生图。
                               </p>
                             ) : (
-                              <p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">
+                              <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-muted)]">
                                 若你填写 `grok-imagine-image-pro`，当 xAI 返回“模型暂时不可用 / 服务不可用 / 内部生成失败”时，插件会自动回退到 `grok-imagine-image` 再重试一次。
                               </p>
                             )}
@@ -2117,11 +2117,11 @@ function ImageApiManagerPanel({
                                 />
                                 <span>
                                   <span className="block font-medium">启用 OpenAI 图像流式</span>
-                                  <span className="block mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">仅对 OpenAI 图像节点生效，会优先请求 SSE stream。</span>
+                                  <span className="block mt-1 text-[11px] leading-relaxed text-[var(--text-muted)]">仅对 OpenAI 图像节点生效，会优先请求 SSE stream。</span>
                                 </span>
                               </label>
                               <div>
-                                <label className="text-[10px] text-[var(--text-muted)] mb-1 block">partial images</label>
+                                <label className="text-[11px] text-[var(--text-muted)] mb-1 block">partial images</label>
                                 <select
                                   value={normalizePartialImages(node.partialImages)}
                                   disabled={providerType !== 'openai' || node.streamingEnabled !== true}
@@ -2144,11 +2144,11 @@ function ImageApiManagerPanel({
                                 />
                                 <span>
                                   <span className="block font-medium">失败回退普通请求</span>
-                                  <span className="block mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">推荐开启；中转站不支持 SSE 时不会直接判节点失败。</span>
+                                  <span className="block mt-1 text-[11px] leading-relaxed text-[var(--text-muted)]">推荐开启；中转站不支持 SSE 时不会直接判节点失败。</span>
                                 </span>
                               </label>
                             </div>
-                            <p className={`mt-2 text-[10px] leading-relaxed ${providerType === 'openai' ? 'text-[var(--text-muted)]' : 'text-[var(--warning)]'}`}>
+                            <p className={`mt-2 text-[11px] leading-relaxed ${providerType === 'openai' ? 'text-[var(--text-muted)]' : 'text-[var(--warning)]'}`}>
                               {providerType === 'openai'
                                 ? '流式请求会等待 completed 最终图；partial 只用于维持连接和日志进度，不会单独发到群里。'
                                 : 'xAI 图像节点暂不启用这组选项。'}
@@ -2156,7 +2156,7 @@ function ImageApiManagerPanel({
                           </div>
 
                           <div className="xl:col-span-2">
-                            <label className="text-[10px] text-[var(--text-muted)] mb-1 block">生图 URL</label>
+                            <label className="text-[11px] text-[var(--text-muted)] mb-1 block">生图 URL</label>
                             <div className="flex gap-2">
                               <input
                                 value={node.generationUrl}
@@ -2167,31 +2167,31 @@ function ImageApiManagerPanel({
                               <button
                                 type="button"
                                 onClick={() => onApplyGenerationSuffix(index)}
-                                className="px-2.5 py-2 text-[11px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-purple)] cursor-pointer whitespace-nowrap"
+                                className="px-2.5 py-2 text-[12px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-purple)] cursor-pointer whitespace-nowrap"
                               >
                                 补 /v1/images/generations
                               </button>
                             </div>
-                            <p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">
+                            <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-muted)]">
                               主 URL 请求失败或返回空图片时，插件会按备用生图 URL 的顺序继续尝试。
                             </p>
                           </div>
 
                           <div className="xl:col-span-2">
-                            <label className="text-[10px] text-[var(--text-muted)] mb-1 block">备用生图 URL（每行一个）</label>
+                            <label className="text-[11px] text-[var(--text-muted)] mb-1 block">备用生图 URL（每行一个）</label>
                             <textarea
                               value={imageUrlListToText(node.generationUrls)}
                               onChange={(e) => onUpdate(index, 'generationUrls', normalizeImageUrlList(e.target.value))}
                               className="w-full min-h-[76px] resize-y px-2.5 py-2 text-xs mono rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
                               placeholder={getDefaultImageGenerationUrl(providerType)}
                             />
-                            <p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">
+                            <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-muted)]">
                               适合同一个供应商有多个中转地址的场景；不要重复填写主 URL。
                             </p>
                           </div>
 
                           <div className="xl:col-span-2">
-                            <label className="text-[10px] text-[var(--text-muted)] mb-1 block">修图 URL</label>
+                            <label className="text-[11px] text-[var(--text-muted)] mb-1 block">修图 URL</label>
                             <div className="flex gap-2">
                               <input
                                 value={node.editUrl}
@@ -2204,20 +2204,20 @@ function ImageApiManagerPanel({
                                 type="button"
                                 onClick={() => onApplyEditSuffix(index)}
                                 disabled={!supportsEdit}
-                                className="px-2.5 py-2 text-[11px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-purple)] cursor-pointer whitespace-nowrap disabled:opacity-55 disabled:cursor-not-allowed"
+                                className="px-2.5 py-2 text-[12px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-purple)] cursor-pointer whitespace-nowrap disabled:opacity-55 disabled:cursor-not-allowed"
                               >
                                 补 /v1/images/edits
                               </button>
                             </div>
                             {!supportsEdit ? (
-                              <p className="mt-1 text-[10px] leading-relaxed text-[var(--warning)]">
+                              <p className="mt-1 text-[11px] leading-relaxed text-[var(--warning)]">
                                 此节点不会参与 `neko.修图`。已填写的修图 URL 会保留在配置里，但插件运行时不会调用。
                               </p>
                             ) : null}
                           </div>
 
                           <div className="xl:col-span-2">
-                            <label className="text-[10px] text-[var(--text-muted)] mb-1 block">备用修图 URL（每行一个）</label>
+                            <label className="text-[11px] text-[var(--text-muted)] mb-1 block">备用修图 URL（每行一个）</label>
                             <textarea
                               value={imageUrlListToText(node.editUrls)}
                               onChange={(e) => onUpdate(index, 'editUrls', normalizeImageUrlList(e.target.value))}
@@ -2225,13 +2225,13 @@ function ImageApiManagerPanel({
                               className="w-full min-h-[76px] resize-y px-2.5 py-2 text-xs mono rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)] disabled:opacity-55 disabled:cursor-not-allowed"
                               placeholder={supportsEdit ? getDefaultImageEditUrl(providerType) : '当前节点仅生图，修图命令会跳过'}
                             />
-                            <p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">
+                            <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-muted)]">
                               修图或参考图生图会按主修图 URL、备用修图 URL 的顺序尝试。
                             </p>
                           </div>
 
                           <div>
-                            <label className="text-[10px] text-[var(--text-muted)] mb-1 block">默认宽高比</label>
+                            <label className="text-[11px] text-[var(--text-muted)] mb-1 block">默认宽高比</label>
                             <select
                               value={node.aspectRatio || ''}
                               onChange={(e) => onUpdate(index, 'aspectRatio', e.target.value)}
@@ -2243,14 +2243,14 @@ function ImageApiManagerPanel({
                                 </option>
                               ))}
                             </select>
-                            <p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">
+                            <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-muted)]">
                               `空白` 不等于 `auto`。`空白` 表示这个图像节点不会主动传 `aspect_ratio`，如果命令里也没写 `--ratio`，就完全交给图像接口自己决定。
                               `auto` 表示会显式传 `aspect_ratio=auto` 给图像接口，让它自动挑一个合适比例。命令里如果手动写 `--ratio 16:9`，冒号请使用英文冒号 `:`
                             </p>
                           </div>
 
                           <div>
-                            <label className="text-[10px] text-[var(--text-muted)] mb-1 block">默认分辨率</label>
+                            <label className="text-[11px] text-[var(--text-muted)] mb-1 block">默认分辨率</label>
                             <select
                               value={node.resolution || ''}
                               onChange={(e) => onUpdate(index, 'resolution', e.target.value)}
@@ -2262,7 +2262,7 @@ function ImageApiManagerPanel({
                                 </option>
                               ))}
                             </select>
-                            <p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">
+                            <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-muted)]">
                               `空白` 表示这个图像节点不会主动传 `resolution`，如果命令里也没写 `--resolution`，就完全交给 xAI 自己决定。
                               当前内置清晰度预设是 `1k（标准清晰度）` 和 `2k（高清清晰度）`。
                             </p>
@@ -2270,7 +2270,7 @@ function ImageApiManagerPanel({
 
                           {keyVisible ? (
                             <div className="xl:col-span-2">
-                              <label className="text-[10px] text-[var(--text-muted)] mb-1 block">API Key</label>
+                              <label className="text-[11px] text-[var(--text-muted)] mb-1 block">API Key</label>
                               <input
                                 value={node.apiKey}
                                 onChange={(e) => onUpdate(index, 'apiKey', e.target.value)}
@@ -2285,14 +2285,14 @@ function ImageApiManagerPanel({
                       <div className="mt-4 flex flex-wrap items-center gap-1.5">
                         <button
                           onClick={() => onClone(index)}
-                          className="px-2.5 py-1.5 text-[10px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                          className="px-2.5 py-1.5 text-[11px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
                         >
                           📋 克隆
                         </button>
                         {index !== activeIndex ? (
                           <button
                             onClick={() => onSetActive(index)}
-                            className="px-2.5 py-1.5 text-[10px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--success)] hover:bg-[var(--success-soft-bg)] transition-colors cursor-pointer"
+                            className="px-2.5 py-1.5 text-[11px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--success)] hover:bg-[var(--success-soft-bg)] transition-colors cursor-pointer"
                           >
                             ⚡ 设为活跃
                           </button>
@@ -2302,7 +2302,7 @@ function ImageApiManagerPanel({
                           onClick={() => {
                             if (window.confirm(`确定删除图像节点 #${index}？`)) onRemove(index);
                           }}
-                          className="px-2.5 py-1.5 text-[10px] rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--error)] hover:bg-[var(--error-soft-bg)] transition-colors cursor-pointer"
+                          className="px-2.5 py-1.5 text-[11px] rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--error)] hover:bg-[var(--error-soft-bg)] transition-colors cursor-pointer"
                         >
                           🗑 移除
                         </button>
@@ -2382,25 +2382,25 @@ function ImageRouterPanel({
           >
             清空顺序
           </button>
-          <span className="text-[11px] text-[var(--text-muted)]">成功节点会直接返回；只有整条路径都失败才视为失败。</span>
+          <span className="text-[12px] text-[var(--text-muted)]">成功节点会直接返回；只有整条路径都失败才视为失败。</span>
         </div>
 
         <div className="grid gap-3 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
           <div>
-            <label className="text-[10px] text-[var(--text-muted)] mb-1 block">路由顺序（用逗号或换行分隔节点编号）</label>
+            <label className="text-[11px] text-[var(--text-muted)] mb-1 block">路由顺序（用逗号或换行分隔节点编号）</label>
             <textarea
               value={orderText}
               onChange={(e) => updateOrder(normalizeImageRouteOrder(e.target.value))}
               className="w-full min-h-[120px] resize-y px-2.5 py-2 text-xs mono rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
               placeholder="例如: 5, 4, 2"
             />
-            <p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">
+            <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-muted)]">
               这里写的是实际尝试顺序。比如填 <span className="mono">5, 4, 2</span>，就会先试节点 5，失败后试节点 4，再失败后试节点 2。修图和参考图生图会自动跳过不支持修图的节点。
             </p>
           </div>
 
           <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 py-3">
-            <p className="text-[10px] text-[var(--text-muted)]">当前路径</p>
+            <p className="text-[11px] text-[var(--text-muted)]">当前路径</p>
             <p className="mt-1 text-xs text-[var(--text-primary)] leading-relaxed break-words">
               {order.length > 0
                 ? order.map((index) => {
@@ -2427,27 +2427,27 @@ function ImageRouterPanel({
                   key={index}
                   className="flex flex-wrap items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2"
                 >
-                  <span className="mono text-[10px] text-[var(--text-muted)] w-7 text-right">#{index}</span>
+                  <span className="mono text-[11px] text-[var(--text-muted)] w-7 text-right">#{index}</span>
                   <span className="text-xs text-[var(--text-primary)]">{node.remark || node.modelName || '未命名节点'}</span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-pill)] bg-[var(--info-soft-bg)] text-[var(--info)]">{getImageProviderLabel(providerType)}</span>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-[var(--radius-pill)] ${imageNodeSupportsEdit(node) ? 'bg-[var(--success-soft-bg)] text-[var(--success)]' : 'bg-[var(--warning-soft-bg)] text-[var(--warning)]'}`}>
+                  <span className="text-[11px] px-1.5 py-0.5 rounded-[var(--radius-pill)] bg-[var(--info-soft-bg)] text-[var(--info)]">{getImageProviderLabel(providerType)}</span>
+                  <span className={`text-[11px] px-1.5 py-0.5 rounded-[var(--radius-pill)] ${imageNodeSupportsEdit(node) ? 'bg-[var(--success-soft-bg)] text-[var(--success)]' : 'bg-[var(--warning-soft-bg)] text-[var(--warning)]'}`}>
                     {imageNodeSupportsEdit(node) ? '支持修图' : '仅生图'}
                   </span>
                   {isInRoute ? (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-pill)] bg-[var(--accent-purple)] text-[var(--on-accent)]">顺位 {position + 1}</span>
+                    <span className="text-[11px] px-1.5 py-0.5 rounded-[var(--radius-pill)] bg-[var(--accent-purple)] text-[var(--on-accent)]">顺位 {position + 1}</span>
                   ) : (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-pill)] bg-[var(--surface-card)] text-[var(--text-muted)]">未加入</span>
+                    <span className="text-[11px] px-1.5 py-0.5 rounded-[var(--radius-pill)] bg-[var(--surface-card)] text-[var(--text-muted)]">未加入</span>
                   )}
                   <div className="flex-1" />
                   <button
                     onClick={() => onJumpToNode(index)}
-                    className="px-2.5 py-1.5 text-[10px] rounded-[var(--radius-sm)] bg-[var(--surface-card)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+                    className="px-2.5 py-1.5 text-[11px] rounded-[var(--radius-sm)] bg-[var(--surface-card)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
                   >
                     定位
                   </button>
                   <button
                     onClick={() => (isInRoute ? removeNode(index) : addNode(index))}
-                    className={`px-2.5 py-1.5 text-[10px] rounded-[var(--radius-sm)] cursor-pointer ${isInRoute ? 'bg-[var(--error-soft-bg)] text-[var(--error)] hover:bg-[color-mix(in_srgb,var(--error)_28%,transparent)]' : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+                    className={`px-2.5 py-1.5 text-[11px] rounded-[var(--radius-sm)] cursor-pointer ${isInRoute ? 'bg-[var(--error-soft-bg)] text-[var(--error)] hover:bg-[color-mix(in_srgb,var(--error)_28%,transparent)]' : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
                   >
                     {isInRoute ? '移出路径' : '加入路径'}
                   </button>
@@ -2456,14 +2456,14 @@ function ImageRouterPanel({
                       <button
                         onClick={() => moveNode(index, -1)}
                         disabled={position <= 0}
-                        className={`px-2.5 py-1.5 text-[10px] rounded-[var(--radius-sm)] cursor-pointer ${position > 0 ? 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]' : 'bg-[var(--surface-card)] text-[var(--text-muted)] cursor-not-allowed opacity-50'}`}
+                        className={`px-2.5 py-1.5 text-[11px] rounded-[var(--radius-sm)] cursor-pointer ${position > 0 ? 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]' : 'bg-[var(--surface-card)] text-[var(--text-muted)] cursor-not-allowed opacity-50'}`}
                       >
                         上移
                       </button>
                       <button
                         onClick={() => moveNode(index, 1)}
                         disabled={position < 0 || position >= order.length - 1}
-                        className={`px-2.5 py-1.5 text-[10px] rounded-[var(--radius-sm)] cursor-pointer ${position >= 0 && position < order.length - 1 ? 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]' : 'bg-[var(--surface-card)] text-[var(--text-muted)] cursor-not-allowed opacity-50'}`}
+                        className={`px-2.5 py-1.5 text-[11px] rounded-[var(--radius-sm)] cursor-pointer ${position >= 0 && position < order.length - 1 ? 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]' : 'bg-[var(--surface-card)] text-[var(--text-muted)] cursor-not-allowed opacity-50'}`}
                       >
                         下移
                       </button>
@@ -2576,13 +2576,13 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs mono text-[var(--text-muted)]">#{index}</span>
               <span className="text-sm font-medium text-[var(--text-primary)] truncate max-w-[320px]">{node.modelName || '(未命名模型)'}</span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-pill)] bg-[var(--bg-elevated)]" style={{ color: node.aiType === 'openai' ? 'var(--success)' : node.aiType === 'responses' ? 'var(--accent-purple)' : node.aiType === 'gemini' ? 'var(--info)' : 'var(--accent-pink)' }}>
+              <span className="text-[11px] px-1.5 py-0.5 rounded-[var(--radius-pill)] bg-[var(--bg-elevated)]" style={{ color: node.aiType === 'openai' ? 'var(--success)' : node.aiType === 'responses' ? 'var(--accent-purple)' : node.aiType === 'gemini' ? 'var(--info)' : 'var(--accent-pink)' }}>
                 {formatAiTypeLabel(node.aiType)}
               </span>
-              {isActive && <span className="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-pill)] bg-[var(--accent-purple)] text-[var(--on-accent)]">活跃</span>}
-              {isDuplicate && <span className="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-pill)] bg-[var(--warning-soft-bg)] text-[var(--warning)]">重复</span>}
+              {isActive && <span className="text-[11px] px-1.5 py-0.5 rounded-[var(--radius-pill)] bg-[var(--accent-purple)] text-[var(--on-accent)]">活跃</span>}
+              {isDuplicate && <span className="text-[11px] px-1.5 py-0.5 rounded-[var(--radius-pill)] bg-[var(--warning-soft-bg)] text-[var(--warning)]">重复</span>}
             </div>
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-[var(--text-muted)]">
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-[var(--text-muted)]">
               <span className="truncate max-w-[240px]">{node.remark || '还没写备注'}</span>
               <span>·</span>
               <span className="truncate max-w-[360px] mono">{node.apiUrl || '还没填 URL'}</span>
@@ -2593,7 +2593,7 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
         <div className="flex flex-wrap items-center gap-2 justify-end">
           {pingResult && (
             <span
-              className="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-pill)]"
+              className="text-[11px] px-1.5 py-0.5 rounded-[var(--radius-pill)]"
               style={{
                 background: pingResult.pass ? 'var(--success-soft-bg)' : 'var(--error-soft-bg)',
                 color: pingResult.pass ? 'var(--success)' : 'var(--error)',
@@ -2603,7 +2603,7 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
             </span>
           )}
           <span
-            className="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-pill)]"
+            className="text-[11px] px-1.5 py-0.5 rounded-[var(--radius-pill)]"
             style={{ background: levelMeta.bg, color: levelMeta.color }}
             title={`来源: ${getHealthSourceLabel(health?.source)}${health?.reason ? `；${health.reason}` : ''}`}
           >
@@ -2611,7 +2611,7 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
           </span>
           <button
             onClick={() => onToggleExpanded(index)}
-            className="px-2.5 py-1.5 text-[10px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+            className="px-2.5 py-1.5 text-[11px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
           >
               {isExpanded ? '收起 Key 区域' : '展开 Key 区域'}
           </button>
@@ -2631,7 +2631,7 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
           <div className="space-y-3">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="text-[10px] text-[var(--text-muted)] mb-1 block">接口类型</label>
+                <label className="text-[11px] text-[var(--text-muted)] mb-1 block">接口类型</label>
                 <select
                   value={node.aiType}
                   onChange={(e) => onUpdate(index, 'aiType', e.target.value)}
@@ -2644,7 +2644,7 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
                 </select>
               </div>
               <div>
-                <label className="text-[10px] text-[var(--text-muted)] mb-1 block">备注</label>
+                <label className="text-[11px] text-[var(--text-muted)] mb-1 block">备注</label>
                 <input
                   value={node.remark}
                   onChange={(e) => onUpdate(index, 'remark', e.target.value)}
@@ -2655,7 +2655,7 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
             </div>
 
             <div>
-              <label className="text-[10px] text-[var(--text-muted)] mb-1 block">API URL</label>
+              <label className="text-[11px] text-[var(--text-muted)] mb-1 block">API URL</label>
               <div className="flex gap-2">
                 <input
                   value={node.apiUrl}
@@ -2666,19 +2666,19 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
                 <button
                   type="button"
                   onClick={() => onApplyDefaultUrlSuffix(index)}
-                  className="px-2.5 py-2 text-[11px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-purple)] cursor-pointer whitespace-nowrap"
+                  className="px-2.5 py-2 text-[12px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-purple)] cursor-pointer whitespace-nowrap"
                   title="只会补这类接口的常见默认后缀，不会覆盖你自己写的自定义路径"
                 >
                   {getDefaultSuffixActionLabel(node.aiType, node.modelName)}
                 </button>
               </div>
-              <p className="mt-1 text-[10px] text-[var(--text-muted)]">
+              <p className="mt-1 text-[11px] text-[var(--text-muted)]">
                 {getDefaultSuffixHint(node.aiType, node.modelName)}。URL 仍然完全由你决定，按钮只做辅助补全。
               </p>
             </div>
 
             <div>
-              <label className="text-[10px] text-[var(--text-muted)] mb-1 block">模型名称</label>
+              <label className="text-[11px] text-[var(--text-muted)] mb-1 block">模型名称</label>
               <input
                 value={node.modelName}
                 onChange={(e) => onUpdate(index, 'modelName', e.target.value)}
@@ -2698,7 +2698,7 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
                 />
                 <span className="min-w-0">
                   <span className="block text-xs text-[var(--text-primary)]">启用 xAI Web Search</span>
-                  <span className="block mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">
+                  <span className="block mt-1 text-[11px] leading-relaxed text-[var(--text-muted)]">
                     仅在 `openai-response` 下生效，只支持 xAI 官方 API + Grok 模型。若你的 URL 来自第三方兼容站、中转站，或模型不是 Grok，请保持关闭。
                   </span>
                 </span>
@@ -2707,7 +2707,7 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
 
             {isExpanded && (
               <div>
-                <label className="text-[10px] text-[var(--text-muted)] mb-1 block">API Key</label>
+                <label className="text-[11px] text-[var(--text-muted)] mb-1 block">API Key</label>
                 <div className="flex gap-1.5">
                   <input
                     type={showKey ? 'text' : 'password'}
@@ -2733,9 +2733,9 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
             <div>
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs font-medium text-[var(--text-primary)]">节点健康</p>
-                <span className="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-pill)]" style={{ background: levelMeta.bg, color: levelMeta.color }} title={`来源: ${getHealthSourceLabel(health?.source)}${health?.reason ? `；${health.reason}` : ''}`}>{formatHealthBadge(health)}</span>
+                <span className="text-[11px] px-1.5 py-0.5 rounded-[var(--radius-pill)]" style={{ background: levelMeta.bg, color: levelMeta.color }} title={`来源: ${getHealthSourceLabel(health?.source)}${health?.reason ? `；${health.reason}` : ''}`}>{formatHealthBadge(health)}</span>
               </div>
-              <p className="text-[10px] text-[var(--text-muted)] mt-1">{health?.reason ?? '暂无评分解释'}{health?.source !== 'none' ? `（当前来源：${getHealthSourceLabel(health?.source)}）` : ''}</p>
+              <p className="text-[11px] text-[var(--text-muted)] mt-1">{health?.reason ?? '暂无评分解释'}{health?.source !== 'none' ? `（当前来源：${getHealthSourceLabel(health?.source)}）` : ''}</p>
             </div>
 
             <MetricBar label="实时" score={health?.liveScore} weight={health?.liveWeight ?? 0} color="var(--accent-purple)" hint={pingResult?.pass ? `最近测试 ${pingResult.latency_ms}ms` : pingResult?.error || undefined} />
@@ -2749,26 +2749,26 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
 
       <div className="mt-4 flex flex-wrap items-center gap-1.5">
         <button onClick={() => onTest(index)} disabled={isPinging}
-          className="px-2.5 py-1.5 text-[10px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer">
+          className="px-2.5 py-1.5 text-[11px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer">
           {isPinging ? '⏳ 测试中' : '🔍 测试'}
         </button>
         <button onClick={() => onClone(index)}
-          className="px-2.5 py-1.5 text-[10px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer">
+          className="px-2.5 py-1.5 text-[11px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer">
           📋 克隆
         </button>
         <button onClick={() => onInsert(index)}
-          className="px-2.5 py-1.5 text-[10px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer">
+          className="px-2.5 py-1.5 text-[11px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer">
           ➕ 插入
         </button>
         {!isActive && (
           <button onClick={() => onSetActive(index)}
-            className="px-2.5 py-1.5 text-[10px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--success)] hover:bg-[var(--success-soft-bg)] transition-colors cursor-pointer">
+            className="px-2.5 py-1.5 text-[11px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--success)] hover:bg-[var(--success-soft-bg)] transition-colors cursor-pointer">
             ⚡ 设为活跃
           </button>
         )}
         <div className="flex-1" />
         <button onClick={() => onRemove(index)}
-          className="px-2.5 py-1.5 text-[10px] rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--error)] hover:bg-[var(--error-soft-bg)] transition-colors cursor-pointer">
+          className="px-2.5 py-1.5 text-[11px] rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--error)] hover:bg-[var(--error-soft-bg)] transition-colors cursor-pointer">
           🗑 移除
         </button>
       </div>

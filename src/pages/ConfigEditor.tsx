@@ -606,7 +606,7 @@ function IssueCallout({ label, text, tone = 'warning' }: { label: string; text: 
   return (
     <div className="text-xs text-[var(--text-secondary)] leading-relaxed rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2">
       <div className="flex items-start gap-2 flex-wrap">
-        <span className={`inline-flex items-center px-2 py-0.5 rounded-[var(--radius-sm)] border mono text-[10px] ${toneClass}`}>
+        <span className={`inline-flex items-center px-2 py-0.5 rounded-[var(--radius-sm)] border mono text-[11px] ${toneClass}`}>
           {label}
         </span>
         <span className="flex-1 min-w-[240px]">：{text}</span>
@@ -1013,7 +1013,7 @@ export function ConfigEditor() {
         <div className="px-4 py-4 border-b border-[var(--border-subtle)] space-y-3">
           <div>
             <p className="text-sm font-medium text-[var(--text-primary)]">配置导航</p>
-            <p className="text-[11px] text-[var(--text-muted)] mt-1">先看常用区，进完整模式再处理高级字段。</p>
+            <p className="text-[12px] text-[var(--text-muted)] mt-1">先看常用区，进完整模式再处理高级字段。</p>
           </div>
 
           <div className="grid grid-cols-2 gap-2">
@@ -1048,7 +1048,7 @@ export function ConfigEditor() {
                 <span>{s.icon}</span>
                 <span>{s.label}</span>
               </div>
-              <p className="mt-1 pl-6 text-[10px] text-[var(--text-muted)] leading-relaxed">{s.summary}</p>
+              <p className="mt-1 pl-6 text-[11px] text-[var(--text-muted)] leading-relaxed">{s.summary}</p>
             </button>
           ))}
         </div>
@@ -1180,18 +1180,18 @@ export function ConfigEditor() {
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-sm font-medium text-[var(--text-primary)]">配置差异概览</p>
                   {hasConfigOverviewAlert ? (
-                    <span className="px-2 py-0.5 text-[10px] rounded-[var(--radius-pill)] bg-[var(--warning-soft-bg)] text-[var(--warning)]">需关注</span>
+                    <span className="px-2 py-0.5 text-[11px] rounded-[var(--radius-pill)] bg-[var(--warning-soft-bg)] text-[var(--warning)]">需关注</span>
                   ) : (
-                    <span className="px-2 py-0.5 text-[10px] rounded-[var(--radius-pill)] bg-[var(--success-soft-bg)] text-[var(--success)]">正常</span>
+                    <span className="px-2 py-0.5 text-[11px] rounded-[var(--radius-pill)] bg-[var(--success-soft-bg)] text-[var(--success)]">正常</span>
                   )}
                   {summary.savedDiffs > 0 && (
-                    <span className="px-2 py-0.5 text-[10px] rounded-[var(--radius-pill)] bg-[var(--warning-soft-bg)] text-[var(--warning)]">未保存 {summary.savedDiffs} 项</span>
+                    <span className="px-2 py-0.5 text-[11px] rounded-[var(--radius-pill)] bg-[var(--warning-soft-bg)] text-[var(--warning)]">未保存 {summary.savedDiffs} 项</span>
                   )}
                   {summary.schemaIssues > 0 && (
-                    <span className="px-2 py-0.5 text-[10px] rounded-[var(--radius-pill)] bg-[var(--error-soft-bg)] text-[var(--error)]">契约提醒 {summary.schemaIssues} 项</span>
+                    <span className="px-2 py-0.5 text-[11px] rounded-[var(--radius-pill)] bg-[var(--error-soft-bg)] text-[var(--error)]">契约提醒 {summary.schemaIssues} 项</span>
                   )}
                 </div>
-                <p className="mt-1 text-[11px] text-[var(--text-muted)] leading-relaxed">
+                <p className="mt-1 text-[12px] text-[var(--text-muted)] leading-relaxed">
                   平时可收起，只看摘要；一旦出现 schema 异常或未保存改动，会自动展开并高亮这一块。
                 </p>
               </div>
@@ -1243,7 +1243,7 @@ export function ConfigEditor() {
             )}
 
             {!diffOverviewExpanded && hasConfigOverviewContent && (
-              <p className="mt-3 text-[11px] text-[var(--text-muted)]">
+              <p className="mt-3 text-[12px] text-[var(--text-muted)]">
                 当前只显示差异摘要。展开后可查看相对默认值和相对上次保存的明细。
               </p>
             )}
@@ -1485,7 +1485,7 @@ function Field({ label, description, children }: { label: string; description?: 
     <div className="flex items-start justify-between gap-4 flex-col lg:flex-row">
       <div className="pt-1 min-w-[220px] flex-shrink-0">
         <label className="text-sm text-[var(--text-secondary)] block">{label}</label>
-        {description ? <p className="text-[11px] text-[var(--text-muted)] mt-1 leading-relaxed">{description}</p> : null}
+        {description ? <p className="text-[12px] text-[var(--text-muted)] mt-1 leading-relaxed">{description}</p> : null}
       </div>
       <div className="flex-1 w-full">{children}</div>
     </div>

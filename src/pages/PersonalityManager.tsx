@@ -280,7 +280,7 @@ export function PersonalityManager() {
           <div className="mt-4 grid gap-3 xl:grid-cols-2">
             <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-2">
               <p className="text-xs font-medium text-[var(--text-primary)]">群聊人格导入 / 导出</p>
-              <p className="text-[11px] text-[var(--text-muted)]">适合在群里说话时使用的人格集合。适合做备份、迁移，或者从别的版本拿一套群聊设定过来。</p>
+              <p className="text-[12px] text-[var(--text-muted)]">适合在群里说话时使用的人格集合。适合做备份、迁移，或者从别的版本拿一套群聊设定过来。</p>
               <ImportExportActions
                 onExport={() => exportPersonality('group')}
                 onImport={() => importPersonality('group')}
@@ -291,7 +291,7 @@ export function PersonalityManager() {
             </div>
             <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-2">
               <p className="text-xs font-medium text-[var(--text-primary)]">私聊人格导入 / 导出</p>
-              <p className="text-[11px] text-[var(--text-muted)]">适合一对一聊天时使用的人格集合。通常语气会更贴近私聊场景，也更适合单独整理。</p>
+              <p className="text-[12px] text-[var(--text-muted)]">适合一对一聊天时使用的人格集合。通常语气会更贴近私聊场景，也更适合单独整理。</p>
               <ImportExportActions
                 onExport={() => exportPersonality('private')}
                 onImport={() => importPersonality('private')}
@@ -356,9 +356,9 @@ export function PersonalityManager() {
               />
             </div>
             <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2">
-              <p className="text-[10px] text-[var(--text-muted)]">当前长度</p>
+              <p className="text-[11px] text-[var(--text-muted)]">当前长度</p>
               <p className="mt-1 text-sm font-medium text-[var(--text-primary)] mono">{editPrompt.length} 字符</p>
-              <p className="mt-1 text-[10px] text-[var(--text-muted)]">建议先写角色定位，再写规则和风格。</p>
+              <p className="mt-1 text-[11px] text-[var(--text-muted)]">建议先写角色定位，再写规则和风格。</p>
             </div>
           </div>
           <div>
@@ -436,12 +436,12 @@ function PersonalityColumn({ title, subtitle, icon, items, activeIndex, side, on
                       <span className="text-xs font-mono text-[var(--text-muted)]">#{origIndex}</span>
                       <span className="text-sm font-medium text-[var(--text-primary)] truncate max-w-[320px]">{item.remark}</span>
                       {isActive && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-pill)] bg-[var(--accent-purple)] text-[var(--on-accent)]">
+                        <span className="text-[11px] px-1.5 py-0.5 rounded-[var(--radius-pill)] bg-[var(--accent-purple)] text-[var(--on-accent)]">
                           当前使用
                         </span>
                       )}
                     </div>
-                    <p className="mt-1 text-[11px] text-[var(--text-muted)]">
+                    <p className="mt-1 text-[12px] text-[var(--text-muted)]">
                       {item.prompt ? `${item.prompt.length} 字符` : '空提示词'}
                     </p>
                   </div>
@@ -449,7 +449,7 @@ function PersonalityColumn({ title, subtitle, icon, items, activeIndex, side, on
                     {!isActive && (
                       <button
                         onClick={() => onSetActive(side, origIndex)}
-                        className="text-[10px] px-2.5 py-1 rounded-[var(--radius-sm)] border border-[var(--success)] text-[var(--success)] bg-[var(--success-soft-bg)] hover:bg-[color-mix(in_srgb,var(--success)_24%,transparent)] transition-colors cursor-pointer"
+                        className="text-[11px] px-2.5 py-1 rounded-[var(--radius-sm)] border border-[var(--success)] text-[var(--success)] bg-[var(--success-soft-bg)] hover:bg-[color-mix(in_srgb,var(--success)_24%,transparent)] transition-colors cursor-pointer"
                         title="设为活跃"
                       >
                         启用
@@ -457,14 +457,14 @@ function PersonalityColumn({ title, subtitle, icon, items, activeIndex, side, on
                     )}
                     <button
                       onClick={() => onClone(side, origIndex)}
-                      className="text-[10px] px-2.5 py-1 rounded-[var(--radius-sm)] border border-[var(--info)] text-[var(--info)] bg-[var(--info-soft-bg)] hover:bg-[color-mix(in_srgb,var(--info)_24%,transparent)] transition-colors cursor-pointer"
+                      className="text-[11px] px-2.5 py-1 rounded-[var(--radius-sm)] border border-[var(--info)] text-[var(--info)] bg-[var(--info-soft-bg)] hover:bg-[color-mix(in_srgb,var(--info)_24%,transparent)] transition-colors cursor-pointer"
                       title="克隆"
                     >
                       克隆
                     </button>
                     <button
                       onClick={() => onDelete(origIndex)}
-                      className="text-[10px] px-2.5 py-1 rounded-[var(--radius-sm)] border border-[var(--error)] text-[var(--error)] bg-[var(--error-soft-bg)] hover:bg-[color-mix(in_srgb,var(--error)_28%,transparent)] transition-colors cursor-pointer"
+                      className="text-[11px] px-2.5 py-1 rounded-[var(--radius-sm)] border border-[var(--error)] text-[var(--error)] bg-[var(--error-soft-bg)] hover:bg-[color-mix(in_srgb,var(--error)_28%,transparent)] transition-colors cursor-pointer"
                       title="删除"
                     >
                       删除

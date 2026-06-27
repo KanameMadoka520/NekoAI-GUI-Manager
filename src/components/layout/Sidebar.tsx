@@ -80,7 +80,7 @@ export function Sidebar({ activePage, onNavigate, onChangeDir, onOpenSettings, o
           {!collapsed && (
             <div>
               <h1 className="text-base font-extrabold text-glow-accent tracking-wide">NekoAI</h1>
-              <p className="text-[11px] text-[var(--text-muted)]">管理面板 v1.0</p>
+              <p className="text-[12px] text-[var(--text-muted)]">管理面板 v1.0</p>
             </div>
           )}
         </div>
@@ -104,7 +104,7 @@ export function Sidebar({ activePage, onNavigate, onChangeDir, onOpenSettings, o
             )}
             <span className="text-lg leading-none">{item.icon}</span>
             {!collapsed && <span className="flex-1 text-left">{item.label}</span>}
-            {!collapsed && <span className="text-[10px] text-[var(--text-muted)] opacity-50 mono">^{item.shortcut}</span>}
+            {!collapsed && <span className="text-[11px] text-[var(--text-muted)] opacity-50 mono">^{item.shortcut}</span>}
           </button>
         ))}
       </nav>
@@ -116,7 +116,7 @@ export function Sidebar({ activePage, onNavigate, onChangeDir, onOpenSettings, o
           title={collapsed ? '展开侧栏' : '收起侧栏'}
         >
           <span className="text-xs">{collapsed ? '«' : '»'}</span>
-          {!collapsed && <span className="text-[10px]">侧栏</span>}
+          {!collapsed && <span className="text-[11px]">侧栏</span>}
         </button>
 
         {onChangeDir && (
@@ -128,14 +128,14 @@ export function Sidebar({ activePage, onNavigate, onChangeDir, onOpenSettings, o
             <span className="text-xs">📂</span>
             {!collapsed && (
               <>
-                <span className="flex-1 text-[10px] text-left truncate">
+                <span className="flex-1 text-[11px] text-left truncate">
                   {(() => {
                     const dir = localStorage.getItem('nekoai-plugin-dir') ?? '';
                     const name = dir.split(/[\\/]/).filter(Boolean).pop() ?? '未配置';
                     return name;
                   })()}
                 </span>
-                <span className="text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">切换</span>
+                <span className="text-[11px] opacity-0 group-hover:opacity-100 transition-opacity">切换</span>
               </>
             )}
           </button>
@@ -148,7 +148,7 @@ export function Sidebar({ activePage, onNavigate, onChangeDir, onOpenSettings, o
             title={collapsed ? '显示设置' : undefined}
           >
             <span className="text-xs">🎨</span>
-            {!collapsed && <span className="text-[10px]">显示设置</span>}
+            {!collapsed && <span className="text-[11px]">显示设置</span>}
           </button>
         )}
 
@@ -159,14 +159,14 @@ export function Sidebar({ activePage, onNavigate, onChangeDir, onOpenSettings, o
             title={collapsed ? '本地服务' : undefined}
           >
             <span className="text-xs">🌐</span>
-            {!collapsed && <span className="text-[10px]">本地服务</span>}
+            {!collapsed && <span className="text-[11px]">本地服务</span>}
           </button>
         )}
 
         {!collapsed && (
           <div className="flex items-center justify-between px-1 pt-1">
-            <span className="text-[10px] text-[var(--text-muted)]">🐾 NekoAI</span>
-            <span className="text-[10px] text-[var(--text-muted)] mono">{clock}</span>
+            <span className="text-[11px] text-[var(--text-muted)]">🐾 NekoAI</span>
+            <span className="text-[11px] text-[var(--text-muted)] mono">{clock}</span>
           </div>
         )}
       </div>

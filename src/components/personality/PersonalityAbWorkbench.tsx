@@ -158,7 +158,7 @@ export function PersonalityAbWorkbench({ groupList, privateList, runtimeApiIndex
         <div className="space-y-4">
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-4">
             <div>
-              <label className="text-[10px] text-[var(--text-muted)] mb-1 block">测试模式</label>
+              <label className="text-[11px] text-[var(--text-muted)] mb-1 block">测试模式</label>
               <select
                 value={mode}
                 onChange={(e) => setMode(e.target.value as PersonalityAbMode)}
@@ -169,7 +169,7 @@ export function PersonalityAbWorkbench({ groupList, privateList, runtimeApiIndex
               </select>
             </div>
             <div>
-              <label className="text-[10px] text-[var(--text-muted)] mb-1 block">测试 API 节点</label>
+              <label className="text-[11px] text-[var(--text-muted)] mb-1 block">测试 API 节点</label>
               <select
                 value={apiIndex}
                 onChange={(e) => setApiIndex(Number(e.target.value))}
@@ -181,7 +181,7 @@ export function PersonalityAbWorkbench({ groupList, privateList, runtimeApiIndex
               </select>
             </div>
             <div>
-              <label className="text-[10px] text-[var(--text-muted)] mb-1 block">人格 A</label>
+              <label className="text-[11px] text-[var(--text-muted)] mb-1 block">人格 A</label>
               <select
                 value={candidateAIndex}
                 onChange={(e) => setCandidateAIndex(Number(e.target.value))}
@@ -193,7 +193,7 @@ export function PersonalityAbWorkbench({ groupList, privateList, runtimeApiIndex
               </select>
             </div>
             <div>
-              <label className="text-[10px] text-[var(--text-muted)] mb-1 block">人格 B</label>
+              <label className="text-[11px] text-[var(--text-muted)] mb-1 block">人格 B</label>
               <select
                 value={candidateBIndex}
                 onChange={(e) => setCandidateBIndex(Number(e.target.value))}
@@ -207,7 +207,7 @@ export function PersonalityAbWorkbench({ groupList, privateList, runtimeApiIndex
           </div>
 
           <div>
-            <label className="text-[10px] text-[var(--text-muted)] mb-1 block">上下文文本（可选）</label>
+            <label className="text-[11px] text-[var(--text-muted)] mb-1 block">上下文文本（可选）</label>
             <textarea
               value={contextText}
               onChange={(e) => setContextText(e.target.value)}
@@ -218,7 +218,7 @@ export function PersonalityAbWorkbench({ groupList, privateList, runtimeApiIndex
           </div>
 
           <div>
-            <label className="text-[10px] text-[var(--text-muted)] mb-1 block">最新用户消息（必填）</label>
+            <label className="text-[11px] text-[var(--text-muted)] mb-1 block">最新用户消息（必填）</label>
             <textarea
               value={latestUserMessage}
               onChange={(e) => setLatestUserMessage(e.target.value)}
@@ -253,7 +253,7 @@ export function PersonalityAbWorkbench({ groupList, privateList, runtimeApiIndex
           <div className="flex items-center justify-between gap-2">
             <div>
               <p className="text-sm font-medium text-[var(--text-primary)]">最近测试记录</p>
-              <p className="text-[11px] text-[var(--text-muted)] mt-1">保存在 EXE 同级 `NekoAI-GUI-Data/personality-ab-tests/`。</p>
+              <p className="text-[12px] text-[var(--text-muted)] mt-1">保存在 EXE 同级 `NekoAI-GUI-Data/personality-ab-tests/`。</p>
             </div>
             <button
               onClick={loadHistory}
@@ -290,17 +290,17 @@ export function PersonalityAbWorkbench({ groupList, privateList, runtimeApiIndex
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-xs font-medium text-[var(--text-primary)] truncate">{item.pairLabel}</span>
-                      <span className="text-[10px] text-[var(--text-muted)]">{item.mode === 'group' ? '群聊' : '私聊'}</span>
+                      <span className="text-[11px] text-[var(--text-muted)]">{item.mode === 'group' ? '群聊' : '私聊'}</span>
                     </div>
-                    <p className="mt-1 text-[10px] text-[var(--text-muted)] truncate">{item.apiLabel}</p>
-                    <p className="mt-1 text-[11px] text-[var(--text-secondary)] line-clamp-2">{item.latestUserMessagePreview}</p>
+                    <p className="mt-1 text-[11px] text-[var(--text-muted)] truncate">{item.apiLabel}</p>
+                    <p className="mt-1 text-[12px] text-[var(--text-secondary)] line-clamp-2">{item.latestUserMessagePreview}</p>
                   </button>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       setDeleteTarget(item);
                     }}
-                    className="px-2 py-1 text-[10px] rounded-[var(--radius-sm)] border border-[var(--error-soft-border)] text-[var(--error)] bg-[var(--error-soft-bg)] hover:bg-[color-mix(in_srgb,var(--error)_28%,transparent)] transition-colors cursor-pointer"
+                    className="px-2 py-1 text-[11px] rounded-[var(--radius-sm)] border border-[var(--error-soft-border)] text-[var(--error)] bg-[var(--error-soft-bg)] hover:bg-[color-mix(in_srgb,var(--error)_28%,transparent)] transition-colors cursor-pointer"
                     title="删除测试记录"
                   >
                     删除
@@ -340,10 +340,10 @@ function ResultCard({ title, candidate, outcome }: {
       <div className="flex items-start justify-between gap-3 mb-3">
         <div>
           <p className="text-sm font-medium text-[var(--text-primary)]">{title}</p>
-          <p className="mt-1 text-[11px] text-[var(--text-muted)]">{candidate ? `#${candidate.index} ${candidate.remark} · ${candidate.prompt.length} 字符` : '尚未执行测试'}</p>
+          <p className="mt-1 text-[12px] text-[var(--text-muted)]">{candidate ? `#${candidate.index} ${candidate.remark} · ${candidate.prompt.length} 字符` : '尚未执行测试'}</p>
         </div>
         {outcome ? (
-          <span className={`text-[10px] px-2 py-1 rounded-[var(--radius-pill)] ${outcome.ok ? 'bg-[var(--success-soft-bg)] text-[var(--success)]' : 'bg-[var(--error-soft-bg)] text-[var(--error)]'}`}>
+          <span className={`text-[11px] px-2 py-1 rounded-[var(--radius-pill)] ${outcome.ok ? 'bg-[var(--success-soft-bg)] text-[var(--success)]' : 'bg-[var(--error-soft-bg)] text-[var(--error)]'}`}>
             {outcome.ok ? '成功' : '失败'}
           </span>
         ) : null}
@@ -356,7 +356,7 @@ function ResultCard({ title, candidate, outcome }: {
             <SummaryCard label="回复长度" value={outcome.responseChars} hint="响应字符数" />
           </div>
           <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-3">
-            <p className="text-[10px] text-[var(--text-muted)] mb-2">模型输出</p>
+            <p className="text-[11px] text-[var(--text-muted)] mb-2">模型输出</p>
             <pre className="whitespace-pre-wrap break-words text-xs text-[var(--text-primary)] leading-relaxed">{outcome.responseText || outcome.error || '(空结果)'}</pre>
           </div>
         </>

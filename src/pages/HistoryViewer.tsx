@@ -534,7 +534,7 @@ export function HistoryViewer() {
                     <span>{isDay ? '☀' : '🌙'}</span>
                     <span className="flex-1 truncate mono">{file.filename.replace(/^history_/, '').replace(/\.json$/, '')}</span>
                   </div>
-                  <div className="text-[10px] text-[var(--text-muted)] mt-0.5 pl-5">
+                  <div className="text-[11px] text-[var(--text-muted)] mt-0.5 pl-5">
                     {formatBytes(file.size)}
                   </div>
                 </button>
@@ -549,7 +549,7 @@ export function HistoryViewer() {
         {/* Toolbar */}
         <div className="flex items-center gap-2 mb-3 flex-wrap">
           <div className="rounded-[var(--radius)] border border-[var(--border-subtle)] px-3 py-2 flex items-center gap-2 mr-2" style={{ background: 'var(--surface-card)', boxShadow: 'var(--shadow-card)' }}>
-            <span className="text-[10px] text-[var(--text-muted)]">当前文件</span>
+            <span className="text-[11px] text-[var(--text-muted)]">当前文件</span>
             <span className="text-xs mono text-[var(--text-secondary)] max-w-56 truncate">{activeFile ?? '未选择'}</span>
           </div>
           {([
@@ -649,7 +649,7 @@ export function HistoryViewer() {
 
             <div className="mt-3 flex flex-wrap items-center gap-2">
               {searchStateSummary.length > 0 ? searchStateSummary.map((item) => (
-                <span key={item} className="px-2 py-1 text-[10px] rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)]">
+                <span key={item} className="px-2 py-1 text-[11px] rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)]">
                   {item}
                 </span>
               )) : (
@@ -703,7 +703,7 @@ export function HistoryViewer() {
                   </div>
 
                   <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] p-2 bg-[var(--surface-card)]">
-                    <p className="text-[10px] text-[var(--text-muted)] mb-1.5">模型多选</p>
+                    <p className="text-[11px] text-[var(--text-muted)] mb-1.5">模型多选</p>
                     {searchModelOptions.length === 0 ? (
                       <p className="text-xs text-[var(--text-muted)]">当前范围里还没有可用的模型信息。</p>
                     ) : (
@@ -712,7 +712,7 @@ export function HistoryViewer() {
                           <button
                             key={model}
                             onClick={() => toggleSearchModel(model)}
-                            className={`px-2 py-1 text-[10px] rounded-[var(--radius-sm)] border transition-colors cursor-pointer ${searchModels.has(model) ? 'bg-[var(--nav-active-bg)] border-[var(--accent-purple)] text-[var(--accent-purple)]' : 'bg-[var(--bg-elevated)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+                            className={`px-2 py-1 text-[11px] rounded-[var(--radius-sm)] border transition-colors cursor-pointer ${searchModels.has(model) ? 'bg-[var(--nav-active-bg)] border-[var(--accent-purple)] text-[var(--accent-purple)]' : 'bg-[var(--bg-elevated)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
                           >
                             {model}
                           </button>
@@ -722,7 +722,7 @@ export function HistoryViewer() {
                   </div>
 
                   <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] p-2 bg-[var(--surface-card)]">
-                    <p className="text-[10px] text-[var(--text-muted)] mb-1.5">错误类型多选</p>
+                    <p className="text-[11px] text-[var(--text-muted)] mb-1.5">错误类型多选</p>
                     {searchErrorCategoryOptions.length === 0 ? (
                       <p className="text-xs text-[var(--text-muted)]">当前范围里还没有错误类型可筛。</p>
                     ) : (
@@ -731,7 +731,7 @@ export function HistoryViewer() {
                           <button
                             key={cat}
                             onClick={() => toggleSearchErrorCategory(cat)}
-                            className={`px-2 py-1 text-[10px] rounded-[var(--radius-sm)] border transition-colors cursor-pointer ${searchErrorCategories.has(cat) ? 'bg-[var(--error-soft-bg)] border-[var(--error)] text-[var(--error)]' : 'bg-[var(--bg-elevated)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+                            className={`px-2 py-1 text-[11px] rounded-[var(--radius-sm)] border transition-colors cursor-pointer ${searchErrorCategories.has(cat) ? 'bg-[var(--error-soft-bg)] border-[var(--error)] text-[var(--error)]' : 'bg-[var(--bg-elevated)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
                           >
                             {cat}
                           </button>
@@ -752,7 +752,7 @@ export function HistoryViewer() {
                       )}
                     </div>
                     {activeModelFilters.length > 0 && (
-                      <div className="text-[10px] text-[var(--text-muted)]">注意：单选模型和多选模型会同时生效，所以筛得越多，结果可能会一下子变少。</div>
+                      <div className="text-[11px] text-[var(--text-muted)]">注意：单选模型和多选模型会同时生效，所以筛得越多，结果可能会一下子变少。</div>
                     )}
                     <div>
                       当前时间范围：
@@ -902,7 +902,7 @@ export function HistoryViewer() {
           fallback={(
             <div className="rounded-[var(--radius-sm)] border border-dashed border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-4 py-6">
               <p className="text-sm text-[var(--text-primary)]">正在加载统计图表模块…</p>
-              <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-muted)]">统计窗口已打开，但图表模块会再延后一点加载，避免历史页本体在未打开统计时提前吃掉图表渲染成本。</p>
+              <p className="mt-1 text-[12px] leading-relaxed text-[var(--text-muted)]">统计窗口已打开，但图表模块会再延后一点加载，避免历史页本体在未打开统计时提前吃掉图表渲染成本。</p>
             </div>
           )}
         >
@@ -935,7 +935,7 @@ function TimelineSidebar({ entries, currentPage, pageSize, onJump }: {
   return (
     <div className="w-20 flex-shrink-0 rounded-[var(--radius)] overflow-hidden flex flex-col border border-[var(--border-subtle)]" style={{ background: 'var(--surface-card)', boxShadow: 'var(--shadow-card)' }}>
       <div className="p-2 border-b border-[var(--border-subtle)] text-center">
-        <span className="text-[10px] text-[var(--text-muted)]">时间线</span>
+        <span className="text-[11px] text-[var(--text-muted)]">时间线</span>
       </div>
       <div ref={containerRef} className="flex-1 overflow-y-auto py-1 px-1">
         {grouped.map((e) => {
@@ -952,13 +952,13 @@ function TimelineSidebar({ entries, currentPage, pageSize, onJump }: {
                 className={`w-2 h-2 rounded-[var(--radius-pill)] flex-shrink-0 ${e.isError ? 'ring-1 ring-[var(--error)]' : ''}`}
                 style={{ background: e.isError ? 'var(--error)' : e.color }}
               />
-              <span className="text-[9px] text-[var(--text-muted)] truncate mono">{e.time}</span>
+              <span className="text-[11px] text-[var(--text-muted)] truncate mono">{e.time}</span>
             </button>
           );
         })}
       </div>
       <div className="p-2 border-t border-[var(--border-subtle)] text-center">
-        <span className="text-[9px] text-[var(--text-muted)]">{entries.length} 条</span>
+        <span className="text-[11px] text-[var(--text-muted)]">{entries.length} 条</span>
       </div>
     </div>
   );
@@ -1015,7 +1015,7 @@ function UserView({ groups, renderMd }: { groups: [string, HistoryEntry[]][]; re
               <span className="text-[var(--text-primary)] font-medium">{user}</span>
               <div className="flex items-center gap-2">
                 {errorCount > 0 && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-sm)] bg-[var(--error-soft-bg)] text-[var(--error)]">
+                  <span className="text-[11px] px-1.5 py-0.5 rounded-[var(--radius-sm)] bg-[var(--error-soft-bg)] text-[var(--error)]">
                     {errorCount} 错误
                   </span>
                 )}
@@ -1167,7 +1167,7 @@ function SearchView({ results, renderMd }: { results: SearchResult[]; renderMd: 
           >
             <span className="text-[var(--text-primary)] mono text-xs">{r.filename}</span>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-[var(--on-accent)]">{r.entries.length}</span>
+              <span className="text-[11px] px-1.5 py-0.5 rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-[var(--on-accent)]">{r.entries.length}</span>
               <span className="text-xs text-[var(--text-muted)]">{expanded.has(r.filename) ? '▼' : '▶'}</span>
             </div>
           </button>
@@ -1210,11 +1210,11 @@ function ChatBubble({ entry, renderMd: _renderMd, compact, showErrorCategory, en
         <div className="max-w-[75%]">
           <div className="flex items-center justify-end gap-2 mb-0.5">
             {entryIndex != null && (
-              <span className="text-[10px] text-[var(--text-muted)] mono">#{entryIndex}</span>
+              <span className="text-[11px] text-[var(--text-muted)] mono">#{entryIndex}</span>
             )}
-            <span className="text-[10px] text-[var(--text-muted)]">{formatTime(e.timestamp)}</span>
-            <span className="text-[10px] text-[var(--info)]">{e.username || e.userId || '?'}</span>
-            <span className="text-[10px] px-1 rounded-[var(--radius-sm)] bg-[var(--info-soft-bg)] text-[var(--info)]">
+            <span className="text-[11px] text-[var(--text-muted)]">{formatTime(e.timestamp)}</span>
+            <span className="text-[11px] text-[var(--info)]">{e.username || e.userId || '?'}</span>
+            <span className="text-[11px] px-1 rounded-[var(--radius-sm)] bg-[var(--info-soft-bg)] text-[var(--info)]">
               {e.type === 'group' ? '群' : '私'}
             </span>
           </div>
@@ -1228,15 +1228,15 @@ function ChatBubble({ entry, renderMd: _renderMd, compact, showErrorCategory, en
       <div className="flex justify-start">
         <div className="max-w-[75%]">
           <div className="flex items-center gap-2 mb-0.5">
-            <span className="text-[10px] px-1 rounded-[var(--radius-sm)] bg-[var(--nav-active-bg)] text-[var(--accent-purple)]">AI</span>
+            <span className="text-[11px] px-1 rounded-[var(--radius-sm)] bg-[var(--nav-active-bg)] text-[var(--accent-purple)]">AI</span>
             {e.modelName && (
-              <span className="text-[10px] mono px-1 rounded-[var(--radius-sm)]" style={{ color: modelColor, background: `color-mix(in srgb, ${modelColor} 12%, transparent)` }}>
+              <span className="text-[11px] mono px-1 rounded-[var(--radius-sm)]" style={{ color: modelColor, background: `color-mix(in srgb, ${modelColor} 12%, transparent)` }}>
                 {e.modelName}
               </span>
             )}
-            {e.apiRemark && <span className="text-[10px] text-[var(--text-muted)]">{e.apiRemark}</span>}
+            {e.apiRemark && <span className="text-[11px] text-[var(--text-muted)]">{e.apiRemark}</span>}
           </div>
-          <div className="mb-1 text-[10px] text-[var(--text-muted)] flex flex-wrap gap-2">
+          <div className="mb-1 text-[11px] text-[var(--text-muted)] flex flex-wrap gap-2">
             {e.promptLength != null && <span>输入长度: {e.promptLength}</span>}
             {e.replyLength != null && <span>输出长度: {e.replyLength}</span>}
             {e.contextLength != null && <span>上下文长度: {e.contextLength}</span>}
@@ -1249,7 +1249,7 @@ function ChatBubble({ entry, renderMd: _renderMd, compact, showErrorCategory, en
             }`}>
             {e.reply || '(空回复)'}
             {e.isError && (
-              <span className="block mt-1 text-[10px] text-[var(--error)]">
+              <span className="block mt-1 text-[11px] text-[var(--error)]">
                 ⚠ {showErrorCategory ? categorizeError(e.reply) : '错误响应'}
               </span>
             )}

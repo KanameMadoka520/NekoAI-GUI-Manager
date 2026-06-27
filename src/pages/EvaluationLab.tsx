@@ -446,7 +446,7 @@ export function EvaluationLab() {
                         <input type="checkbox" checked={selectedCandidateIndexes.includes(index)} onChange={() => toggleIndex(index, selectedCandidateIndexes, setSelectedCandidateIndexes)} />
                         <div className="min-w-0">
                           <p className="text-sm text-[var(--text-primary)] truncate">#{index} {item.remark}</p>
-                          <p className="text-[11px] text-[var(--text-muted)] line-clamp-2">{item.prompt || '（空提示词）'}</p>
+                          <p className="text-[12px] text-[var(--text-muted)] line-clamp-2">{item.prompt || '（空提示词）'}</p>
                         </div>
                       </label>
                     ))}
@@ -461,7 +461,7 @@ export function EvaluationLab() {
                         <input type="checkbox" checked={selectedApiIndexes.includes(item.index)} onChange={() => toggleIndex(item.index, selectedApiIndexes, setSelectedApiIndexes)} />
                         <div className="min-w-0">
                           <p className="text-sm text-[var(--text-primary)] truncate">#{item.index} {item.remark}</p>
-                          <p className="text-[11px] text-[var(--text-muted)] truncate">{item.modelName} / {item.aiType}</p>
+                          <p className="text-[12px] text-[var(--text-muted)] truncate">{item.modelName} / {item.aiType}</p>
                         </div>
                       </label>
                     ))}
@@ -558,8 +558,8 @@ export function EvaluationLab() {
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="text-sm text-[var(--text-primary)] truncate">{item.id}</p>
-                          <p className="text-[11px] text-[var(--text-muted)] mt-1">{item.mode} · API {item.apiCount} · 人格 {item.candidateCount} · 用例 {item.caseCount}</p>
-                          <p className="text-[11px] text-[var(--text-muted)]">任务 {item.totalRuns} · 已评分 {item.scoredRuns} · {formatTime(item.createdAt)}</p>
+                          <p className="text-[12px] text-[var(--text-muted)] mt-1">{item.mode} · API {item.apiCount} · 人格 {item.candidateCount} · 用例 {item.caseCount}</p>
+                          <p className="text-[12px] text-[var(--text-muted)]">任务 {item.totalRuns} · 已评分 {item.scoredRuns} · {formatTime(item.createdAt)}</p>
                         </div>
                         <div className="flex items-center gap-2">
                           <button onClick={() => void loadExperiment(item.id)} className="px-3 py-1.5 text-xs rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] cursor-pointer">打开</button>
@@ -601,7 +601,7 @@ export function EvaluationLab() {
                             className={`w-full text-left rounded-[var(--radius-sm)] border p-3 cursor-pointer ${isActive ? 'border-[var(--accent-purple)] bg-[var(--nav-active-bg)]' : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)]'}`}
                           >
                             <p className="text-sm text-[var(--text-primary)] truncate">{run.candidate.remark} @ {run.apiNode.remark}</p>
-                            <p className="text-[11px] text-[var(--text-muted)] mt-1">{caseItem?.name ?? run.caseId} · 第 {run.round} 轮 · {run.result.ok ? '成功' : '失败'}</p>
+                            <p className="text-[12px] text-[var(--text-muted)] mt-1">{caseItem?.name ?? run.caseId} · 第 {run.round} 轮 · {run.result.ok ? '成功' : '失败'}</p>
                           </button>
                         );
                       })}
@@ -644,7 +644,7 @@ export function EvaluationLab() {
                         <div key={item.label} className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2 flex items-center justify-between gap-3">
                           <div className="min-w-0">
                             <p className="text-sm text-[var(--text-primary)] truncate">{item.label}</p>
-                            <p className="text-[11px] text-[var(--text-muted)]">样本 {item.count} · 胜场 {item.wins}</p>
+                            <p className="text-[12px] text-[var(--text-muted)]">样本 {item.count} · 胜场 {item.wins}</p>
                           </div>
                           <span className="text-sm font-semibold text-[var(--accent-purple)]">{item.avg.toFixed(2)}</span>
                         </div>
@@ -659,7 +659,7 @@ export function EvaluationLab() {
                         <div key={item.label} className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2 flex items-center justify-between gap-3">
                           <div className="min-w-0">
                             <p className="text-sm text-[var(--text-primary)] truncate">{item.label}</p>
-                            <p className="text-[11px] text-[var(--text-muted)]">样本 {item.count}</p>
+                            <p className="text-[12px] text-[var(--text-muted)]">样本 {item.count}</p>
                           </div>
                           <span className="text-sm font-semibold text-[var(--accent-purple)]">{item.avg.toFixed(2)}</span>
                         </div>
@@ -674,7 +674,7 @@ export function EvaluationLab() {
                         <div key={item.label} className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2 flex items-center justify-between gap-3">
                           <div className="min-w-0">
                             <p className="text-sm text-[var(--text-primary)] truncate">{item.label}</p>
-                            <p className="text-[11px] text-[var(--text-muted)]">样本 {item.count}</p>
+                            <p className="text-[12px] text-[var(--text-muted)]">样本 {item.count}</p>
                           </div>
                           <span className="text-sm font-semibold text-[var(--accent-purple)]">{item.avg.toFixed(2)}</span>
                         </div>
@@ -733,7 +733,7 @@ function RunScoreEditor({
     <div className="space-y-3 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-4">
       <div>
         <p className="text-sm font-semibold text-[var(--text-primary)]">{run.candidate.remark} @ {run.apiNode.remark}</p>
-        <p className="text-[11px] text-[var(--text-muted)] mt-1">{caseName} · 第 {run.round} 轮 · HTTP {run.result.httpStatus || 0} · {run.result.latencyMs}ms</p>
+        <p className="text-[12px] text-[var(--text-muted)] mt-1">{caseName} · 第 {run.round} 轮 · HTTP {run.result.httpStatus || 0} · {run.result.latencyMs}ms</p>
       </div>
 
       <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] p-3 max-h-64 overflow-y-auto">
@@ -802,7 +802,7 @@ function EvalToggleRow({
       >
         {expanded ? '收起明细' : '展开明细'}
       </button>
-      {!expanded && <span className="text-[11px] leading-relaxed text-[var(--text-muted)]">{collapsedText}</span>}
+      {!expanded && <span className="text-[12px] leading-relaxed text-[var(--text-muted)]">{collapsedText}</span>}
     </div>
   );
 }
@@ -810,7 +810,7 @@ function EvalToggleRow({
 function EvalCollapsedHint({ text }: { text: string }) {
   return (
     <div className="rounded-[var(--radius-sm)] border border-dashed border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-4 py-3">
-      <p className="text-[11px] leading-relaxed text-[var(--text-muted)]">{text}</p>
+      <p className="text-[12px] leading-relaxed text-[var(--text-muted)]">{text}</p>
     </div>
   );
 }
