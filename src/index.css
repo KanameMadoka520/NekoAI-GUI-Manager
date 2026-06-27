@@ -1,416 +1,405 @@
 @import "tailwindcss";
 
 /* ============================================================================
-   NekoAI Manager — 游戏启动器风设计令牌 (Game-Launcher Design Tokens)
+   NekoAI Manager — 指挥控制台 HUD 设计令牌 (Command-Console HUD)
    ----------------------------------------------------------------------------
-   视觉语言：壁纸虚化打底 · 发光蓝高饱和强调 · 深色大圆角磨砂磁贴 · 边缘微高光。
-   级联策略：所有页面只引用下方 var(--...) 令牌 + 共享 primitives，改这里即全局生效。
-   三主题 light / dark / parchment 各保留性格；lite 低性能模式整体降级为不透明纯色。
+   视觉语言：暗色画布 · 扁平面板(靠 1px 描边+发光细线，不靠卡片阴影) · 等宽数据读数 ·
+   左强调刻度 · 大写 mono 微标签(::/[02] 索引前缀) · 单一冷青强调 · 反色状态条。
+   参考改编自 塔菲API 设计稿 v16(控制台外壳/gauge/statusbar/扫描线) + v58(工程令牌/状态灯) + v92(左刻度数据行)。
+   级联策略：保留旧令牌名(页面 API)，只换取值与原语，改这里即全局生效；三主题 dark/light/parchment。
    ============================================================================ */
 
-:root {
-  /* —— 壁纸预设场景（主题无关，可被任意主题选用，全部为零版权多层渐变）—— */
-  --wp-azure:
-    radial-gradient(118% 78% at 50% 120%, rgba(56,168,255,0.50) 0%, transparent 60%),
-    radial-gradient(92% 62% at 84% -10%, rgba(122,92,255,0.30) 0%, transparent 55%),
-    radial-gradient(72% 52% at 8% 6%, rgba(40,210,255,0.18) 0%, transparent 52%),
-    linear-gradient(180deg, #0a0f1e 0%, #0b1326 45%, #060a14 100%);
-  --wp-nebula:
-    radial-gradient(112% 80% at 18% 112%, rgba(168,85,247,0.46) 0%, transparent 60%),
-    radial-gradient(92% 70% at 90% -6%, rgba(236,72,153,0.32) 0%, transparent 55%),
-    radial-gradient(80% 60% at 52% 48%, rgba(99,102,241,0.22) 0%, transparent 60%),
-    linear-gradient(180deg, #120a1f 0%, #160b24 50%, #0a0613 100%);
-  --wp-amber:
-    radial-gradient(120% 80% at 50% 122%, rgba(245,170,70,0.46) 0%, transparent 60%),
-    radial-gradient(92% 62% at 86% -8%, rgba(217,119,6,0.30) 0%, transparent 55%),
-    radial-gradient(70% 52% at 10% 8%, rgba(255,205,120,0.18) 0%, transparent 52%),
-    linear-gradient(180deg, #2a1d0e 0%, #241808 50%, #170f05 100%);
-  --wp-graphite:
-    radial-gradient(120% 82% at 50% 120%, rgba(148,163,184,0.30) 0%, transparent 60%),
-    radial-gradient(80% 55% at 82% -6%, rgba(99,116,148,0.22) 0%, transparent 55%),
-    linear-gradient(180deg, #15181e 0%, #0d0f14 60%, #090b0f 100%);
-  --wp-daylight:
-    radial-gradient(120% 80% at 50% 120%, rgba(56,168,255,0.36) 0%, transparent 60%),
-    radial-gradient(92% 60% at 82% -8%, rgba(129,140,248,0.30) 0%, transparent 55%),
-    radial-gradient(70% 55% at 10% 8%, rgba(45,212,255,0.22) 0%, transparent 52%),
-    linear-gradient(180deg, #dfe9fb 0%, #e8eefb 45%, #d6e3f8 100%);
-}
-
 :root,
-:root[data-theme='light'] {
-  --bg-base: #e6ecf8;
-  --bg-aurora: var(--wp-daylight);
-  --bg-card: rgba(255, 255, 255, 0.88);
-  --bg-card-solid: #ffffff;
-  --bg-elevated: #eef3fd;
-  --bg-hover: #e6eefb;
+:root[data-theme='dark'] {
+  /* —— 暗色指挥台（HUD 主场）—— */
+  --bg-base: #0A0E14;            /* canvas */
+  --bg-aurora: #0A0E14;
+  --bg-card: #161B23;
+  --bg-card-solid: #161B23;
+  --bg-elevated: #1A2030;        /* panel raised */
+  --bg-hover: #20283a;
 
-  --text-primary: #16202f;
-  --text-secondary: #515f74;
-  --text-muted: #7a899d;
+  --text-primary: #E6E8EB;
+  --text-secondary: #9CA3AF;
+  --text-muted: #5A6680;
 
-  /* 发光蓝强调（token 名沿用 accent-purple，实际是启动器发光蓝） */
-  --accent-purple: #2f86ff;
-  --accent-pink: #6f6bff;
+  /* 单一冷青强调（令牌名沿用 accent-purple，实为 HUD 信号青） */
+  --accent-purple: #7CDDFF;
+  --accent-pink: #7DD3A0;        /* accentAlt 薄荷 */
+  --accent-strong: #A6E9FF;
+  --accent-glow: rgba(124, 221, 255, 0.22);
+  --on-accent: #07101a;
 
-  --success: #10b981;
-  --warning: #f59e0b;
-  --error: #ef4444;
-  --info: #2f86ff;
+  --success: #7DE07A;
+  --warning: #FBBF24;
+  --error: #FF7A8A;
+  --info: #7CDDFF;
 
-  --border-subtle: rgba(20, 34, 56, 0.10);
-  --border-hover: rgba(20, 34, 56, 0.20);
-  --border-strong: rgba(47, 134, 255, 0.45);
-  --border-glow: rgba(47, 134, 255, 0.22);
+  /* 结构线(实线) 与 账本式细线(faint) */
+  --border-subtle: #2A2E37;
+  --border-hover: #3a4150;
+  --border-strong: rgba(124, 221, 255, 0.55);
+  --border-glow: rgba(124, 221, 255, 0.30);
+  --hud-rule: rgba(229, 233, 240, 0.08);     /* 账本虚线/细线 */
+  --hud-canvas: #0A0E14;
+  --hud-rail: #0F141C;
+  --hud-terminal: #070809;
+  --text-faint: #5A6680;
+  --data-pos: #7DE07A;
+  --data-neg: #FF7A8A;
 
-  --surface-card: linear-gradient(155deg, rgba(255,255,255,0.86) 0%, rgba(241,246,255,0.74) 100%);
-  --surface-card-solid: #ffffff;
-  --surface-glass: rgba(255, 255, 255, 0.52);
-  --surface-glass-border: rgba(255, 255, 255, 0.72);
-  --surface-sidebar: linear-gradient(180deg, rgba(255,255,255,0.60) 0%, rgba(240,245,255,0.50) 100%);
-  --surface-header: rgba(255, 255, 255, 0.52);
-  --surface-titlebar: rgba(255, 255, 255, 0.48);
-  --card-top-highlight: rgba(255, 255, 255, 0.95);
-  --nav-active-bg: linear-gradient(90deg, rgba(47,134,255,0.20), rgba(47,134,255,0.05));
+  /* 面板表面：扁平实色（无玻璃/无渐变），靠描边分层 */
+  --surface-card: #161B23;
+  --surface-card-solid: #161B23;
+  --surface-glass: #13171f;
+  --surface-glass-border: #2A2E37;
+  --surface-sidebar: #0F141C;
+  --surface-header: #11151d;
+  --surface-titlebar: #0F141C;
+  --card-top-highlight: rgba(124, 221, 255, 0.18);
+  --nav-active-bg: rgba(124, 221, 255, 0.08);
 
-  /* 磨砂磁贴表面（启动器核心元素：半透明渐变 + 边缘高光，无 per-element blur） */
-  --surface-tile: linear-gradient(160deg, rgba(255,255,255,0.82) 0%, rgba(236,243,255,0.66) 100%);
-  --surface-tile-hover: linear-gradient(160deg, rgba(255,255,255,0.92) 0%, rgba(231,240,255,0.78) 100%);
-  --tile-border: rgba(20, 34, 56, 0.10);
-  --tile-highlight: rgba(255, 255, 255, 0.85);
+  --surface-tile: #161B23;
+  --surface-tile-hover: #1A2030;
+  --tile-border: #2A2E37;
+  --tile-highlight: rgba(124, 221, 255, 0.14);
 
-  --toast-success-bg: #dcfce7;
-  --toast-success-text: #166534;
-  --toast-error-bg: #fee2e2;
-  --toast-error-text: #991b1b;
-  --toast-warning-bg: #ffedd5;
-  --toast-warning-text: #9a3412;
+  --toast-success-bg: #0f2418;
+  --toast-success-text: #7DE07A;
+  --toast-error-bg: #2a1116;
+  --toast-error-text: #FF9AA6;
+  --toast-warning-bg: #2a2210;
+  --toast-warning-text: #FBD24E;
 
-  --error-soft-bg: rgba(239, 68, 68, 0.14);
-  --info-soft-bg: rgba(47, 134, 255, 0.14);
-
-  /* Semantic soft surfaces — derived from semantic colors via color-mix so
-     they automatically track each theme's --success/--warning/--error/--info
-     and the active accent. Replaces scattered hardcoded rgba across pages. */
+  --error-soft-bg: rgba(255, 122, 138, 0.14);
+  --info-soft-bg: rgba(124, 221, 255, 0.12);
   --success-soft-bg: color-mix(in srgb, var(--success) 14%, transparent);
   --success-soft-border: color-mix(in srgb, var(--success) 40%, transparent);
   --warning-soft-bg: color-mix(in srgb, var(--warning) 16%, transparent);
   --warning-soft-border: color-mix(in srgb, var(--warning) 42%, transparent);
   --error-soft-border: color-mix(in srgb, var(--error) 42%, transparent);
   --info-soft-border: color-mix(in srgb, var(--info) 42%, transparent);
-  --accent-soft-bg: color-mix(in srgb, var(--accent-purple) 12%, transparent);
-  --accent-soft-border: color-mix(in srgb, var(--accent-purple) 40%, transparent);
+  --accent-soft-bg: rgba(124, 221, 255, 0.10);
+  --accent-soft-border: rgba(124, 221, 255, 0.40);
 
-  /* Stronger accent for hover, and readable foreground on accent fills */
-  --accent-strong: #1f6fe0;
-  --accent-glow: rgba(47, 134, 255, 0.50);
-  --on-accent: #ffffff;
-  --scrollbar-thumb: rgba(20, 34, 56, 0.22);
-  --scrollbar-thumb-hover: rgba(20, 34, 56, 0.38);
+  --scrollbar-thumb: rgba(124, 221, 255, 0.20);
+  --scrollbar-thumb-hover: rgba(124, 221, 255, 0.40);
 
-  --chart-1: #2f86ff;
-  --chart-2: #6f6bff;
-  --chart-3: #0ea5e9;
-  --chart-4: #10b981;
-  --chart-5: #f59e0b;
-  --chart-6: #ef4444;
-  --chart-7: #8b5cf6;
-  --chart-8: #06b6d4;
+  --chart-1: #7CDDFF;
+  --chart-2: #7DD3A0;
+  --chart-3: #67E8F9;
+  --chart-4: #FBBF24;
+  --chart-5: #C4B5FD;
+  --chart-6: #FF7A8A;
+  --chart-7: #5EEAD4;
+  --chart-8: #93C5FD;
 
-  --model-gpt: #0ea567;
-  --model-claude: #6a5cff;
-  --model-qwen: #c27a1f;
-  --model-gemini: #0284c7;
-  --model-deepseek: #2563eb;
-  --model-glm: #dc2626;
-  --model-llama: #7c3aed;
-  --model-mistral: #d97706;
+  --model-gpt: #7DD3A0;
+  --model-claude: #C4B5FD;
+  --model-qwen: #FBBF24;
+  --model-gemini: #67E8F9;
+  --model-deepseek: #7CDDFF;
+  --model-glm: #FF7A8A;
+  --model-llama: #93C5FD;
+  --model-mistral: #FDBA74;
 
-  --ambient-glyph-color: rgba(47, 134, 255, 0.26);
-  --ambient-shape-color: rgba(99, 130, 246, 0.30);
-  --ambient-shape-border: rgba(47, 134, 255, 0.42);
+  --ambient-glyph-color: rgba(124, 221, 255, 0.22);
+  --ambient-shape-color: rgba(124, 221, 255, 0.20);
+  --ambient-shape-border: rgba(124, 221, 255, 0.40);
 
-  --focus-ring: rgba(47, 134, 255, 0.20);
+  --focus-ring: rgba(124, 221, 255, 0.35);
   --paper-grain: none;
   --paper-grain-opacity: 0;
 
-  /* 壁纸打底默认场景 + 可读性蒙版（亮色用白色蒙版托起面板对比度） */
-  --wallpaper-default: var(--wp-daylight);
-  --wallpaper-scrim: linear-gradient(180deg, rgba(230,236,248,0.50) 0%, rgba(230,236,248,0.26) 42%, rgba(230,236,248,0.52) 100%);
+  /* HUD 画布：纯色 + 极淡网格（壁纸默认走这套，可在设置里换图） */
+  --wallpaper-default: #0A0E14;
+  --wallpaper-scrim: transparent;
 
-  --shadow-card: 0 1px 2px rgba(14, 30, 55, 0.06), 0 6px 20px rgba(14, 30, 55, 0.09);
-  --shadow-panel: -1px 0 14px rgba(15, 30, 55, 0.07);
-  --shadow-3d: var(--shadow-card);
-  --shadow-3d-hover: 0 2px 8px rgba(14, 30, 55, 0.10), 0 18px 38px rgba(14, 30, 55, 0.16);
-  --shadow-inset: inset 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-pop: 0 16px 48px rgba(14, 30, 55, 0.20), 0 2px 8px rgba(14, 30, 55, 0.10);
+  /* HUD 扁平：阴影几乎不用，靠描边与发光线 */
+  --shadow-card: none;
+  --shadow-panel: none;
+  --shadow-3d: none;
+  --shadow-3d-hover: 0 0 0 1px var(--border-strong);
+  --shadow-inset: none;
+  --shadow-pop: 0 18px 60px rgba(0, 0, 0, 0.62), 0 0 0 1px var(--border-subtle);
 
-  --radius: 14px;
-  --radius-sm: 9px;
-  --radius-lg: 18px;
-  --radius-tile: 22px;
+  /* HUD 偏小、近直角 */
+  --radius: 4px;
+  --radius-sm: 3px;
+  --radius-lg: 6px;
+  --radius-tile: 4px;
   --radius-pill: 999px;
-  /* 无边框窗口外壳圆角（最大化时由 App 置 0） */
-  --win-radius: 14px;
+  --win-radius: 8px;
 
-  --header-blur: 12px;
-  --sidebar-blur: 16px;
-  --glass-blur: 18px;
-  --shell-blur: 18px;
-  --glow-accent: 0 0 0 1px var(--border-strong), 0 0 22px -2px var(--accent-glow);
-  --glow-soft: 0 0 26px -6px var(--accent-glow);
+  --header-blur: 0px;
+  --sidebar-blur: 0px;
+  --glass-blur: 0px;
+  --shell-blur: 0px;
+  --glow-accent: 0 0 0 1px var(--border-strong), 0 0 18px -4px var(--accent-glow);
+  --glow-soft: 0 0 14px -4px var(--accent-glow);
 
   --ease-spring: cubic-bezier(0.4, 0.0, 0.2, 1);
   --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-:root[data-theme='dark'] {
-  --bg-base: #070b14;
-  --bg-aurora: var(--wp-azure);
-  --bg-card: rgba(24, 32, 48, 0.86);
-  --bg-card-solid: #161d2c;
-  --bg-elevated: #1d2638;
-  --bg-hover: #25324a;
+:root[data-theme='light'] {
+  /* —— 日间控制台（亮色 HUD）—— */
+  --bg-base: #F3F6F9;
+  --bg-aurora: #F3F6F9;
+  --bg-card: #FFFFFF;
+  --bg-card-solid: #FFFFFF;
+  --bg-elevated: #F7F9FC;
+  --bg-hover: #EBF0F6;
 
-  --text-primary: #e9eef8;
-  --text-secondary: #b6c2d6;
-  --text-muted: #8593ab;
+  --text-primary: #0E1116;
+  --text-secondary: #5A6680;
+  --text-muted: #8A93A6;
 
-  --accent-purple: #3ba4ff;
-  --accent-pink: #8f9bff;
+  --accent-purple: #0E7FA8;
+  --accent-pink: #1F9254;
+  --accent-strong: #0a6a8e;
+  --accent-glow: rgba(14, 127, 168, 0.16);
+  --on-accent: #FFFFFF;
 
-  --success: #34d399;
-  --warning: #fbbf24;
-  --error: #f87171;
-  --info: #3ba4ff;
+  --success: #1F9254;
+  --warning: #B7791F;
+  --error: #D14156;
+  --info: #0E7FA8;
 
-  --border-subtle: rgba(150, 180, 230, 0.14);
-  --border-hover: rgba(150, 180, 230, 0.26);
-  --border-strong: rgba(59, 164, 255, 0.55);
-  --border-glow: rgba(59, 164, 255, 0.28);
+  --border-subtle: #D2D8E1;
+  --border-hover: #b8c1ce;
+  --border-strong: rgba(14, 127, 168, 0.55);
+  --border-glow: rgba(14, 127, 168, 0.28);
+  --hud-rule: rgba(16, 26, 46, 0.08);
+  --hud-canvas: #F3F6F9;
+  --hud-rail: #E9EDF2;
+  --hud-terminal: #0E1320;
+  --text-faint: #8A93A6;
+  --data-pos: #1F9254;
+  --data-neg: #D14156;
 
-  --surface-card: linear-gradient(155deg, rgba(28,38,58,0.74) 0%, rgba(16,23,38,0.62) 100%);
-  --surface-card-solid: #161d2c;
-  --surface-glass: rgba(18, 26, 44, 0.55);
-  --surface-glass-border: rgba(120, 165, 235, 0.24);
-  --surface-sidebar: linear-gradient(180deg, rgba(20,28,46,0.62) 0%, rgba(12,18,32,0.55) 100%);
-  --surface-header: rgba(14, 20, 34, 0.55);
-  --surface-titlebar: rgba(10, 16, 28, 0.52);
-  --card-top-highlight: rgba(130, 190, 255, 0.34);
-  --nav-active-bg: linear-gradient(90deg, rgba(59,164,255,0.30), rgba(59,164,255,0.06));
+  --surface-card: #FFFFFF;
+  --surface-card-solid: #FFFFFF;
+  --surface-glass: #FFFFFF;
+  --surface-glass-border: #D2D8E1;
+  --surface-sidebar: #E9EDF2;
+  --surface-header: #EFF3F8;
+  --surface-titlebar: #E9EDF2;
+  --card-top-highlight: rgba(14, 127, 168, 0.20);
+  --nav-active-bg: rgba(14, 127, 168, 0.10);
 
-  --surface-tile: linear-gradient(160deg, rgba(30,42,66,0.74) 0%, rgba(16,24,42,0.60) 100%);
-  --surface-tile-hover: linear-gradient(160deg, rgba(38,54,84,0.86) 0%, rgba(20,30,52,0.72) 100%);
-  --tile-border: rgba(120, 165, 235, 0.18);
-  --tile-highlight: rgba(140, 200, 255, 0.30);
+  --surface-tile: #FFFFFF;
+  --surface-tile-hover: #F7F9FC;
+  --tile-border: #D2D8E1;
+  --tile-highlight: rgba(14, 127, 168, 0.12);
 
-  --toast-success-bg: rgba(19, 78, 46, 0.82);
-  --toast-success-text: #b7f7cd;
-  --toast-error-bg: rgba(127, 29, 29, 0.82);
-  --toast-error-text: #fecaca;
-  --toast-warning-bg: rgba(120, 53, 15, 0.85);
-  --toast-warning-text: #fde68a;
+  --toast-success-bg: #dcf3e6;
+  --toast-success-text: #14653a;
+  --toast-error-bg: #fbe1e5;
+  --toast-error-text: #9b2030;
+  --toast-warning-bg: #f6ecd6;
+  --toast-warning-text: #7a4d12;
 
-  --error-soft-bg: rgba(248, 113, 113, 0.18);
-  --info-soft-bg: rgba(59, 164, 255, 0.18);
+  --error-soft-bg: rgba(209, 65, 86, 0.12);
+  --info-soft-bg: rgba(14, 127, 168, 0.12);
+  --success-soft-bg: color-mix(in srgb, var(--success) 14%, transparent);
+  --success-soft-border: color-mix(in srgb, var(--success) 40%, transparent);
+  --warning-soft-bg: color-mix(in srgb, var(--warning) 16%, transparent);
+  --warning-soft-border: color-mix(in srgb, var(--warning) 42%, transparent);
+  --error-soft-border: color-mix(in srgb, var(--error) 42%, transparent);
+  --info-soft-border: color-mix(in srgb, var(--info) 42%, transparent);
+  --accent-soft-bg: rgba(14, 127, 168, 0.10);
+  --accent-soft-border: rgba(14, 127, 168, 0.40);
 
-  --accent-strong: #6bb9ff;
-  --accent-glow: rgba(59, 164, 255, 0.62);
-  --on-accent: #07101f;
-  --scrollbar-thumb: rgba(150, 180, 230, 0.20);
-  --scrollbar-thumb-hover: rgba(150, 180, 230, 0.36);
+  --scrollbar-thumb: rgba(16, 26, 46, 0.22);
+  --scrollbar-thumb-hover: rgba(16, 26, 46, 0.40);
 
-  --chart-1: #3ba4ff;
-  --chart-2: #8f9bff;
-  --chart-3: #38bdf8;
-  --chart-4: #34d399;
-  --chart-5: #fbbf24;
-  --chart-6: #f87171;
-  --chart-7: #a78bfa;
-  --chart-8: #22d3ee;
+  --chart-1: #0E7FA8;
+  --chart-2: #1F9254;
+  --chart-3: #0891B2;
+  --chart-4: #B7791F;
+  --chart-5: #7C3AED;
+  --chart-6: #D14156;
+  --chart-7: #0D9488;
+  --chart-8: #2563EB;
 
-  --model-gpt: #34d399;
-  --model-claude: #9b8cff;
-  --model-qwen: #fbbf24;
-  --model-gemini: #60a5fa;
-  --model-deepseek: #38bdf8;
-  --model-glm: #f87171;
-  --model-llama: #a78bfa;
-  --model-mistral: #fb923c;
+  --model-gpt: #1F9254;
+  --model-claude: #7C3AED;
+  --model-qwen: #B7791F;
+  --model-gemini: #0891B2;
+  --model-deepseek: #0E7FA8;
+  --model-glm: #D14156;
+  --model-llama: #2563EB;
+  --model-mistral: #C2570C;
 
-  --ambient-glyph-color: rgba(59, 164, 255, 0.34);
-  --ambient-shape-color: rgba(96, 165, 250, 0.32);
-  --ambient-shape-border: rgba(59, 164, 255, 0.46);
+  --ambient-glyph-color: rgba(14, 127, 168, 0.22);
+  --ambient-shape-color: rgba(14, 127, 168, 0.20);
+  --ambient-shape-border: rgba(14, 127, 168, 0.40);
 
-  --focus-ring: rgba(59, 164, 255, 0.30);
+  --focus-ring: rgba(14, 127, 168, 0.25);
   --paper-grain: none;
   --paper-grain-opacity: 0;
 
-  --wallpaper-default: var(--wp-azure);
-  --wallpaper-scrim: linear-gradient(180deg, rgba(5,9,17,0.32) 0%, rgba(5,9,17,0.12) 32%, rgba(5,9,17,0.50) 100%);
+  --wallpaper-default: #F3F6F9;
+  --wallpaper-scrim: transparent;
 
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.32), 0 8px 24px rgba(0, 0, 0, 0.44);
-  --shadow-panel: -1px 0 18px rgba(0, 0, 0, 0.48);
-  --shadow-3d: var(--shadow-card);
-  --shadow-3d-hover: 0 2px 10px rgba(0, 0, 0, 0.42), 0 20px 42px rgba(0, 0, 0, 0.56);
-  --shadow-inset: inset 0 1px 2px rgba(0, 0, 0, 0.28);
-  --shadow-pop: 0 20px 56px rgba(0, 0, 0, 0.58), 0 2px 10px rgba(0, 0, 0, 0.42);
+  --shadow-card: none;
+  --shadow-panel: none;
+  --shadow-3d: none;
+  --shadow-3d-hover: 0 0 0 1px var(--border-strong);
+  --shadow-inset: none;
+  --shadow-pop: 0 18px 50px rgba(14, 30, 55, 0.20), 0 0 0 1px var(--border-subtle);
 
-  --radius: 14px;
-  --radius-sm: 9px;
-  --radius-lg: 18px;
-  --radius-tile: 22px;
+  --radius: 4px;
+  --radius-sm: 3px;
+  --radius-lg: 6px;
+  --radius-tile: 4px;
   --radius-pill: 999px;
+  --win-radius: 8px;
 
-  --header-blur: 10px;
-  --sidebar-blur: 14px;
-  --glass-blur: 16px;
-  --shell-blur: 16px;
-  --glow-accent: 0 0 0 1px var(--border-strong), 0 0 26px -2px var(--accent-glow);
-  --glow-soft: 0 0 32px -6px var(--accent-glow);
-}
-
-:root[data-theme='parchment'] {
-  --bg-base: #1a1206;
-  --bg-aurora: var(--wp-amber);
-  --bg-card: rgba(250, 244, 231, 0.92);
-  --bg-card-solid: #f8f1de;
-  --bg-elevated: #efe6cf;
-  --bg-hover: #e7dcc1;
-
-  --text-primary: #2f271d;
-  --text-secondary: #5f513f;
-  --text-muted: #8a7b66;
-
-  --accent-purple: #b06a22;
-  --accent-pink: #8b5a2b;
-
-  --success: #3f7e4a;
-  --warning: #b5772f;
-  --error: #a94a39;
-  --info: #6d5a40;
-
-  --border-subtle: rgba(92, 72, 44, 0.20);
-  --border-hover: rgba(92, 72, 44, 0.32);
-  --border-strong: rgba(176, 106, 34, 0.45);
-  --border-glow: rgba(176, 106, 34, 0.24);
-
-  --surface-card: linear-gradient(155deg, rgba(250,243,225,0.94) 0%, rgba(242,231,205,0.86) 100%);
-  --surface-card-solid: #f8f1de;
-  --surface-glass: rgba(248, 240, 220, 0.58);
-  --surface-glass-border: rgba(162, 120, 60, 0.30);
-  --surface-sidebar: linear-gradient(180deg, rgba(246,238,219,0.66) 0%, rgba(238,225,198,0.58) 100%);
-  --surface-header: rgba(247, 239, 221, 0.62);
-  --surface-titlebar: rgba(246, 238, 219, 0.58);
-  --card-top-highlight: rgba(255, 250, 235, 0.85);
-  --nav-active-bg: linear-gradient(90deg, rgba(176,106,34,0.22), rgba(176,106,34,0.05));
-
-  --surface-tile: linear-gradient(160deg, rgba(250,243,225,0.92) 0%, rgba(240,228,200,0.80) 100%);
-  --surface-tile-hover: linear-gradient(160deg, rgba(253,247,232,0.97) 0%, rgba(238,224,193,0.88) 100%);
-  --tile-border: rgba(92, 72, 44, 0.22);
-  --tile-highlight: rgba(255, 250, 235, 0.90);
-
-  --toast-success-bg: #d8ead6;
-  --toast-success-text: #2f5f37;
-  --toast-error-bg: #f2d7d3;
-  --toast-error-text: #7d2f24;
-  --toast-warning-bg: #f6e4c8;
-  --toast-warning-text: #7c4b13;
-
-  --error-soft-bg: rgba(169, 74, 57, 0.16);
-  --info-soft-bg: rgba(109, 90, 64, 0.16);
-
-  --accent-strong: #8a5220;
-  --accent-glow: rgba(176, 106, 34, 0.46);
-  --on-accent: #ffffff;
-  --scrollbar-thumb: rgba(92, 72, 44, 0.30);
-  --scrollbar-thumb-hover: rgba(92, 72, 44, 0.48);
-
-  --chart-1: #a26329;
-  --chart-2: #8b5a2b;
-  --chart-3: #6d5a40;
-  --chart-4: #3f7e4a;
-  --chart-5: #b5772f;
-  --chart-6: #a94a39;
-  --chart-7: #8a6b3c;
-  --chart-8: #7f6a4d;
-
-  --model-gpt: #3f7e4a;
-  --model-claude: #8b5a2b;
-  --model-qwen: #b5772f;
-  --model-gemini: #6d5a40;
-  --model-deepseek: #7f6a4d;
-  --model-glm: #a94a39;
-  --model-llama: #8a6b3c;
-  --model-mistral: #a26329;
-
-  --ambient-glyph-color: rgba(127, 106, 77, 0.38);
-  --ambient-shape-color: rgba(176, 106, 34, 0.32);
-  --ambient-shape-border: rgba(125, 94, 55, 0.48);
-
-  --shadow-card: 0 2px 0 rgba(132, 101, 58, 0.18), 0 10px 22px rgba(83, 60, 28, 0.20);
-  --shadow-panel: -1px 0 0 rgba(132, 101, 58, 0.2), -4px 0 10px rgba(83, 60, 28, 0.12);
-  --shadow-3d: var(--shadow-card);
-  --shadow-3d-hover: 0 3px 0 rgba(132, 101, 58, 0.24), 0 16px 30px rgba(83, 60, 28, 0.24);
-  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.45);
-  --shadow-pop: 0 3px 0 rgba(132, 101, 58, 0.24), 0 20px 48px rgba(83, 60, 28, 0.28);
-
-  --radius: 13px;
-  --radius-sm: 8px;
-  --radius-lg: 17px;
-  --radius-tile: 20px;
-  --radius-pill: 999px;
-
-  --header-blur: 8px;
-  --sidebar-blur: 8px;
-  --glass-blur: 10px;
-  --shell-blur: 10px;
-  --glow-accent: 0 0 0 1px var(--border-strong), 0 0 20px -3px var(--accent-glow);
-  --glow-soft: 0 0 24px -7px var(--accent-glow);
-
-  --wallpaper-default: var(--wp-amber);
-  --wallpaper-scrim: linear-gradient(180deg, rgba(26,18,8,0.42) 0%, rgba(26,18,8,0.18) 35%, rgba(26,18,8,0.52) 100%);
-
-  --paper-grain:
-    radial-gradient(circle at 12% 18%, rgba(125, 94, 55, 0.08) 0 1px, transparent 1.2px),
-    radial-gradient(circle at 74% 42%, rgba(110, 85, 50, 0.06) 0 1px, transparent 1.2px),
-    radial-gradient(circle at 36% 76%, rgba(120, 92, 56, 0.06) 0 1px, transparent 1.2px),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.35), rgba(239, 226, 200, 0.35));
-  --paper-grain-opacity: 1;
-  --focus-ring: rgba(176, 106, 34, 0.24);
-}
-
-/* —— 壁纸暗度三档（控制可读性蒙版强度）—— */
-:root[data-wallpaper-dim='soft'] .app-wallpaper::after { opacity: 0.55; }
-:root[data-wallpaper-dim='standard'] .app-wallpaper::after { opacity: 0.88; }
-:root[data-wallpaper-dim='strong'] .app-wallpaper::after { opacity: 1; }
-:root[data-wallpaper-dim='off'] .app-wallpaper::after { opacity: 0; }
-
-:root[data-render-mode='lite'] {
   --header-blur: 0px;
   --sidebar-blur: 0px;
   --glass-blur: 0px;
   --shell-blur: 0px;
+  --glow-accent: 0 0 0 1px var(--border-strong), 0 0 16px -5px var(--accent-glow);
+  --glow-soft: 0 0 12px -5px var(--accent-glow);
+}
+
+:root[data-theme='parchment'] {
+  /* —— 暖琥珀作战室（工业告警变体）—— */
+  --bg-base: #14110A;
+  --bg-aurora: #14110A;
+  --bg-card: #1E1A10;
+  --bg-card-solid: #1E1A10;
+  --bg-elevated: #241F13;
+  --bg-hover: #2c2618;
+
+  --text-primary: #F1E9D6;
+  --text-secondary: #B6A988;
+  --text-muted: #7d7256;
+
+  --accent-purple: #FFB100;
+  --accent-pink: #F26B1F;
+  --accent-strong: #FFC93C;
+  --accent-glow: rgba(255, 177, 0, 0.22);
+  --on-accent: #1a1404;
+
+  --success: #9BCF5B;
+  --warning: #FFB100;
+  --error: #F2553A;
+  --info: #FFB100;
+
+  --border-subtle: #3a331f;
+  --border-hover: #4d4429;
+  --border-strong: rgba(255, 177, 0, 0.55);
+  --border-glow: rgba(255, 177, 0, 0.28);
+  --hud-rule: rgba(241, 233, 214, 0.08);
+  --hud-canvas: #14110A;
+  --hud-rail: #181509;
+  --hud-terminal: #0c0a05;
+  --text-faint: #7d7256;
+  --data-pos: #9BCF5B;
+  --data-neg: #F2553A;
+
+  --surface-card: #1E1A10;
+  --surface-card-solid: #1E1A10;
+  --surface-glass: #1a1610;
+  --surface-glass-border: #3a331f;
+  --surface-sidebar: #181509;
+  --surface-header: #1b170c;
+  --surface-titlebar: #181509;
+  --card-top-highlight: rgba(255, 177, 0, 0.20);
+  --nav-active-bg: rgba(255, 177, 0, 0.10);
+
+  --surface-tile: #1E1A10;
+  --surface-tile-hover: #241F13;
+  --tile-border: #3a331f;
+  --tile-highlight: rgba(255, 177, 0, 0.14);
+
+  --toast-success-bg: #1e2710;
+  --toast-success-text: #B7E07A;
+  --toast-error-bg: #2a1410;
+  --toast-error-text: #FF9A82;
+  --toast-warning-bg: #2a2208;
+  --toast-warning-text: #FFCF55;
+
+  --error-soft-bg: rgba(242, 85, 58, 0.14);
+  --info-soft-bg: rgba(255, 177, 0, 0.12);
+  --success-soft-bg: color-mix(in srgb, var(--success) 14%, transparent);
+  --success-soft-border: color-mix(in srgb, var(--success) 40%, transparent);
+  --warning-soft-bg: color-mix(in srgb, var(--warning) 16%, transparent);
+  --warning-soft-border: color-mix(in srgb, var(--warning) 42%, transparent);
+  --error-soft-border: color-mix(in srgb, var(--error) 42%, transparent);
+  --info-soft-border: color-mix(in srgb, var(--info) 42%, transparent);
+  --accent-soft-bg: rgba(255, 177, 0, 0.10);
+  --accent-soft-border: rgba(255, 177, 0, 0.40);
+
+  --scrollbar-thumb: rgba(255, 177, 0, 0.22);
+  --scrollbar-thumb-hover: rgba(255, 177, 0, 0.42);
+
+  --chart-1: #FFB100;
+  --chart-2: #F26B1F;
+  --chart-3: #9BCF5B;
+  --chart-4: #FFC93C;
+  --chart-5: #E0A458;
+  --chart-6: #F2553A;
+  --chart-7: #C9A86A;
+  --chart-8: #FFD27A;
+
+  --model-gpt: #9BCF5B;
+  --model-claude: #E0A458;
+  --model-qwen: #FFB100;
+  --model-gemini: #FFC93C;
+  --model-deepseek: #FFD27A;
+  --model-glm: #F2553A;
+  --model-llama: #C9A86A;
+  --model-mistral: #F26B1F;
+
+  --ambient-glyph-color: rgba(255, 177, 0, 0.22);
+  --ambient-shape-color: rgba(255, 177, 0, 0.20);
+  --ambient-shape-border: rgba(255, 177, 0, 0.40);
+
+  --focus-ring: rgba(255, 177, 0, 0.30);
+  --paper-grain: none;
+  --paper-grain-opacity: 0;
+
+  --wallpaper-default: #14110A;
+  --wallpaper-scrim: transparent;
+
   --shadow-card: none;
   --shadow-panel: none;
   --shadow-3d: none;
-  --shadow-3d-hover: none;
+  --shadow-3d-hover: 0 0 0 1px var(--border-strong);
   --shadow-inset: none;
-  --shadow-pop: none;
+  --shadow-pop: 0 18px 60px rgba(0, 0, 0, 0.62), 0 0 0 1px var(--border-subtle);
+
+  --radius: 4px;
+  --radius-sm: 3px;
+  --radius-lg: 6px;
+  --radius-tile: 4px;
+  --radius-pill: 999px;
+  --win-radius: 8px;
+
+  --header-blur: 0px;
+  --sidebar-blur: 0px;
+  --glass-blur: 0px;
+  --shell-blur: 0px;
+  --glow-accent: 0 0 0 1px var(--border-strong), 0 0 18px -4px var(--accent-glow);
+  --glow-soft: 0 0 14px -4px var(--accent-glow);
+}
+
+/* —— 壁纸暗度三档（HUD 默认纯画布；选图后控制可读蒙版）—— */
+:root[data-wallpaper-dim='soft'] .app-wallpaper::after { opacity: 0.55; }
+:root[data-wallpaper-dim='standard'] .app-wallpaper::after { opacity: 0.78; }
+:root[data-wallpaper-dim='strong'] .app-wallpaper::after { opacity: 0.92; }
+:root[data-wallpaper-dim='off'] .app-wallpaper::after { opacity: 0; }
+
+/* —— 低性能：关网格/扫描线/发光，纯实色 —— */
+:root[data-render-mode='lite'] {
+  --accent-glow: transparent;
   --glow-accent: 0 0 0 1px var(--border-strong);
   --glow-soft: none;
-  --accent-glow: transparent;
-  --bg-aurora: var(--bg-base);
-  --surface-glass: var(--surface-card-solid);
-  /* 让所有内联 background: var(--surface-card) 的卡片在 lite 下也降级为不透明实底 */
-  --surface-card: var(--surface-card-solid);
-  --surface-tile: var(--surface-card-solid);
-  --surface-tile-hover: var(--bg-hover);
-  --tile-highlight: transparent;
-  --wallpaper-default: var(--bg-base);
-  --wallpaper-scrim: transparent;
-  --paper-grain: none;
-  --paper-grain-opacity: 0;
+  --shadow-pop: 0 8px 24px rgba(0,0,0,0.5);
 }
 
 :root[data-render-mode='lite'] *,
@@ -424,17 +413,21 @@
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   will-change: auto !important;
+  text-shadow: none !important;
 }
+:root[data-render-mode='lite'] .app-wallpaper { background-image: none !important; }
+:root[data-render-mode='lite'] body::after { display: none; }
 
-/* ===== 窗口拖动 / 缩放瞬时降载 ===== */
-/* 由 lib/window-busy.ts 在 <html> 上打 data-window-busy。拖动/缩放那几百毫秒里，
-   关掉壁纸蒙版过渡、磨砂 blur、所有过渡与背景漂浮动画，让每帧重绘变廉价、消除拖动卡顿；
-   交互一结束标记移除，精致效果立即恢复。 */
+.perf-panel-viewport,
+.perf-summary-card,
+.perf-stat-card { content-visibility: auto; contain: layout paint style; }
+.perf-panel-viewport { contain-intrinsic-size: 440px; }
+:root[data-render-mode='lite'] .perf-panel-viewport { contain-intrinsic-size: 640px; }
+.perf-summary-card, .perf-stat-card { contain-intrinsic-size: 120px; }
+
+/* ===== 窗口拖动/缩放瞬时降载 ===== */
 :root[data-window-busy] .app-wallpaper::after { transition: none !important; }
-:root[data-window-busy] .glass-shell {
-  -webkit-backdrop-filter: none !important;
-  backdrop-filter: none !important;
-}
+:root[data-window-busy] body::after { display: none; }
 :root[data-window-busy] *,
 :root[data-window-busy] *::before,
 :root[data-window-busy] *::after {
@@ -442,425 +435,243 @@
   transition: none !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-}
-
-.perf-panel-viewport,
-.perf-summary-card,
-.perf-stat-card {
-  content-visibility: auto;
-  contain: layout paint style;
-}
-
-.perf-panel-viewport {
-  contain-intrinsic-size: 440px;
-}
-
-:root[data-render-mode='lite'] .perf-panel-viewport {
-  contain-intrinsic-size: 640px;
-}
-
-.perf-summary-card,
-.perf-stat-card {
-  contain-intrinsic-size: 120px;
+  text-shadow: none !important;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
-/* 根字号轻度抬升（16→16.5px）：所有 rem 文字（text-xs/sm/base...）整体放大约 3%，
-   配合下方对 10/11px 极小字号的定点上调，缓解「部分字体太小」。 */
-html { font-size: 16.5px; }
+html { font-size: 16px; }
 
 body {
-  font-family: 'Segoe UI', 'Inter', 'Noto Sans SC', system-ui, -apple-system, sans-serif;
+  font-family: 'Inter', 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Source Han Sans SC', 'Noto Sans SC', system-ui, sans-serif;
   background: var(--bg-base);
   color: var(--text-primary);
   overflow: hidden;
   position: relative;
-  line-height: 1.5;
+  line-height: 1.55;
+  letter-spacing: -0.003em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   font-feature-settings: 'tnum' 1, 'cv01' 1;
 }
 
-button,
-input,
-select,
-textarea {
-  line-height: 1.4;
-}
-
-body::before {
+/* 极淡 CRT 扫描线叠层（固定层，pointer 穿透；lite/busy 下隐藏）。 */
+body::after {
   content: '';
   position: fixed;
   inset: 0;
+  z-index: 2147483000;
   pointer-events: none;
-  background-image: var(--paper-grain);
-  opacity: var(--paper-grain-opacity);
+  background-image: repeating-linear-gradient(0deg, rgba(255,255,255,0.018) 0, rgba(255,255,255,0.018) 1px, transparent 1px, transparent 3px);
+  mix-blend-mode: overlay;
 }
 
-/* ===== 壁纸打底层 ===== */
-/* 一张壁纸只在这一个固定层渲染一次，所有面板靠半透明让它透出，绝不在每个卡片上做 blur。 */
+button, input, select, textarea { line-height: 1.4; }
+
+/* ===== HUD 画布底层：纯画布色 + 极淡技术网格；选自定义壁纸时图片在网格下方、由蒙版压暗 ===== */
 .app-wallpaper {
   position: absolute;
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background-image: var(--wallpaper, var(--wallpaper-default));
-  background-size: cover;
+  background-color: var(--hud-canvas);
+  background-image:
+    linear-gradient(var(--hud-rule) 1px, transparent 1px),
+    linear-gradient(90deg, var(--hud-rule) 1px, transparent 1px),
+    var(--wallpaper, none);
+  background-size: 34px 34px, 34px 34px, cover;
   background-position: center;
-  background-repeat: no-repeat;
+  background-repeat: repeat, repeat, no-repeat;
 }
 .app-wallpaper::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: var(--wallpaper-scrim);
+  background:
+    radial-gradient(120% 90% at 50% -10%, rgba(124,221,255,0.06), transparent 55%),
+    var(--hud-canvas);
+  opacity: 0;
   transition: opacity 0.4s var(--ease-spring);
 }
-:root[data-render-mode='lite'] .app-wallpaper {
-  background-image: none;
-  background-color: var(--bg-base);
-}
-:root[data-render-mode='lite'] .app-wallpaper::after { display: none; }
+:root[data-render-mode='lite'] .app-wallpaper { background-image: none; background-color: var(--bg-base); }
 
-code, pre, .mono {
-  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+code, pre, .mono, .data-num {
+  font-family: 'JetBrains Mono', 'IBM Plex Mono', 'SF Mono', 'Fira Code', 'Consolas', monospace;
 }
+.data-num { font-variant-numeric: tabular-nums; letter-spacing: 0; }
 
-/* Scrollbar — subtle, theme-aware, appears on hover */
+/* Scrollbar */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
   background: transparent;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-sm);
   border: 2px solid transparent;
   background-clip: padding-box;
   transition: background-color 0.2s var(--ease-spring);
 }
 ::-webkit-scrollbar-thumb:hover { background-color: var(--scrollbar-thumb-hover); background-clip: padding-box; }
-*:hover > ::-webkit-scrollbar-thumb,
-*:hover::-webkit-scrollbar-thumb { background-color: var(--scrollbar-thumb); background-clip: padding-box; }
+*:hover > ::-webkit-scrollbar-thumb, *:hover::-webkit-scrollbar-thumb { background-color: var(--scrollbar-thumb); background-clip: padding-box; }
 * { scrollbar-width: thin; scrollbar-color: var(--scrollbar-thumb) transparent; }
 
-/* ===== Global input / interactive enhancements ===== */
-input:not([type="range"]):focus,
-select:focus,
-textarea:focus {
+/* Inputs / focus */
+input:not([type="range"]):focus, select:focus, textarea:focus {
   border-color: var(--accent-purple) !important;
-  box-shadow: 0 0 0 3px var(--focus-ring);
+  box-shadow: 0 0 0 2px var(--focus-ring);
 }
-
-/* Visible keyboard focus for interactive controls */
-button:focus-visible,
-a:focus-visible,
-[role="switch"]:focus-visible,
-[role="button"]:focus-visible {
+button:focus-visible, a:focus-visible, [role="switch"]:focus-visible, [role="button"]:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px var(--focus-ring);
+  box-shadow: 0 0 0 2px var(--focus-ring);
 }
-
-/* Buttons: spring transition (GPU-friendly props only) */
 button {
   transition-property: background-color, border-color, color, opacity, box-shadow, transform;
-  transition-duration: 0.18s;
+  transition-duration: 0.15s;
   transition-timing-function: var(--ease-spring);
 }
-button:active {
-  transform: scale(0.97);
-}
-
-:root[data-render-mode='lite'] button:active {
-  transform: none !important;
-}
+button:active { transform: translateY(1px); }
+:root[data-render-mode='lite'] button:active { transform: none !important; }
 
 /* ===== Animations ===== */
-@keyframes pulse-accent {
-  0%, 100% { box-shadow: 0 0 0 0 var(--focus-ring); }
-  50% { box-shadow: 0 0 14px 4px var(--accent-soft-bg); }
-}
-@keyframes glow-ring {
-  0%, 100% { box-shadow: 0 0 0 0 var(--success-soft-border); }
-  50% { box-shadow: 0 0 10px 3px var(--success-soft-bg); }
-}
-@keyframes slideIn {
-  from { opacity: 0; transform: translateX(16px); }
-  to { opacity: 1; transform: translateX(0); }
-}
-@keyframes fadeIn {
-  from { opacity: 0; transform: scale(0.97) translateY(8px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
-}
-@keyframes modalPop {
-  from { opacity: 0; transform: scale(0.96) translateY(12px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
-}
-/* Save-button "unsaved changes" hint — soft accent breathing ring */
-@keyframes pulseDirty {
-  0%, 100% { box-shadow: 0 0 0 0 var(--focus-ring); }
-  50% { box-shadow: 0 0 0 4px var(--accent-soft-bg); }
-}
-.pulse-dirty {
-  animation: pulseDirty 2s var(--ease-spring) infinite;
-}
-:root[data-render-mode='lite'] .pulse-dirty {
-  animation: none !important;
-}
-/* 启动器 Hero 进场：底部上浮淡入（仅 transform/opacity，GPU 友好） */
-@keyframes heroRise {
-  from { opacity: 0; transform: translateY(18px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-.hero-rise {
-  animation: heroRise 0.5s var(--ease-spring) both;
-}
-:root[data-render-mode='lite'] .hero-rise {
-  animation: none !important;
-}
-@keyframes ambientFloat {
-  0% {
-    transform: translate3d(0, 0, 0) rotate(0deg);
-  }
-  50% {
-    transform: translate3d(var(--ambient-drift, 0px), -28px, 0) rotate(var(--ambient-rotate, 0deg));
-  }
-  100% {
-    transform: translate3d(0, -60px, 0) rotate(calc(var(--ambient-rotate, 0deg) * 1.35));
-  }
+@keyframes slideIn { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes modalPop { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes pulseDirty { 0%,100% { box-shadow: 0 0 0 0 var(--accent-glow); } 50% { box-shadow: 0 0 0 3px var(--accent-soft-bg); } }
+.pulse-dirty { animation: pulseDirty 2s var(--ease-spring) infinite; }
+:root[data-render-mode='lite'] .pulse-dirty { animation: none !important; }
+@keyframes heroRise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.hero-rise { animation: heroRise 0.4s var(--ease-spring) both; }
+:root[data-render-mode='lite'] .hero-rise { animation: none !important; }
+@keyframes blink { 50% { opacity: 0; } }
+/* 状态灯发光环脉冲（live/online） */
+@keyframes hudPulse {
+  0% { box-shadow: 0 0 0 0 var(--accent-glow); }
+  70% { box-shadow: 0 0 0 5px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
 }
 
-@keyframes ambientInkPulse {
-  0%, 100% {
-    opacity: 0.82;
-    filter: saturate(0.95);
-  }
-  35% {
-    opacity: 1;
-    filter: saturate(1.08);
-  }
-  70% {
-    opacity: 0.72;
-    filter: saturate(0.88);
-  }
-}
+/* ambient（HUD 下基本不用漂浮，仅保留兼容；shape 用细线） */
+.ambient-glyph, .ambient-shape { position: absolute; }
+@keyframes ambientFloat { 0% { transform: translate3d(0,0,0); } 100% { transform: translate3d(0,-40px,0); } }
+.ambient-glyph { color: var(--ambient-glyph-color); font-family: 'JetBrains Mono', monospace; animation: ambientFloat 26s linear infinite; will-change: transform; }
+.ambient-svg { width: 100%; height: 100%; overflow: visible; }
+.ambient-line { fill: none; stroke: var(--ambient-shape-border); stroke-width: 1.4; }
+.ambient-line-thin { fill: none; stroke: color-mix(in srgb, var(--ambient-shape-border) 70%, transparent); stroke-width: 1; }
+.ambient-link { fill: none; stroke: color-mix(in srgb, var(--ambient-shape-border) 60%, transparent); stroke-width: 1; stroke-dasharray: 4 3; }
+.ambient-node { fill: var(--ambient-shape-color); stroke: var(--ambient-shape-border); stroke-width: 1.2; }
+.ambient-shape-circle, .ambient-shape-square, .ambient-shape-tri { animation: ambientFloat 30s linear infinite; }
 
-.ambient-glyph,
-.ambient-shape {
-  position: absolute;
-  animation-name: ambientFloat;
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
-  will-change: transform;
-}
-
-.ambient-glyph {
-  color: var(--ambient-glyph-color);
-  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
-  font-weight: 500;
-  text-shadow: 0 0 6px color-mix(in srgb, var(--ambient-glyph-color) 70%, transparent);
-}
-
-:root[data-theme='parchment'] .ambient-glyph {
-  text-shadow:
-    0 0 1px color-mix(in srgb, var(--ambient-glyph-color) 88%, transparent),
-    0 0 5px color-mix(in srgb, var(--ambient-glyph-color) 64%, transparent),
-    0 0 11px color-mix(in srgb, var(--ambient-glyph-color) 36%, transparent),
-    0 0 18px color-mix(in srgb, var(--ambient-glyph-color) 24%, transparent);
-  animation-name: ambientFloat, ambientInkPulse;
-  animation-timing-function: linear, ease-in-out;
-  animation-iteration-count: infinite, infinite;
-  animation-duration: var(--ambient-float-duration, 24s), calc(var(--ambient-float-duration, 24s) * 0.65);
-}
-.ambient-shape {
-  background: transparent;
-  border: none;
-  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--ambient-shape-border) 44%, transparent));
-}
-
-.ambient-svg {
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-}
-
-.ambient-line {
-  fill: none;
-  stroke: var(--ambient-shape-border);
-  stroke-width: 2.6;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.ambient-line-thin {
-  fill: none;
-  stroke: color-mix(in srgb, var(--ambient-shape-border) 84%, transparent);
-  stroke-width: 1.9;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.ambient-link {
-  fill: none;
-  stroke: color-mix(in srgb, var(--ambient-shape-border) 72%, transparent);
-  stroke-width: 1.4;
-  stroke-dasharray: 4 3;
-}
-
-.ambient-node {
-  fill: color-mix(in srgb, var(--ambient-shape-color) 84%, transparent);
-  stroke: var(--ambient-shape-border);
-  stroke-width: 1.8;
-}
-
-.ambient-shape-circle {
-  border-radius: 999px;
-}
-
-.ambient-shape-square {
-  border-radius: 2px;
-}
-
-.ambient-shape-tri {
-  width: 0 !important;
-  height: 0 !important;
-  border-left: calc(var(--ambient-size, 16px) * 0.5) solid transparent;
-  border-right: calc(var(--ambient-size, 16px) * 0.5) solid transparent;
-  border-bottom: var(--ambient-size, 16px) solid var(--ambient-shape-border);
-  background: transparent;
-}
-
-/* Range slider thumb */
+/* Range slider */
 input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: var(--accent-purple);
-  cursor: pointer;
-  border: 2px solid var(--surface-card);
-  box-shadow: var(--shadow-card);
-  transition: transform 0.15s var(--ease-spring), box-shadow 0.15s var(--ease-spring);
+  -webkit-appearance: none; width: 14px; height: 14px; border-radius: 2px;
+  background: var(--accent-purple); cursor: pointer; border: 1px solid var(--accent-strong);
+  box-shadow: var(--glow-soft); transition: transform 0.15s var(--ease-spring);
 }
-input[type="range"]::-webkit-slider-thumb:hover {
-  transform: scale(1.15);
-}
-:root[data-render-mode='lite'] input[type="range"]::-webkit-slider-thumb {
-  transition: none;
-}
-:root[data-render-mode='lite'] input[type="range"]::-webkit-slider-thumb:hover {
-  transform: none;
-}
+input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.12); }
+:root[data-render-mode='lite'] input[type="range"]::-webkit-slider-thumb { transition: none; }
 
-/* Utility: card hover-lift used by interactive surfaces (auto-disabled in lite).
-   Sets its own base shadow so the :hover elevation isn't overridden by inline styles. */
-.card-lift {
-  box-shadow: var(--shadow-card);
-  transition: box-shadow 0.2s var(--ease-spring), transform 0.2s var(--ease-spring), border-color 0.2s var(--ease-spring);
-}
-.card-lift:hover {
-  box-shadow: var(--shadow-3d-hover);
-  transform: translateY(-2px);
-}
-:root[data-render-mode='lite'] .card-lift {
-  transition: none !important;
-}
-:root[data-render-mode='lite'] .card-lift:hover {
-  box-shadow: var(--shadow-card);
-  transform: none;
-}
+/* ============================================================================
+   HUD 共享原语 / 工具类
+   旧名(glass-shell / glass-card / launcher-tile / card-lift) 重定义为 HUD 扁平面板，
+   让仍引用旧类的页面自动获得 HUD 外观。
+   ============================================================================ */
 
-/* ===== 启动器磨砂玻璃工具类 ===== */
-
-/* Frosted shell — REAL backdrop blur. Use ONLY on the small fixed set of shell
-   surfaces (titlebar / sidebar / header / modal). Never on list rows or cards. */
+/* 外壳面（标题栏/轨/表头）——实色面，无 blur */
 .glass-shell {
   background: var(--surface-glass);
-  -webkit-backdrop-filter: blur(var(--shell-blur)) saturate(1.4);
-  backdrop-filter: blur(var(--shell-blur)) saturate(1.4);
-  border-color: var(--surface-glass-border);
+  border-color: var(--border-subtle);
 }
 
-/* Glass card — translucent gradient + luminous top highlight, NO per-element
-   blur, so it stays cheap across long lists / virtual tables. The ::before adds
-   a 1px top sheen that reads as glass. */
-.glass-card {
+/* 扁平 HUD 面板：1px 描边、小圆角、无阴影、顶部 1px 青色高光线 */
+.glass-card, .launcher-tile {
   position: relative;
   background: var(--surface-card);
   border: 1px solid var(--border-subtle);
-  box-shadow: var(--shadow-card);
+  border-radius: var(--radius);
+  box-shadow: none;
 }
-.glass-card::before {
+.glass-card::before, .launcher-tile::before {
   content: '';
   position: absolute;
   inset: 0 0 auto 0;
   height: 1px;
   background: linear-gradient(90deg, transparent, var(--card-top-highlight), transparent);
-  opacity: 0.9;
+  opacity: 0.8;
   pointer-events: none;
 }
-:root[data-render-mode='lite'] .glass-card::before { display: none; }
-:root[data-render-mode='lite'] .glass-card {
-  background: var(--surface-card-solid);
-}
-:root[data-render-mode='lite'] .glass-shell {
-  background: var(--surface-card-solid);
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
-}
+:root[data-render-mode='lite'] .glass-card::before,
+:root[data-render-mode='lite'] .launcher-tile::before { display: none; }
+.launcher-tile { border-radius: var(--radius-lg); transition: border-color 0.16s var(--ease-spring), background 0.16s var(--ease-spring); }
+.launcher-tile:hover { border-color: var(--border-strong); background: var(--surface-tile-hover); box-shadow: var(--glow-soft); }
+.launcher-tile.is-active { border-color: var(--border-strong); box-shadow: var(--glow-accent); }
+:root[data-render-mode='lite'] .launcher-tile:hover { box-shadow: none; background: var(--bg-hover); }
 
-/* Accent glow ring — for active/selected/focus emphasis (auto-calms in lite). */
+/* 发光青文字（关键读数/标识） */
+.text-glow-accent { color: var(--accent-purple); text-shadow: 0 0 8px var(--accent-glow); }
+:root[data-render-mode='lite'] .text-glow-accent { text-shadow: none; }
+
 .glow-ring { box-shadow: var(--glow-accent); }
 .glow-soft { box-shadow: var(--glow-soft); }
 
-/* ===== 启动器磁贴 (Launcher Tile) ===== */
-/* 快速开始磁贴 / 信息磁贴的核心质感：深色大圆角半透明渐变 + 顶部边缘高光 + 悬停发光抬升。
-   纯 transform/opacity/box-shadow 动画，无 per-element blur，长列表也安全。 */
-.launcher-tile {
-  position: relative;
-  background: var(--surface-tile);
-  border: 1px solid var(--tile-border);
-  border-radius: var(--radius-tile);
-  box-shadow: var(--shadow-card);
-  overflow: hidden;
-  transition: transform 0.22s var(--ease-spring), box-shadow 0.22s var(--ease-spring),
-    border-color 0.22s var(--ease-spring), background 0.22s var(--ease-spring);
+/* 悬停描边高亮（替代抬升阴影） */
+.card-lift { transition: border-color 0.16s var(--ease-spring), box-shadow 0.16s var(--ease-spring); }
+.card-lift:hover { border-color: var(--border-strong); box-shadow: var(--glow-soft); }
+:root[data-render-mode='lite'] .card-lift { transition: none !important; }
+:root[data-render-mode='lite'] .card-lift:hover { box-shadow: none; }
+
+/* —— HUD 专用工具类 —— */
+
+/* 大写 mono 微标签（区块表头/eyebrow）：:: / [02] 前缀靠内联文本写 */
+.hud-label {
+  font-family: 'JetBrains Mono', 'IBM Plex Mono', 'Consolas', monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  font-weight: 600;
 }
-.launcher-tile::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  background: linear-gradient(180deg, var(--tile-highlight) 0%, transparent 42%);
-  opacity: 0.7;
+.hud-label .num, .hud-label .pre { color: var(--accent-purple); margin-right: 6px; }
+
+/* 区块表头：mono 微标签 + 底部 1px 虚线收口 */
+.hud-head {
+  display: flex; align-items: baseline; gap: 10px;
+  padding-bottom: 6px; margin-bottom: 12px;
+  border-bottom: 1px dashed var(--border-subtle);
 }
-.launcher-tile:hover {
-  transform: translateY(-3px);
-  border-color: var(--border-strong);
-  background: var(--surface-tile-hover);
-  box-shadow: var(--shadow-3d-hover), var(--glow-soft);
+.hud-head .help { margin-left: auto; font-size: 10px; color: var(--text-faint); letter-spacing: 0.04em; text-transform: none; }
+
+/* 账本式细线分隔 */
+.hud-rule { border-top: 1px dashed var(--hud-rule); }
+
+/* 左强调刻度（active/选中行/面板） */
+.hud-tick { border-left: 3px solid transparent; }
+.hud-tick.is-active { border-left-color: var(--accent-purple); background: var(--nav-active-bg); }
+
+/* 状态点（默认；live 加发光脉冲） */
+.status-dot {
+  display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--text-muted); vertical-align: middle;
 }
-.launcher-tile.is-active {
-  border-color: var(--border-strong);
-  box-shadow: var(--glow-accent);
-}
-:root[data-render-mode='lite'] .launcher-tile {
-  transition: none !important;
-  background: var(--surface-card-solid);
-  box-shadow: none;
-}
-:root[data-render-mode='lite'] .launcher-tile::before { display: none; }
-:root[data-render-mode='lite'] .launcher-tile:hover {
-  transform: none;
-  background: var(--bg-hover);
-  box-shadow: none;
+.status-dot.live { background: var(--accent-purple); box-shadow: 0 0 0 3px var(--accent-glow); animation: hudPulse 2.2s var(--ease-spring) infinite; }
+.status-dot.ok { background: var(--success); }
+.status-dot.warn { background: var(--warning); }
+.status-dot.err { background: var(--error); }
+:root[data-render-mode='lite'] .status-dot.live { animation: none; box-shadow: none; }
+
+/* 反色状态条（底部遥测） */
+.hud-statusbar {
+  background: var(--accent-purple);
+  color: var(--on-accent);
+  font-family: 'JetBrains Mono', 'IBM Plex Mono', monospace;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
 }
 
-/* 发光蓝文字（关键数值 / Hero 时钟可选用） */
-.text-glow-accent {
-  color: var(--accent-purple);
-  text-shadow: 0 0 18px var(--accent-glow);
-}
-:root[data-render-mode='lite'] .text-glow-accent {
-  text-shadow: none;
-}
+/* gauge 大读数 */
+.hud-gauge-value { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; }
+.hud-gauge-value .a { color: var(--accent-purple); }
+.hud-gauge-bar { height: 5px; background: rgba(124,221,255,0.06); position: relative; overflow: hidden; border-radius: 2px; }
+.hud-gauge-bar i { position: absolute; inset: 0 auto 0 0; background: var(--accent-purple); width: var(--w, 60%); }
+
+/* 终端块 */
+.hud-terminal { background: var(--hud-terminal); border: 1px solid var(--border-subtle); }
+.hud-blink { display: inline-block; width: 7px; height: 13px; background: var(--accent-purple); vertical-align: -2px; animation: blink 1.1s steps(2) infinite; }

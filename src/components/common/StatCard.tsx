@@ -5,24 +5,29 @@ interface StatCardProps {
   icon?: string;
 }
 
+/**
+ * HUD 读数(gauge)：左强调刻度 + 小标签 + 大号等宽读数 + 一条细信号线。
+ * 无卡盒阴影，扁平描边；数值用 tabular-nums 对齐，关键色由 color 决定。
+ */
 export function StatCard({ label, value, color = 'var(--accent-purple)', icon }: StatCardProps) {
   return (
-    <div className="perf-stat-card launcher-tile relative p-5 flex flex-col gap-2">
-      {/* Accent left bar with soft glow */}
-      <div
-        className="absolute top-3 left-0 bottom-3 w-[3px] rounded-r-[var(--radius-pill)] z-[1]"
-        style={{ background: color, boxShadow: `0 0 12px color-mix(in srgb, ${color} 60%, transparent)` }}
-      />
-      <div className="relative z-[1] flex items-center justify-between pl-3">
-        <span className="text-xs text-[var(--text-muted)] font-medium tracking-wide">{label}</span>
-        {icon && <span className="text-lg opacity-60">{icon}</span>}
+    <div
+      className="perf-stat-card relative bg-[var(--surface-card)] border border-[var(--border-subtle)] rounded-[var(--radius)] pl-3.5 pr-3.5 py-3 overflow-hidden"
+      style={{ borderLeft: `3px solid ${color}` }}
+    >
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] text-[var(--text-secondary)] tracking-[0.02em]">{label}</span>
+        {icon && <span className="text-sm opacity-50">{icon}</span>}
       </div>
-      <span
-        className="relative z-[1] text-2xl font-bold pl-3 tabular-nums"
-        style={{ color, textShadow: `0 0 18px color-mix(in srgb, ${color} 45%, transparent)` }}
+      <div
+        className="data-num mt-1.5 text-[26px] font-bold leading-none"
+        style={{ color }}
       >
         {value}
-      </span>
+      </div>
+      <div className="mt-2.5 h-[3px] rounded-[2px] overflow-hidden" style={{ background: 'color-mix(in srgb, var(--text-muted) 18%, transparent)' }}>
+        <div className="h-full w-2/3" style={{ background: color, boxShadow: `0 0 8px color-mix(in srgb, ${color} 50%, transparent)` }} />
+      </div>
     </div>
   );
 }

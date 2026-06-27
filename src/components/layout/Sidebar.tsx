@@ -6,20 +6,21 @@ interface NavItem {
   id: PageId;
   icon: string;
   label: string;
+  code: string;   // mono 模块代号
   shortcut: string;
 }
 
 const navItems: NavItem[] = [
-  { id: 'dashboard', icon: '🏠', label: '概览', shortcut: '1' },
-  { id: 'api', icon: '🔌', label: 'API管理', shortcut: '2' },
-  { id: 'config', icon: '⚙', label: '配置编辑', shortcut: '3' },
-  { id: 'personality', icon: '🎭', label: '人格管理', shortcut: '4' },
-  { id: 'evaluation', icon: '📊', label: '人格评测', shortcut: '5' },
-  { id: 'memory', icon: '🧠', label: '长期记忆', shortcut: '6' },
-  { id: 'history', icon: '📜', label: '历史记录', shortcut: '7' },
-  { id: 'usage', icon: '⏱️', label: '用量管理', shortcut: '8' },
-  { id: 'commands', icon: '📋', label: '命令管理', shortcut: '9' },
-  { id: 'ops', icon: '🛡️', label: '安全发布', shortcut: '0' },
+  { id: 'dashboard', icon: '◳', label: '概览', code: 'OVW', shortcut: '1' },
+  { id: 'api', icon: '⇄', label: 'API管理', code: 'API', shortcut: '2' },
+  { id: 'config', icon: '⚙', label: '配置编辑', code: 'CFG', shortcut: '3' },
+  { id: 'personality', icon: '☻', label: '人格管理', code: 'PSN', shortcut: '4' },
+  { id: 'evaluation', icon: '◴', label: '人格评测', code: 'EVL', shortcut: '5' },
+  { id: 'memory', icon: '❒', label: '长期记忆', code: 'MEM', shortcut: '6' },
+  { id: 'history', icon: '≣', label: '历史记录', code: 'LOG', shortcut: '7' },
+  { id: 'usage', icon: '◷', label: '用量管理', code: 'USE', shortcut: '8' },
+  { id: 'commands', icon: '⌘', label: '命令管理', code: 'CMD', shortcut: '9' },
+  { id: 'ops', icon: '⚑', label: '安全发布', code: 'OPS', shortcut: '0' },
 ];
 
 interface SidebarProps {
@@ -34,108 +35,97 @@ interface SidebarProps {
   visiblePages?: PageId[];
 }
 
-export function Sidebar({ activePage, onNavigate, onChangeDir, onOpenSettings, onOpenWebConsole, onToggleCollapse, collapsed = false, width = 224, visiblePages }: SidebarProps) {
+/**
+ * HUD 左侧模块轨：实色 rail + 右侧 1px 结构线；活动项用左强调刻度(3px accent) + 染色 + mono 代号。
+ * 收起态退化为纯图标轨。
+ */
+export function Sidebar({ activePage, onNavigate, onChangeDir, onOpenSettings, onOpenWebConsole, onToggleCollapse, collapsed = false, width = 208, visiblePages }: SidebarProps) {
   const [clock, setClock] = useState('');
   const visiblePageSet = visiblePages ? new Set(visiblePages) : null;
   const displayedNavItems = visiblePageSet ? navItems.filter((item) => visiblePageSet.has(item.id)) : navItems;
 
   useEffect(() => {
     let timer: number | null = null;
-
     const update = () => {
       const now = new Date();
       setClock(now.toLocaleTimeString('zh-CN', { hour12: false, hour: '2-digit', minute: '2-digit' }));
     };
-
     const scheduleNext = () => {
-      const now = Date.now();
-      const delay = 60000 - (now % 60000) + 120;
-      timer = window.setTimeout(() => {
-        update();
-        scheduleNext();
-      }, delay);
+      const delay = 60000 - (Date.now() % 60000) + 120;
+      timer = window.setTimeout(() => { update(); scheduleNext(); }, delay);
     };
-
     update();
     scheduleNext();
-    return () => {
-      if (timer !== null) window.clearTimeout(timer);
-    };
+    return () => { if (timer !== null) window.clearTimeout(timer); };
   }, []);
 
   return (
     <aside
-      className="glass-shell h-full flex flex-col flex-shrink-0"
+      className="h-full flex flex-col flex-shrink-0"
       style={{
-        width: collapsed ? 64 : width,
-        minWidth: collapsed ? 64 : 180,
+        width: collapsed ? 56 : width,
+        minWidth: collapsed ? 56 : 176,
         background: 'var(--surface-sidebar)',
-        boxShadow: 'var(--shadow-panel)',
-        borderLeft: '1px solid var(--border-subtle)',
+        borderRight: '1px solid var(--border-subtle)',
       }}
     >
-      <div className="px-4 py-4 border-b border-[var(--border-subtle)]">
-        <div className={`flex items-center ${collapsed ? 'justify-center' : 'gap-3'}`}>
-          <span className="text-2xl">🐱</span>
-          {!collapsed && (
-            <div>
-              <h1 className="text-base font-extrabold text-glow-accent tracking-wide">NekoAI</h1>
-              <p className="text-[12px] text-[var(--text-muted)]">管理面板 v1.0</p>
-            </div>
-          )}
-        </div>
+      {/* brand */}
+      <div className={`h-11 flex items-center ${collapsed ? 'justify-center' : 'gap-2.5 px-4'} border-b border-[var(--border-subtle)] flex-shrink-0`}>
+        <span className="status-dot live" />
+        {!collapsed && (
+          <div className="leading-none">
+            <span className="mono text-[14px] font-bold text-glow-accent tracking-[0.12em]">NEKO</span>
+            <span className="mono text-[10px] text-[var(--text-muted)] ml-1.5 tracking-[0.16em]">MGR</span>
+          </div>
+        )}
       </div>
 
-      <nav className={`flex-1 py-3 ${collapsed ? 'px-2' : 'px-3'} space-y-1 overflow-y-auto`}>
-        {displayedNavItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => onNavigate(item.id)}
-            title={collapsed ? `${item.label} (^${item.shortcut})` : undefined}
-            className={`relative w-full flex items-center ${collapsed ? 'justify-center' : 'gap-3'} px-3 py-2 rounded-[var(--radius-sm)] text-sm cursor-pointer
-              ${activePage === item.id
-                ? 'bg-[var(--nav-active-bg)] text-[var(--accent-purple)] font-semibold border border-[var(--border-strong)]'
-                : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] border border-transparent'
-              }`}
-            style={{ transition: 'background-color 0.18s var(--ease-spring), color 0.18s var(--ease-spring), border-color 0.18s var(--ease-spring), opacity 0.18s var(--ease-spring)' }}
-          >
-            {activePage === item.id && !collapsed && (
-              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-[var(--accent-purple)] rounded-r-[var(--radius-pill)]" style={{ boxShadow: '0 0 10px var(--accent-glow)' }} />
-            )}
-            <span className="text-lg leading-none">{item.icon}</span>
-            {!collapsed && <span className="flex-1 text-left">{item.label}</span>}
-            {!collapsed && <span className="text-[11px] text-[var(--text-muted)] opacity-50 mono">^{item.shortcut}</span>}
-          </button>
-        ))}
+      <nav className={`flex-1 py-2 ${collapsed ? 'px-1.5' : 'px-2'} space-y-0.5 overflow-y-auto`}>
+        {displayedNavItems.map((item) => {
+          const active = activePage === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => onNavigate(item.id)}
+              title={collapsed ? `${item.label} (^${item.shortcut})` : undefined}
+              className={`relative w-full flex items-center ${collapsed ? 'justify-center' : 'gap-2.5'} pl-2.5 pr-2 py-1.5 rounded-[var(--radius-sm)] text-[13px] cursor-pointer
+                ${active
+                  ? 'bg-[var(--nav-active-bg)] text-[var(--accent-purple)] font-semibold'
+                  : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+                }`}
+              style={{ borderLeft: `3px solid ${active ? 'var(--accent-purple)' : 'transparent'}`, transition: 'background-color 0.15s var(--ease-spring), color 0.15s var(--ease-spring)' }}
+            >
+              <span className="text-[15px] leading-none w-4 text-center">{item.icon}</span>
+              {!collapsed && <span className="flex-1 text-left">{item.label}</span>}
+              {!collapsed && <span className={`mono text-[10px] tracking-[0.08em] ${active ? 'text-[var(--accent-purple)] opacity-80' : 'text-[var(--text-muted)] opacity-60'}`}>{item.code}</span>}
+            </button>
+          );
+        })}
       </nav>
 
-      <div className="px-3 py-3 border-t border-[var(--border-subtle)] space-y-1.5">
+      <div className="px-2 py-2 border-t border-[var(--border-subtle)] space-y-0.5 flex-shrink-0">
         <button
           onClick={onToggleCollapse}
-          className="w-full flex items-center justify-center gap-2 px-2 py-2 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] cursor-pointer"
+          className="w-full flex items-center justify-center gap-2 px-2 py-1.5 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] cursor-pointer"
           title={collapsed ? '展开侧栏' : '收起侧栏'}
         >
-          <span className="text-xs">{collapsed ? '«' : '»'}</span>
-          {!collapsed && <span className="text-[11px]">侧栏</span>}
+          <span className="mono text-xs">{collapsed ? '»' : '«'}</span>
+          {!collapsed && <span className="text-[11px]">收起</span>}
         </button>
 
         {onChangeDir && (
           <button
             onClick={onChangeDir}
-            className="w-full flex items-center gap-2 px-2 py-2 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] cursor-pointer group"
+            className="w-full flex items-center gap-2 pl-2.5 pr-2 py-1.5 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] cursor-pointer group"
             title={localStorage.getItem('nekoai-plugin-dir') ?? '未配置'}
           >
-            <span className="text-xs">📂</span>
+            <span className="text-[13px] w-4 text-center">▤</span>
             {!collapsed && (
               <>
                 <span className="flex-1 text-[11px] text-left truncate">
-                  {(() => {
-                    const dir = localStorage.getItem('nekoai-plugin-dir') ?? '';
-                    const name = dir.split(/[\\/]/).filter(Boolean).pop() ?? '未配置';
-                    return name;
-                  })()}
+                  {(localStorage.getItem('nekoai-plugin-dir') ?? '').split(/[\\/]/).filter(Boolean).pop() || '未连接目录'}
                 </span>
-                <span className="text-[11px] opacity-0 group-hover:opacity-100 transition-opacity">切换</span>
+                <span className="text-[10px] mono opacity-0 group-hover:opacity-100 transition-opacity">DIR</span>
               </>
             )}
           </button>
@@ -144,10 +134,10 @@ export function Sidebar({ activePage, onNavigate, onChangeDir, onOpenSettings, o
         {onOpenSettings && (
           <button
             onClick={onOpenSettings}
-            className="w-full flex items-center gap-2 px-2 py-2 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] cursor-pointer"
+            className="w-full flex items-center gap-2 pl-2.5 pr-2 py-1.5 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] cursor-pointer"
             title={collapsed ? '显示设置' : undefined}
           >
-            <span className="text-xs">🎨</span>
+            <span className="text-[13px] w-4 text-center">◐</span>
             {!collapsed && <span className="text-[11px]">显示设置</span>}
           </button>
         )}
@@ -155,18 +145,18 @@ export function Sidebar({ activePage, onNavigate, onChangeDir, onOpenSettings, o
         {onOpenWebConsole && (
           <button
             onClick={onOpenWebConsole}
-            className="w-full flex items-center gap-2 px-2 py-2 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] cursor-pointer"
+            className="w-full flex items-center gap-2 pl-2.5 pr-2 py-1.5 rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] cursor-pointer"
             title={collapsed ? '本地服务' : undefined}
           >
-            <span className="text-xs">🌐</span>
+            <span className="text-[13px] w-4 text-center">⊕</span>
             {!collapsed && <span className="text-[11px]">本地服务</span>}
           </button>
         )}
 
         {!collapsed && (
-          <div className="flex items-center justify-between px-1 pt-1">
-            <span className="text-[11px] text-[var(--text-muted)]">🐾 NekoAI</span>
-            <span className="text-[11px] text-[var(--text-muted)] mono">{clock}</span>
+          <div className="flex items-center justify-between px-2 pt-1.5">
+            <span className="mono text-[10px] text-[var(--text-muted)] tracking-[0.08em]">v1.0</span>
+            <span className="mono text-[11px] text-[var(--accent-purple)] data-num">{clock}</span>
           </div>
         )}
       </div>

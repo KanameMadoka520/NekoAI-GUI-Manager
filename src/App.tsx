@@ -45,12 +45,20 @@ const pageTitles: Record<PageId, { title: string; subtitle: string }> = {
   ops: { title: '安全发布中心', subtitle: '快照、部署包、环境模板与启动自检' },
 };
 
+// 预览旗标：浏览器地址带 ?demo=1 时，直接以演示数据进入 ready（仅用于设计自检/截图；
+// Tauri 桌面端没有地址栏不受影响，生产无害）。
+const PREVIEW_DEMO = typeof window !== 'undefined' && /[?&]demo=1\b/.test(window.location.search);
+
 const APP_LAST_PAGE_STORAGE_KEY = 'nekoai-last-page';
 const VALID_PAGE_IDS: PageId[] = ['dashboard', 'api', 'config', 'personality', 'evaluation', 'memory', 'history', 'usage', 'commands', 'ops'];
 const BROWSER_READ_ONLY_PAGES: PageId[] = ['dashboard', 'history', 'usage'];
-const CUSTOM_TITLEBAR_HEIGHT_PX = 36;
+const CUSTOM_TITLEBAR_HEIGHT_PX = 32;
 
 function loadLastActivePage(): PageId {
+  if (PREVIEW_DEMO) {
+    const p = new URLSearchParams(window.location.search).get('page');
+    if (p && VALID_PAGE_IDS.includes(p as PageId)) return p as PageId;
+  }
   const raw = localStorage.getItem(APP_LAST_PAGE_STORAGE_KEY);
   return VALID_PAGE_IDS.includes(raw as PageId) ? raw as PageId : 'dashboard';
 }
@@ -167,8 +175,32 @@ function PageFallback() {
   return (
     <div className="flex items-center justify-center h-full">
       <div className="text-center">
-        <span className="text-4xl block mb-3 animate-bounce">🐱</span>
-        <p className="text-[var(--text-secondary)]">加载中...</p>
+        <span className="mono text-[var(--accent-purple)] text-sm">[ loading<span className="hud-blink" /> ]</span>
+      </div>
+    </div>
+  );
+}
+
+/** 底部反色遥测状态条（HUD 标志元素）。 */
+function HudStatusbar({ pageTitle, dirName, demo, lowPerf }: { pageTitle: string; dirName: string; demo: boolean; lowPerf: boolean }) {
+  const [clock, setClock] = useState('');
+  useEffect(() => {
+    let t: number | null = null;
+    const upd = () => setClock(new Date().toLocaleTimeString('zh-CN', { hour12: false }));
+    const tick = () => { upd(); t = window.setTimeout(tick, 1000 - (Date.now() % 1000) + 5); };
+    tick();
+    return () => { if (t !== null) window.clearTimeout(t); };
+  }, []);
+  return (
+    <div className="hud-statusbar h-6 flex items-center gap-4 px-4 flex-shrink-0 select-none overflow-hidden">
+      <span className="font-bold whitespace-nowrap">★ NEKO·MGR</span>
+      <span className="opacity-85 whitespace-nowrap">{pageTitle}</span>
+      <span className="opacity-85 truncate max-w-[260px]">{demo ? 'DEMO · 内置演示数据' : (dirName ? `▤ ${dirName}` : '未连接目录')}</span>
+      <div className="ml-auto flex items-center gap-4 whitespace-nowrap">
+        {lowPerf && <span className="opacity-85">LITE</span>}
+        <span className="opacity-85">● online</span>
+        <span className="data-num">{clock}</span>
+        <span className="opacity-70">v1.0</span>
       </div>
     </div>
   );
@@ -234,7 +266,7 @@ function App() {
   // 无目录只读浏览：桌面端且未连接任何插件目录。此时可浏览全部页面（用内置演示数据），但不读写任何文件。
   const noDirReadOnly = runningInTauri && !pluginDirInfo.fullPath;
   // 演示模式只在「真正进入只读浏览（已 ready 且无目录）」时生效；setup/连接校验过程不喂假数据。
-  const demoActive = noDirReadOnly && phase === 'ready';
+  const demoActive = (noDirReadOnly || PREVIEW_DEMO) && phase === 'ready';
   // 渲染期同步镜像给 runtime-bridge：必须早于子页面挂载及其取数 effect，避免子 effect 先读到旧值。
   setDemoMode(demoActive);
   const currentDirtyMessage = dirtyPages[activePage];
@@ -404,6 +436,7 @@ function App() {
     let cancelled = false;
 
     async function bootstrap() {
+      if (PREVIEW_DEMO) { if (!cancelled) setPhase('ready'); return; } // 预览：直达演示数据
       const savedDir = localStorage.getItem('nekoai-plugin-dir');
 
       if (!runningInTauri) {
@@ -475,7 +508,8 @@ function App() {
   }, [showWebConsolePanel, phase, loadWebConsole]);
 
   const ready = phase === 'ready';
-  const ambientEnabled = ready && !lowPerformanceMode && (activePage === 'dashboard' || activePage === 'ops');
+  // HUD：以画布微网格 + 扫描线作底纹，关闭漂浮字符(与控制台气质不符)。
+  const ambientEnabled = false && ready && !lowPerformanceMode;
   const scaledViewportHeight = runningInTauri
     ? `calc((100vh - ${CUSTOM_TITLEBAR_HEIGHT_PX}px) / ${scale})`
     : `calc(100vh / ${scale})`;
@@ -726,8 +760,8 @@ function App() {
 
     const onMove = (ev: MouseEvent) => {
       if (!resizeRef.current) return;
-      // 侧栏在右侧：把手向左拖（delta<0）应让侧栏变宽，故取负号。
-      const delta = resizeRef.current.startX - ev.clientX;
+      // 侧栏在左侧：把手向右拖（delta>0）应让侧栏变宽。
+      const delta = ev.clientX - resizeRef.current.startX;
       const next = Math.max(180, Math.min(340, resizeRef.current.startWidth + delta));
       updateSettings({ sidebarWidth: next });
     };
@@ -836,8 +870,27 @@ function App() {
   } else {
     content = (
       <ErrorBoundary onReset={handleChangeDir}>
-        <div className="flex h-full w-full overflow-hidden">
-          <main className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex flex-col h-full w-full overflow-hidden">
+          <div className="flex flex-1 overflow-hidden">
+          <Sidebar
+            activePage={activePage}
+            onNavigate={handleNavigate}
+            onChangeDir={handleChangeDir}
+            onOpenSettings={() => setShowSettings(true)}
+            onOpenWebConsole={() => setShowWebConsolePanel(true)}
+            onToggleCollapse={toggleSidebar}
+            collapsed={settings.sidebarCollapsed}
+            width={settings.sidebarWidth}
+            visiblePages={browserVisiblePages}
+          />
+          {!settings.sidebarCollapsed && (
+            <div
+              className="w-[3px] cursor-col-resize bg-transparent hover:bg-[var(--accent-purple)] transition-colors"
+              onMouseDown={beginResize}
+              title="拖动调整侧栏宽度"
+            />
+          )}
+          <main className="flex-1 flex flex-col overflow-hidden min-w-0">
             <Header
               title={title}
               subtitle={subtitle}
@@ -875,7 +928,7 @@ function App() {
                 </div>
               }
             />
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className="flex-1 overflow-y-auto p-5">
               {lowPerformanceMode && (
                 <div className="mb-4 rounded-[var(--radius-sm)] border border-[var(--info-soft-border)] bg-[var(--info-soft-bg)] px-4 py-3 text-xs leading-relaxed text-[var(--text-secondary)]">
                   当前已启用低性能模式：背景动画、模糊、绝大多数过渡动画已关闭，部分重图表和长区块会延迟挂载或默认收起。若你还觉得卡，优先去 API 管理、历史记录、用量管理这些重页面继续收起不需要的区块。
@@ -957,25 +1010,9 @@ function App() {
             </div>
             <ToastContainer />
           </main>
+          </div>
 
-          {!settings.sidebarCollapsed && (
-            <div
-              className="w-1 cursor-col-resize bg-transparent hover:bg-[var(--border-hover)] transition-colors"
-              onMouseDown={beginResize}
-              title="拖动调整侧栏宽度"
-            />
-          )}
-          <Sidebar
-            activePage={activePage}
-            onNavigate={handleNavigate}
-            onChangeDir={handleChangeDir}
-            onOpenSettings={() => setShowSettings(true)}
-            onOpenWebConsole={() => setShowWebConsolePanel(true)}
-            onToggleCollapse={toggleSidebar}
-            collapsed={settings.sidebarCollapsed}
-            width={settings.sidebarWidth}
-            visiblePages={browserVisiblePages}
-          />
+          <HudStatusbar pageTitle={title} dirName={pluginDirInfo.shortName} demo={noDirReadOnly} lowPerf={lowPerformanceMode} />
 
           {/* Help modal */}
           <Modal open={showHelp} onClose={() => setShowHelp(false)} title="快捷键" width="360px">
@@ -1618,7 +1655,7 @@ function App() {
                   <span>📂</span> 重新选择插件目录
                 </button>
                 <button
-                  onClick={() => updateSettings({ uiScale: 1.0, theme: 'light', renderMode: 'standard', sidebarCollapsed: false, sidebarWidth: 224, ambientDensity: 'medium', ambientStyle: 'auto', contentDensity: 'standard', wallpaper: 'theme', wallpaperCustomUrl: '', wallpaperDim: 'standard' })}
+                  onClick={() => updateSettings({ uiScale: 1.0, theme: 'dark', renderMode: 'standard', sidebarCollapsed: false, sidebarWidth: 208, ambientDensity: 'low', ambientStyle: 'auto', contentDensity: 'standard', wallpaper: 'none', wallpaperCustomUrl: '', wallpaperDim: 'standard' })}
                   className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-[var(--radius-sm)] text-sm text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] cursor-pointer"
                 >
                   <span>↩</span> 恢复默认设置

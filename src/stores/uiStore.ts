@@ -42,14 +42,14 @@ export interface AppSettings {
 
 const defaultSettings: AppSettings = {
   uiScale: 1,
-  theme: 'light',
+  theme: 'dark',
   renderMode: 'standard',
   sidebarCollapsed: false,
-  sidebarWidth: 224,
-  ambientDensity: 'medium',
+  sidebarWidth: 208,
+  ambientDensity: 'low',
   ambientStyle: 'auto',
   contentDensity: 'standard',
-  wallpaper: 'theme',
+  wallpaper: 'none',
   wallpaperCustomUrl: '',
   wallpaperDim: 'standard',
   historyFilterPresets: [],

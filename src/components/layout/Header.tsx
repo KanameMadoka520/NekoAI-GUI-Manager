@@ -4,23 +4,19 @@ interface HeaderProps {
   actions?: React.ReactNode;
 }
 
+/**
+ * HUD 模块工具条：mono ❯ 提示符 + 模块标题(中文) + 路径式副标题，右侧操作区。扁平、实色、细线收口。
+ */
 export function Header({ title, subtitle, actions }: HeaderProps) {
   return (
     <header
-      className="glass-shell h-14 flex items-center justify-between px-8 flex-shrink-0 border-b border-[var(--border-subtle)]"
-      style={{
-        background: 'var(--surface-header)',
-      }}
+      className="h-11 flex items-center justify-between px-5 flex-shrink-0 border-b border-[var(--border-subtle)]"
+      style={{ background: 'var(--surface-header)' }}
     >
-      <div className="flex items-center gap-3">
-        <span
-          className="w-1 h-8 rounded-[var(--radius-pill)] bg-[var(--accent-purple)] flex-shrink-0"
-          style={{ boxShadow: '0 0 12px var(--accent-glow)' }}
-        />
-        <div>
-          <h2 className="text-lg font-semibold text-[var(--text-primary)] leading-tight tracking-[0.01em]">{title}</h2>
-          {subtitle && <p className="text-xs text-[var(--text-muted)] mt-0.5">{subtitle}</p>}
-        </div>
+      <div className="flex items-baseline gap-2.5 min-w-0">
+        <span className="mono text-[13px] text-[var(--accent-purple)] leading-none select-none">❯</span>
+        <h2 className="text-[15px] font-semibold text-[var(--text-primary)] leading-none tracking-[0.01em] truncate">{title}</h2>
+        {subtitle && <span className="mono text-[11px] text-[var(--text-muted)] truncate hidden md:inline tracking-[0.02em]">// {subtitle}</span>}
       </div>
       {actions && <div className="flex items-center gap-2">{actions}</div>}
     </header>

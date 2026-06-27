@@ -55,17 +55,21 @@ export function CustomTitlebar({ title }: CustomTitlebarProps) {
 
   return (
     <div
-      className="glass-shell h-9 flex items-center justify-between border-b border-[var(--border-subtle)] select-none"
-      style={{
-        background: 'var(--surface-titlebar)',
-      }}
+      className="h-8 flex items-center justify-between border-b border-[var(--border-subtle)] select-none"
+      style={{ background: 'var(--surface-titlebar)' }}
       onDoubleClick={toggleMaximize}
     >
       <div
         data-tauri-drag-region
-        className="px-3 text-xs text-[var(--text-secondary)] font-medium tracking-wide flex-1 h-full flex items-center"
+        className="px-3 flex-1 h-full flex items-center gap-2.5"
       >
-        {title}
+        <span className="flex items-center gap-1.5">
+          <span className="w-[10px] h-[10px] rounded-full" style={{ background: 'var(--error)' }} />
+          <span className="w-[10px] h-[10px] rounded-full" style={{ background: 'var(--warning)' }} />
+          <span className="w-[10px] h-[10px] rounded-full" style={{ background: 'var(--success)' }} />
+        </span>
+        <span className="mono text-[12px] font-bold text-[var(--accent-purple)] tracking-[0.1em]">NEKO·MGR</span>
+        <span className="mono text-[11px] text-[var(--text-muted)] tracking-[0.04em]">~/{title}</span>
       </div>
 
       <div className="flex items-stretch h-full">
