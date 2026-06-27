@@ -319,7 +319,7 @@ function formatTimeoutMs(ms: number) {
 }
 
 const IMAGE_ASPECT_RATIO_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: '', label: '空白（本节点不主动传比例，交给命令参数或 xAI 自己决定）' },
+  { value: '', label: '空白（本节点不传比例，交给命令参数或 xAI 决定）' },
   { value: 'auto', label: 'auto（显式告诉 xAI 自动选比例）' },
   { value: '1:1', label: '1:1（正方形）' },
   { value: '16:9', label: '16:9（横屏）' },
@@ -337,7 +337,7 @@ const IMAGE_ASPECT_RATIO_OPTIONS: Array<{ value: string; label: string }> = [
 ];
 
 const IMAGE_RESOLUTION_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: '', label: '空白（本节点不主动传清晰度，交给命令参数或 xAI 自己决定）' },
+  { value: '', label: '空白（本节点不传清晰度，交给命令参数或 xAI 决定）' },
   { value: '1k', label: '1k（标准清晰度）' },
   { value: '2k', label: '2k（高清清晰度）' },
 ];
@@ -372,10 +372,10 @@ function getHealthSourceLabel(source: NodeHealth['source'] | undefined) {
 }
 
 function getHealthSourceHint(source: NodeHealth['source'] | undefined) {
-  if (source === 'live') return '来自本次窗口里实际点过的节点健康测试';
-  if (source === 'history') return '来自历史调用统计，本次窗口未必重新测过';
-  if (source === 'mixed') return '同时参考了本次测试结果和历史统计';
-  return '还没有可用的实时或历史数据';
+  if (source === 'live') return '本次打开窗口后实测过这个节点';
+  if (source === 'history') return '取自历史调用统计，本次没重新测';
+  if (source === 'mixed') return '本次测试和历史统计都参与了评分';
+  return '还没有实时或历史数据';
 }
 
 function formatHealthBadge(health: NodeHealth | undefined) {
@@ -555,7 +555,7 @@ export function ApiManager() {
   const density = getDensityClass(settings.contentDensity);
   const nodeCardStackGap = settings.contentDensity === 'compact' ? 'space-y-6' : settings.contentDensity === 'spacious' ? 'space-y-10' : 'space-y-8';
   const allApiKeyExpanded = nodes.length > 0 && nodes.every((_, i) => expandedCards.has(i));
-  usePageDirtyState('api', dirty || imageConfigDirty, managerMode === 'image' ? '图像节点列表或全局图像设置存在未保存改动，离开后这些改动不会自动写回文件。' : '聊天节点列表或评分设置存在未保存改动，离开后这些改动不会自动写回文件。');
+  usePageDirtyState('api', dirty || imageConfigDirty, managerMode === 'image' ? '图像节点或全局图像设置改了还没保存，直接离开会丢掉这些改动。' : '聊天节点或评分设置改了还没保存，直接离开会丢掉这些改动。');
 
   useEffect(() => { load(); }, []);
 
@@ -609,7 +609,7 @@ export function ApiManager() {
           setBatchSessionId(null);
           setBatchProgress({ done: 0, total: 0 });
           const passed = (payload.results ?? []).filter((r) => r.pass).length;
-        addToast('success', `批量测试完成：${passed}/${payload.results?.length ?? 0} 个节点可用。可以优先看风险节点，再决定默认节点要不要换。`);
+        addToast('success', `批量测试完成：${passed}/${payload.results?.length ?? 0} 个节点可用。先看风险节点，再决定要不要换默认节点。`);
         });
       } catch {
         // fallback handled below
@@ -736,12 +736,12 @@ export function ApiManager() {
     if (!node) return;
     const nextUrl = appendDefaultSuffix(node.apiUrl, node.aiType, node.modelName);
     if (nextUrl === node.apiUrl) {
-      if (/[?#]/.test(String(node.apiUrl || ''))) addToast('warning', '当前 URL 含查询参数或锚点，默认后缀请手动补在路径位置。');
-      else addToast('warning', '当前 URL 已包含这类接口的常见默认后缀，没有重复追加。');
+      if (/[?#]/.test(String(node.apiUrl || ''))) addToast('warning', 'URL 带了查询参数或锚点，默认后缀得你自己补到路径上。');
+      else addToast('warning', 'URL 里已经有这类接口的默认后缀了，没重复加。');
       return;
     }
     updateNode(index, 'apiUrl', nextUrl);
-    addToast('success', '已追加常见默认后缀。这里只是辅助填充，不会锁死你的自定义 URL。');
+    addToast('success', '已补上默认后缀，只是帮你填一下，自定义 URL 照样能改。');
   }
 
   function applyImageGenerationUrlSuffix(index: number) {
@@ -749,29 +749,29 @@ export function ApiManager() {
     if (!node) return;
     const nextUrl = appendXaiImageGenerationSuffix(node.generationUrl || '');
     if (nextUrl === (node.generationUrl || '')) {
-      if (/[?#]/.test(String(node.generationUrl || ''))) addToast('warning', '当前 URL 含查询参数或锚点，图像生成后缀请手动补在路径位置。');
-      else addToast('warning', '当前 URL 已包含图像生成接口的常见默认后缀，没有重复追加。');
+      if (/[?#]/.test(String(node.generationUrl || ''))) addToast('warning', 'URL 带了查询参数或锚点，生成后缀得你自己补到路径上。');
+      else addToast('warning', 'URL 里已经有生成接口的默认后缀了，没重复加。');
       return;
     }
     updateImageNode(index, 'generationUrl', nextUrl);
-    addToast('success', '已追加图像生成接口默认后缀。这里只是辅助填充，不会锁死你的自定义 URL。');
+    addToast('success', '已补上生成接口默认后缀，只是帮你填一下，自定义 URL 照样能改。');
   }
 
   function applyImageEditUrlSuffix(index: number) {
     const node = imageNodes[index];
     if (!node) return;
     if (!imageNodeSupportsEdit(node)) {
-      addToast('warning', '当前图像节点仅支持生图，不需要配置修图 URL。');
+      addToast('warning', '这个图像节点只生图，不用配修图 URL。');
       return;
     }
     const nextUrl = appendXaiImageEditSuffix(node.editUrl || '');
     if (nextUrl === (node.editUrl || '')) {
-      if (/[?#]/.test(String(node.editUrl || ''))) addToast('warning', '当前 URL 含查询参数或锚点，图像编辑后缀请手动补在路径位置。');
-      else addToast('warning', '当前 URL 已包含图像编辑接口的常见默认后缀，没有重复追加。');
+      if (/[?#]/.test(String(node.editUrl || ''))) addToast('warning', 'URL 带了查询参数或锚点，修图后缀得你自己补到路径上。');
+      else addToast('warning', 'URL 里已经有修图接口的默认后缀了，没重复加。');
       return;
     }
     updateImageNode(index, 'editUrl', nextUrl);
-    addToast('success', '已追加图像编辑接口默认后缀。这里只是辅助填充，不会锁死你的自定义 URL。');
+    addToast('success', '已补上修图接口默认后缀，只是帮你填一下，自定义 URL 照样能改。');
   }
 
   function removeNode(index: number) {
@@ -877,7 +877,7 @@ export function ApiManager() {
         results.forEach((r) => map.set(r.index, r));
         setPingResults(map);
         const passed = results.filter((r) => r.pass).length;
-        addToast('success', `批量测试完成：${passed}/${results.length} 个节点可用。可以优先看风险节点，再决定默认节点要不要换。`);
+        addToast('success', `批量测试完成：${passed}/${results.length} 个节点可用。先看风险节点，再决定要不要换默认节点。`);
       } catch (e: any) {
         addToast('error', `批量测试失败: ${e?.message ?? e}`);
       } finally {
@@ -1370,7 +1370,7 @@ export function ApiManager() {
   const modeSwitcher = (
     <Panel
       title="节点分组"
-      subtitle="聊天节点与图像节点现在分别保存在不同配置文件里，互不混用。"
+      subtitle="聊天节点和图像节点分别存在各自的配置文件里，互不影响。"
       padding="sm"
     >
       <div className="flex flex-wrap gap-2">
@@ -1451,13 +1451,13 @@ export function ApiManager() {
   return (
     <div className={`flex flex-col min-h-full ${density.pageGap}`}>
       {modeSwitcher}
-      <CollapsibleSection title="节点概要" storageKey="api.chat.summary" subtitle="一眼看清节点数、活跃节点和健康分布；高度不够时可收起。" padding="sm">
+      <CollapsibleSection title="节点概要" storageKey="api.chat.summary" subtitle="节点数、活跃节点和健康分布一眼看全；地方不够可以收起。" padding="sm">
       <div className={`grid grid-cols-2 xl:grid-cols-5 ${density.summaryGrid}`}>
-        <SummaryCard label="节点总数" value={String(nodes.length)} hint="这是你当前可以切换和测试的 API 节点总数。" />
-        <SummaryCard label="活跃节点" value={summary.activeNode} hint={`机器人默认会从 #${activeIndex} 这个节点开始用。`} />
-        <SummaryCard label="健康 / 警告 / 风险" value={`${summary.healthy} / ${summary.warning} / ${summary.risk}`} hint="这是 GUI 按测试结果和历史表现给出的参考分组，不是插件硬限制。" />
-        <SummaryCard label="批量测试" value={batchPinging ? `${batchProgress.done}/${batchProgress.total || nodes.length}` : `${summary.tested} 个结果`} hint={batchPinging ? '正在逐个测试节点可不可用。' : '这里显示的是本次会话里已经拿到的测试结果。'} />
-        <SummaryCard label="保存状态" value={dirty ? '待保存' : '已同步'} hint={dirty ? '你已经改了节点列表或默认节点，但还没真正写回文件。' : '当前编辑内容已经和文件一致。'} tone={dirty ? 'warning' : 'neutral'} />
+        <SummaryCard label="节点总数" value={String(nodes.length)} hint="可以切换和测试的 API 节点一共有几个。" />
+        <SummaryCard label="活跃节点" value={summary.activeNode} hint={`机器人默认从 #${activeIndex} 这个节点开始用。`} />
+        <SummaryCard label="健康 / 警告 / 风险" value={`${summary.healthy} / ${summary.warning} / ${summary.risk}`} hint="GUI 按测试和历史表现给的参考分档，不是插件的硬限制。" />
+        <SummaryCard label="批量测试" value={batchPinging ? `${batchProgress.done}/${batchProgress.total || nodes.length}` : `${summary.tested} 个结果`} hint={batchPinging ? '正在一个个测节点通不通。' : '本次打开窗口后已经拿到的测试结果数。'} />
+        <SummaryCard label="保存状态" value={dirty ? '待保存' : '已同步'} hint={dirty ? '节点列表或默认节点改过了，还没写回文件。' : '编辑内容和文件已经一致。'} tone={dirty ? 'warning' : 'neutral'} />
       </div>
       </CollapsibleSection>
 
@@ -1516,7 +1516,7 @@ export function ApiManager() {
         </div>
 
         {dirty && (
-          <p className="mt-2 text-xs text-[var(--warning)]">当前有未保存改动。只有点保存之后，节点列表和默认节点设置才会真正写回文件。</p>
+          <p className="mt-2 text-xs text-[var(--warning)]">有改动还没保存。点保存之后，节点列表和默认节点才会写回文件。</p>
         )}
 
         {showAdvancedToolbar && (
@@ -1566,7 +1566,7 @@ export function ApiManager() {
             <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-3">
               <div>
                 <p className="text-xs font-medium text-[var(--text-primary)]">评分权重</p>
-                <p className="text-[12px] text-[var(--text-muted)] mt-1">这些权重只影响 GUI 里“健康分怎么看”，不会改插件本身的运行行为，也不会写回 `runtime_config.json`。</p>
+                <p className="text-[12px] text-[var(--text-muted)] mt-1">权重只决定 GUI 里健康分怎么算，不影响插件实际运行，也不会写回 `runtime_config.json`。</p>
               </div>
               <WeightSlider label="实时" value={weightLive} onChange={setWeightLive} />
               <WeightSlider label="超时" value={weightTimeout} onChange={setWeightTimeout} />
@@ -1579,14 +1579,14 @@ export function ApiManager() {
 
       <div className="rounded-[var(--radius-sm)] border border-[var(--error-soft-border)] bg-[var(--error-soft-bg)] px-3 py-2">
         <p className="text-[12px] text-[var(--error)] leading-relaxed">
-          这里最敏感的是 <span className="mono">api_config.json</span>。如果你只是想分享界面截图、差异结果或快照摘要，不一定要把这个文件一起带出去。
-          一旦把 API Key 发错人，通常就只能去原平台删掉或更换密钥。
+          最敏感的文件是 <span className="mono">api_config.json</span>，里面有 API Key。分享截图、差异或快照摘要时，别把它一起带出去。
+          Key 一旦发错人，基本只能回原平台删掉或换一把。
         </p>
       </div>
 
       <div className={`flex items-start ${density.pageGap}`}>
       <div className="w-64 flex-shrink-0 sticky top-0 self-start z-[2] max-h-[78vh] overflow-y-auto overscroll-contain pr-0.5">
-        <Panel title="节点目录" subtitle="固定在左侧、独立滚动；下方看节点时它不会跟着跑，鼠标移进来再滚它自己。" padding="sm">
+        <Panel title="节点目录" subtitle="固定在左侧、单独滚动；右侧翻节点时它不跟着动，鼠标移进来才滚它。" padding="sm">
           <div className={density.sectionGap}>
             <SearchBar value={search} onChange={setSearch} placeholder="搜索模型 / 备注 / 类型..." />
 
@@ -1658,7 +1658,7 @@ export function ApiManager() {
             <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2">
               <p className="text-[11px] text-[var(--text-muted)]">来源概览</p>
               <p className="text-[12px] text-[var(--text-secondary)] mt-1">实时 {sourceSummary.live} · 历史 {sourceSummary.history} · 混合 {sourceSummary.mixed} · 无数据 {sourceSummary.none}</p>
-              <p className="text-[11px] text-[var(--text-muted)] mt-1 leading-relaxed">实时表示本窗口刚测过，历史表示沿用历史统计，混合表示两边都参与了评分。</p>
+              <p className="text-[11px] text-[var(--text-muted)] mt-1 leading-relaxed">实时是本次刚测过，历史是沿用过往统计，混合是两边一起算分。</p>
             </div>
 
             <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2">
@@ -1669,7 +1669,7 @@ export function ApiManager() {
                 <span className="px-1.5 py-0.5 rounded-[var(--radius-pill)] text-[11px]" style={{ background: 'var(--accent-soft-bg)', color: 'var(--accent-purple)' }}>混合 88分</span>
                 <span className="px-1.5 py-0.5 rounded-[var(--radius-pill)] text-[11px] bg-[var(--surface-card)] text-[var(--text-muted)]">无数据</span>
               </div>
-              <p className="text-[11px] text-[var(--text-muted)] mt-2 leading-relaxed">这样刷新回来时不会只看到 20、40 这类裸数字。目录、卡片和详情里的健康分都统一带上来源与“分”字。</p>
+              <p className="text-[11px] text-[var(--text-muted)] mt-2 leading-relaxed">目录、卡片和详情里的健康分都带上来源和“分”字，刷新回来不会只剩 20、40 这种光秃秃的数字。</p>
             </div>
 
             <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 py-2">
@@ -1682,7 +1682,7 @@ export function ApiManager() {
                   ))}
                 </div>
               ) : (
-                <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">当前目录未额外筛选，显示的是全部聊天节点。这里的筛选条件会自动记住，刷新后还能延续。</p>
+                <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">没加筛选，显示的是全部聊天节点。筛选条件会自动记住，刷新后还在。</p>
               )}
             </div>
           </div>
@@ -1744,15 +1744,15 @@ export function ApiManager() {
       <div className="flex-1 min-w-0 pr-1">
           {nodes.length === 0 ? (
             <div className="flex items-center justify-center h-full rounded-[var(--radius)] border border-dashed border-[var(--border-subtle)]">
-              <p className="text-sm text-[var(--text-muted)]">你这里还没有任何 API 节点。先点“新增节点”，把 URL、Key 和模型名填进去，再测试它可不可用。</p>
+              <p className="text-sm text-[var(--text-muted)]">还没有 API 节点。先点“新增节点”，填上 URL、Key 和模型名，再测一下通不通。</p>
             </div>
           ) : visibleNodeIndices.length === 0 ? (
             <div className="flex items-center justify-center h-full rounded-[var(--radius)] border border-dashed border-[var(--border-subtle)]">
               <div className="px-6 text-center">
                 <p className="text-sm text-[var(--text-muted)]">
                   {focusActiveNodeOnly
-                    ? '聚焦编辑模式下，右侧只显示当前活跃节点；但当前活跃节点不在目录筛选结果里。可以先在左侧点别的节点，或放宽筛选条件。'
-                    : '当前筛选条件下没有匹配节点。可以清掉搜索词，或者放宽健康等级 / 来源筛选再试一次。'}
+                    ? '聚焦模式下右侧只显示活跃节点，可它现在被筛选挡掉了。在左侧点个别的节点，或放宽筛选条件即可。'
+                    : '没有节点符合当前筛选。清掉搜索词，或放宽健康等级 / 来源筛选再试。'}
                 </p>
                 {activeDirectoryFilters.length > 0 && (
                   <p className="mt-2 text-[12px] text-[var(--text-muted)]">当前条件：{activeDirectoryFilters.join(' / ')}</p>
@@ -1891,13 +1891,13 @@ function ImageApiManagerPanel({
     <div className="flex-1 min-h-0 flex flex-col gap-4">
       <CollapsibleSection title="图像节点概要" storageKey="api.image.summary" subtitle="图像节点数、活跃节点、路由与超时；高度不够时可收起。" padding="sm">
       <div className={`grid grid-cols-2 xl:grid-cols-6 ${densityClass.summaryGrid}`}>
-        <SummaryCard label="图像节点总数" value={String(nodes.length)} hint="这里是独立的 image_api_config.json，不会混进聊天节点列表。" />
+        <SummaryCard label="图像节点总数" value={String(nodes.length)} hint="单独存在 image_api_config.json，不会混进聊天节点列表。" />
         <SummaryCard label="当前图像节点" value={nodes[activeIndex]?.modelName || (nodes[activeIndex] ? getDefaultImageModel(normalizeImageProviderType(nodes[activeIndex].providerType)) : `#${activeIndex}`)} hint={`命令会优先从 #${activeIndex} 开始使用。`} />
         <SummaryCard label="路由集群" value={imageRouter.enabled ? `${imageRouter.order.length} 节点` : '关闭'} hint={imageRouter.enabled ? `按 ${imageRouter.order.join(' → ') || '空路径'} 依次尝试。` : '关闭时仍按当前图像节点运行。'} tone={imageRouter.enabled ? 'warning' : 'neutral'} />
-        <SummaryCard label="可参考图节点" value={String(nodes.filter((node) => imageNodeSupportsEdit(node)).length)} hint="支持修图 URL 的节点可在 neko.生图 中接收引用图片作为参考图。" />
-        <SummaryCard label="图像超时" value={formatTimeoutMs(imageApiTimeoutMs)} hint="neko.生图 / neko.修图 等待下游图像接口的最长时间。" />
-        <SummaryCard label="当前显示" value={`${filteredIndices.length}/${nodes.length}`} hint="搜索只影响当前列表显示，不会改真实顺序。" />
-        <SummaryCard label="保存状态" value={dirty ? '待保存' : '已同步'} hint={dirty ? '图像节点或全局图像设置有未保存改动。' : '图像节点列表和全局设置已经和文件一致。'} tone={dirty ? 'warning' : 'neutral'} />
+        <SummaryCard label="可参考图节点" value={String(nodes.filter((node) => imageNodeSupportsEdit(node)).length)} hint="配了修图 URL 的节点，能在 neko.生图 里拿引用图片当参考。" />
+        <SummaryCard label="图像超时" value={formatTimeoutMs(imageApiTimeoutMs)} hint="neko.生图 / neko.修图 等图像接口出图的最长等待时间。" />
+        <SummaryCard label="当前显示" value={`${filteredIndices.length}/${nodes.length}`} hint="搜索只改这里显示哪些，不动节点真实顺序。" />
+        <SummaryCard label="保存状态" value={dirty ? '待保存' : '已同步'} hint={dirty ? '图像节点或全局图像设置改了还没保存。' : '图像节点和全局设置都和文件一致了。'} tone={dirty ? 'warning' : 'neutral'} />
       </div>
       </CollapsibleSection>
 
@@ -1968,7 +1968,7 @@ function ImageApiManagerPanel({
         </p>
       </CollapsibleSection>
 
-      <Panel title="图像配置页面" subtitle="节点列表维护具体供应商、URL 和密钥；路由集群维护这些节点的尝试顺序。" padding="sm">
+      <Panel title="图像配置页面" subtitle="节点列表管供应商、URL 和密钥；路由集群管这些节点的尝试顺序。" padding="sm">
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => onViewModeChange('nodes')}
@@ -1994,7 +1994,7 @@ function ImageApiManagerPanel({
             onJumpToNode={onJumpToNode}
           />
         ) : (
-        <Panel title="图像节点列表" subtitle="OpenAI / xAI 图像生成、图像编辑 URL 和默认参数在这里单独维护。" padding="sm">
+        <Panel title="图像节点列表" subtitle="OpenAI / xAI 的生图、修图 URL 和默认参数都在这里单独配。" padding="sm">
           <div className="space-y-3">
             <SearchBar value={search} onChange={onSearchChange} placeholder="搜索备注 / 模型 / URL..." />
 
@@ -2044,8 +2044,8 @@ function ImageApiManagerPanel({
                         forceMount={index === activeIndex || keyVisible}
                         placeholder={(
                           <DeferredCardPlaceholder
-                            title="图像节点表单将在滚动到附近时再挂载"
-                            subtitle="离当前视口较远的图像节点会先延迟挂载表单，减少大量图像节点同时展开时的输入框渲染压力。设为活跃或展开 Key 后会立即加载。"
+                            title="表单等滚动到附近再加载"
+                            subtitle="离屏幕较远的图像节点先不渲染表单，省下大量输入框同时挂载的开销。设为活跃或展开 Key 后会马上加载。"
                           />
                         )}
                       >
@@ -2061,7 +2061,7 @@ function ImageApiManagerPanel({
                               <option value="xai">xai</option>
                             </select>
                             <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-muted)]">
-                              OpenAI 图像默认模型是 `gpt-image-2`。该模型支持引用带图消息后用 `neko.生图 提示词` 参考生成。
+                              OpenAI 图像默认用 `gpt-image-2`，它能引用带图消息，再用 `neko.生图 提示词` 参考着生成。
                             </p>
                           </div>
                           <div>
@@ -2075,7 +2075,7 @@ function ImageApiManagerPanel({
                               <option value="true">生图 + 修图</option>
                             </select>
                             <p className={`mt-1 text-[11px] leading-relaxed ${gptImage2Node ? 'text-[var(--info)]' : 'text-[var(--text-muted)]'}`}>
-                              {gptImage2Node ? '`gpt-image-2` 开启该能力并填写修图 URL 后，可直接引用带图消息进行参考图生图。' : '支持该能力的节点会被 `neko.修图` 使用，也可在 `neko.生图` 中接收引用图片作为参考。'}
+                              {gptImage2Node ? '`gpt-image-2` 开了这项并填好修图 URL 后，就能引用带图消息做参考图生图。' : '开了这项的节点会被 `neko.修图` 调用，也能在 `neko.生图` 里收引用图片当参考。'}
                             </p>
                           </div>
                           <div>
@@ -2097,15 +2097,15 @@ function ImageApiManagerPanel({
                             />
                             {providerType === 'xai' && String(node.modelName || '').trim().toLowerCase() === 'grok-imagine-image-pro' ? (
                               <p className="mt-1 text-[11px] leading-relaxed text-[var(--warning)]">
-                                当前已知 `grok-imagine-image-pro` 可能阶段性返回 500 / 503。插件现在会在这种“模型暂时不可用”的场景下，自动回退到 `grok-imagine-image` 再重试一次，并在日志与完成提示里明确写出回退情况。
+                                `grok-imagine-image-pro` 偶尔会返回 500 / 503。遇到这种“模型暂时不可用”，插件会自动退回 `grok-imagine-image` 重试一次，并在日志和完成提示里写明退回了。
                               </p>
                             ) : providerType === 'openai' ? (
                               <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-muted)]">
-                                OpenAI 图像渠道目前默认使用 `gpt-image-2`。检测到该模型时，建议保留修图 URL，用于引用图片后的参考图生图。
+                                OpenAI 图像默认用 `gpt-image-2`。用这个模型时建议留着修图 URL，方便引用图片做参考图生图。
                               </p>
                             ) : (
                               <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-muted)]">
-                                若你填写 `grok-imagine-image-pro`，当 xAI 返回“模型暂时不可用 / 服务不可用 / 内部生成失败”时，插件会自动回退到 `grok-imagine-image` 再重试一次。
+                                填 `grok-imagine-image-pro` 时，若 xAI 返回“模型暂时不可用 / 服务不可用 / 内部生成失败”，插件会自动退回 `grok-imagine-image` 重试一次。
                               </p>
                             )}
                           </div>
@@ -2249,8 +2249,8 @@ function ImageApiManagerPanel({
                               ))}
                             </select>
                             <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-muted)]">
-                              `空白` 不等于 `auto`。`空白` 表示这个图像节点不会主动传 `aspect_ratio`，如果命令里也没写 `--ratio`，就完全交给图像接口自己决定。
-                              `auto` 表示会显式传 `aspect_ratio=auto` 给图像接口，让它自动挑一个合适比例。命令里如果手动写 `--ratio 16:9`，冒号请使用英文冒号 `:`
+                              `空白` 和 `auto` 不一样：`空白` 是这个节点根本不传 `aspect_ratio`，命令里又没写 `--ratio` 的话，比例全交给图像接口定。
+                              `auto` 是显式传 `aspect_ratio=auto`，让接口自己挑个合适比例。命令里手动写 `--ratio 16:9` 时，冒号要用英文 `:`
                             </p>
                           </div>
 
@@ -2268,8 +2268,8 @@ function ImageApiManagerPanel({
                               ))}
                             </select>
                             <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-muted)]">
-                              `空白` 表示这个图像节点不会主动传 `resolution`，如果命令里也没写 `--resolution`，就完全交给 xAI 自己决定。
-                              当前内置清晰度预设是 `1k（标准清晰度）` 和 `2k（高清清晰度）`。
+                              `空白` 是这个节点不传 `resolution`，命令里又没写 `--resolution` 的话，清晰度交给 xAI 定。
+                              内置两档预设：`1k（标准清晰度）` 和 `2k（高清清晰度）`。
                             </p>
                           </div>
 
@@ -2369,7 +2369,7 @@ function ImageRouterPanel({
   }
 
   return (
-    <Panel title="图像路由集群" subtitle="按指定图像节点顺序接力尝试，任一节点成功即直接返回结果。当前顺序只影响图像生图和修图，不会改动节点本身。" padding="sm">
+    <Panel title="图像路由集群" subtitle="按设定顺序逐个图像节点接力，谁先成功就用谁的结果。顺序只管生图和修图怎么调，不动节点本身。" padding="sm">
       <div className="space-y-4">
         <div className="flex flex-wrap items-center gap-3">
           <label className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
@@ -2400,7 +2400,7 @@ function ImageRouterPanel({
               placeholder="例如: 5, 4, 2"
             />
             <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-muted)]">
-              这里写的是实际尝试顺序。比如填 <span className="mono">5, 4, 2</span>，就会先试节点 5，失败后试节点 4，再失败后试节点 2。修图和参考图生图会自动跳过不支持修图的节点。
+              写的就是实际尝试顺序。填 <span className="mono">5, 4, 2</span>，就先试节点 5，不行再 4，还不行再 2。修图和参考图生图会自动跳过不支持修图的节点。
             </p>
           </div>
 
@@ -2627,8 +2627,8 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
         forceMount={isActive || isExpanded || isDragging}
         placeholder={(
           <DeferredCardPlaceholder
-            title="编辑表单将在滚动到附近时再挂载"
-            subtitle="为了减轻长节点列表的渲染压力，离当前视口较远的节点会先延迟挂载输入框和健康面板。滚动到这里、设为活跃或展开 Key 区域后会自动加载。"
+            title="表单等滚动到附近再加载"
+            subtitle="节点一多，离屏幕远的就先不渲染输入框和健康面板，省点开销。滚到这里、设为活跃或展开 Key 区域后会自动加载。"
           />
         )}
       >
@@ -2678,7 +2678,7 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
                 </button>
               </div>
               <p className="mt-1 text-[11px] text-[var(--text-muted)]">
-                {getDefaultSuffixHint(node.aiType, node.modelName)}。URL 仍然完全由你决定，按钮只做辅助补全。
+                {getDefaultSuffixHint(node.aiType, node.modelName)}。URL 怎么写还是你说了算，按钮只帮你补一下。
               </p>
             </div>
 
@@ -2740,7 +2740,7 @@ const SortableNodeCard = memo(function SortableNodeCard({ id, node, index, densi
                 <p className="text-xs font-medium text-[var(--text-primary)]">节点健康</p>
                 <span className="text-[11px] px-1.5 py-0.5 rounded-[var(--radius-pill)]" style={{ background: levelMeta.bg, color: levelMeta.color }} title={`来源: ${getHealthSourceLabel(health?.source)}${health?.reason ? `；${health.reason}` : ''}`}>{formatHealthBadge(health)}</span>
               </div>
-              <p className="text-[11px] text-[var(--text-muted)] mt-1">{health?.reason ?? '暂无评分解释'}{health?.source !== 'none' ? `（当前来源：${getHealthSourceLabel(health?.source)}）` : ''}</p>
+              <p className="text-[11px] text-[var(--text-muted)] mt-1">{health?.reason ?? '还没有评分说明'}{health?.source !== 'none' ? `（来源：${getHealthSourceLabel(health?.source)}）` : ''}</p>
             </div>
 
             <MetricBar label="实时" score={health?.liveScore} weight={health?.liveWeight ?? 0} color="var(--accent-purple)" hint={pingResult?.pass ? `最近测试 ${pingResult.latency_ms}ms` : pingResult?.error || undefined} />

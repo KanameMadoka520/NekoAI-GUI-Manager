@@ -23,7 +23,7 @@ export function CommandManager() {
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
 
   const dirty = useMemo(() => JSON.stringify(commands) !== JSON.stringify(original), [commands, original]);
-  usePageDirtyState('commands', dirty, '命令回避列表存在未保存改动，离开后这些改动不会自动写回 commands.json。');
+  usePageDirtyState('commands', dirty, '命令回避列表有改动还没保存，离开就会丢掉，不会写回 commands.json。');
 
   useEffect(() => { load(); }, []);
 
@@ -104,7 +104,7 @@ export function CommandManager() {
     try {
       await saveConfig('commands', commands);
       setOriginal([...commands]);
-      addToast('success', '命令列表已保存。现在新的避让规则已经写回文件了。');
+      addToast('success', '命令列表已保存，改动已写回 commands.json。');
     } catch (e: any) {
       addToast('error', `保存失败: ${e?.message ?? e}`);
     }
@@ -112,7 +112,7 @@ export function CommandManager() {
 
   function exportCommands() {
     downloadJsonWithTimestamp(commands, 'commands.json');
-    addToast('success', '已导出命令列表。如果你只是想分享一个范例，建议先看看里面有没有你只在本地会用到的命令。');
+    addToast('success', '已导出命令列表。分享前最好扫一眼，别把只在本地用的命令也带出去。');
   }
 
   async function importCommands() {
@@ -125,7 +125,7 @@ export function CommandManager() {
       }
       setCommands(picked.data as string[]);
       setSelected(new Set());
-      addToast('success', `已导入 ${(picked.data as string[]).length} 条命令。当前只是载入到编辑区，记得再点保存才会生效。`);
+      addToast('success', `已导入 ${(picked.data as string[]).length} 条命令，目前只在编辑区，点保存才会真正生效。`);
     } catch (e: any) {
       addToast('error', `导入失败: ${e?.message ?? e}`);
     }
@@ -154,7 +154,7 @@ export function CommandManager() {
       {/* Toolbar */}
       <div className="flex items-center gap-3">
         <div className="flex-1">
-          <SearchBar value={search} onChange={setSearch} placeholder="搜索命令，先缩小范围再删会更稳..." />
+          <SearchBar value={search} onChange={setSearch} placeholder="搜索命令..." />
         </div>
         <button
           onClick={() => setShowBulkAdd(true)}
@@ -203,7 +203,7 @@ export function CommandManager() {
           value={newCmd}
           onChange={(e) => setNewCmd(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && addCommand()}
-          placeholder="输入一个新命令，回车就能加进去..."
+          placeholder="输入新命令，回车直接添加..."
           className="flex-1 px-3 py-2 text-sm rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-[var(--accent-purple)] transition-colors"
         />
         <button
@@ -218,7 +218,7 @@ export function CommandManager() {
       <div className="rounded-[var(--radius)] overflow-hidden border border-[var(--border-subtle)]" style={{ background: 'var(--surface-card)', boxShadow: 'var(--shadow-card)' }}>
         {filtered.length === 0 ? (
           <p className="text-sm text-[var(--text-muted)] text-center py-8 px-6">
-            {search ? '没有找到匹配的命令。可以换个关键词，或者清空搜索再看全部。' : '这里还没有任何命令。你可以手动加一条，或者直接导入一整份列表。'}
+            {search ? '没找到匹配的命令，换个关键词或清空搜索看全部。' : '还没有命令，手动加一条或导入一份列表都行。'}
           </p>
         ) : (
           <div className="max-h-[400px] overflow-y-auto p-6">
@@ -251,7 +251,7 @@ export function CommandManager() {
 
       {/* Bulk add modal */}
       <Modal open={showBulkAdd} onClose={() => setShowBulkAdd(false)} title="批量添加命令">
-        <p className="text-sm text-[var(--text-secondary)] mb-3">每行放一条命令。适合一次性导入一大批避让词。</p>
+        <p className="text-sm text-[var(--text-secondary)] mb-3">一行一条命令，适合一次性粘一大批进来。</p>
         <textarea
           value={bulkText}
           onChange={(e) => setBulkText(e.target.value)}
@@ -281,7 +281,7 @@ export function CommandManager() {
         onClose={() => setConfirmDelete(null)}
         onConfirm={() => { if (confirmDelete) deleteCommand(confirmDelete); }}
         title="删除这条命令"
-        message={`你将从列表里移除 "${confirmDelete}"。这里确认后仍然只是编辑态，真正写回文件还要再点保存。`}
+        message={`将从列表移除 "${confirmDelete}"。这一步只改编辑区，点保存才会写回文件。`}
       />
 
       {/* Bulk delete confirm */}
@@ -290,7 +290,7 @@ export function CommandManager() {
         onClose={() => setConfirmBulkDelete(false)}
         onConfirm={deleteBulk}
         title="批量删除"
-        message={`你将从列表里移除选中的 ${selected.size} 条命令。这里确认后仍然只是编辑态，真正写回文件还要再点保存。`}
+        message={`将从列表移除选中的 ${selected.size} 条命令。这一步只改编辑区，点保存才会写回文件。`}
       />
     </div>
   );

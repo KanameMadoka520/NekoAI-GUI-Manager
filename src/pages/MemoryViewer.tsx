@@ -272,7 +272,7 @@ export function MemoryViewer() {
         <StatCard label="总消息数" value={totalMsgs} icon="💬" color="var(--accent-pink)" />
         <StatCard label="记忆压缩" value={memorySummary?.enabled ? '开启' : '关闭'} icon="📦" color={memorySummary?.enabled ? 'var(--success)' : 'var(--text-muted)'} />
         <StatCard label="压缩阈值" value={memorySummary?.threshold ?? '-'} icon="📏" color="var(--info)" />
-        <SummaryCard label="当前说明" value="先选会话" hint="先挑一个会话，再进去看内容、修文本，或者做导入导出。" />
+        <SummaryCard label="当前说明" value="先选会话" hint="选个会话进去，就能看内容、改文本、导入导出。" />
       </div>
 
       <div className="rounded-[var(--radius)] border border-[var(--border-subtle)] px-4 py-3" style={{ background: 'var(--surface-card)', boxShadow: 'var(--shadow-card)' }}>
@@ -282,14 +282,14 @@ export function MemoryViewer() {
           <span className="px-2 py-1 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">容量上限 {MEMORY_CAPACITY} / 会话</span>
           <span className="px-2 py-1 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">闲置自动清空 {formatDurationMs(runtime?.contextAutoForgetMs)}</span>
           <div className="flex-1" />
-          <span className="text-[var(--text-muted)]">打开会话后，你可以先预览，再决定要不要改内容、导出备份，或者手动清空。</span>
+          <span className="text-[var(--text-muted)]">选中会话后先看一眼，再决定改内容、导出备份还是清空。</span>
         </div>
       </div>
 
       <div className={`grid grid-cols-1 xl:grid-cols-2 ${densityClass}`}>
         <MemoryList
           title="群聊记忆"
-          subtitle="适合检查群聊上下文是不是堆得太长，或者某个群的长期记忆有没有越积越多。"
+          subtitle="盯群聊上下文有没有堆太长，或某个群的长期记忆越攒越多。"
           icon="👥"
           memories={groupMemories}
           type="group"
@@ -298,7 +298,7 @@ export function MemoryViewer() {
         />
         <MemoryList
           title="私聊记忆"
-          subtitle="适合检查私聊上下文有没有堆太久，或者某个用户的记忆文件是不是需要手动整理。"
+          subtitle="盯私聊上下文有没有堆太久，或某个用户的记忆文件该不该清一清。"
           icon="👤"
           memories={privateMemories}
           type="private"
@@ -316,10 +316,10 @@ export function MemoryViewer() {
         {detail && (
           <div className="space-y-3">
             <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
-              <SummaryCard label="当前会话" value={detail.meta.id} hint={detail.type === 'group' ? '这是一个群聊记忆文件' : '这是一个私聊记忆文件'} />
-              <SummaryCard label="消息总数" value={String(messages.length)} hint="你看到、编辑和导出的内容，都是基于当前这一份列表。" />
-              <SummaryCard label="筛选结果" value={String(filteredMessages.length)} hint={detailSearch ? '这里显示的是搜索后还看得到的消息数' : '当前没有开搜索，默认显示全部消息'} />
-              <SummaryCard label="保存状态" value={detailDirty ? '待保存' : '已同步'} hint={detailDirty ? '你已经改了内容，但还没真正写回文件' : '当前看到的内容已经和文件一致'} tone={detailDirty ? 'warning' : 'neutral'} />
+              <SummaryCard label="当前会话" value={detail.meta.id} hint={detail.type === 'group' ? '群聊会话的记忆文件' : '私聊会话的记忆文件'} />
+              <SummaryCard label="消息总数" value={String(messages.length)} hint="看到、编辑、导出的都是这份列表。" />
+              <SummaryCard label="筛选结果" value={String(filteredMessages.length)} hint={detailSearch ? '搜索后还能看到的消息条数' : '没开搜索，显示全部消息'} />
+              <SummaryCard label="保存状态" value={detailDirty ? '待保存' : '已同步'} hint={detailDirty ? '改过了，但还没写回文件' : '看到的内容和文件一致'} tone={detailDirty ? 'warning' : 'neutral'} />
             </div>
 
             <div className="rounded-[var(--radius)] border border-[var(--border-subtle)] px-4 py-3" style={{ background: 'var(--surface-card)', boxShadow: 'var(--shadow-card)' }}>
@@ -347,14 +347,14 @@ export function MemoryViewer() {
                 {detailSearch ? <span className="px-2 py-1 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)]">关键词：{detailSearch}</span> : null}
                 <span className="px-2 py-1 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)]">显示 {filteredMessages.length}/{messages.length}</span>
                 <div className="flex-1" />
-                <span className="text-[var(--text-muted)]">这里改的任何内容都只是编辑态，只有点保存之后才会真正写回文件。</span>
+                <span className="text-[var(--text-muted)]">改动只停在编辑态，点保存才会写回文件。</span>
               </div>
 
               {showDetailTools && (
                 <div className="mt-4 grid gap-3 xl:grid-cols-2">
                   <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-2">
                     <p className="text-xs font-medium text-[var(--text-primary)]">当前会话的备份 / 导入</p>
-                    <p className="text-[12px] text-[var(--text-muted)]">如果你想先留个备份、把别处的内容搬进来，或者先导出去手工修，再回导，这里最合适。</p>
+                    <p className="text-[12px] text-[var(--text-muted)]">想留个备份、把别处内容搬进来，或导出去手改再导回，都在这。</p>
                     <ImportExportActions
                       onExport={exportCurrentSession}
                       onImport={importCurrentSession}
@@ -366,7 +366,7 @@ export function MemoryViewer() {
                   </div>
                   <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-2">
                     <p className="text-xs font-medium text-[var(--text-primary)]">高风险操作</p>
-                    <p className="text-[12px] text-[var(--text-muted)]">清空会把当前会话里的消息列表直接置空。这里点完还不会立刻生效，只有保存后才会真正写回文件。</p>
+                    <p className="text-[12px] text-[var(--text-muted)]">清空会把当前会话的消息全部置空；点完先进待保存，保存后才真正写回文件。</p>
                     <button
                       onClick={() => setConfirmClear(true)}
                       className="px-3 py-1.5 text-xs rounded-[var(--radius-sm)] bg-[var(--error-soft-bg)] text-[var(--error)] hover:bg-[color-mix(in_srgb,var(--error)_28%,transparent)] transition-colors cursor-pointer"
@@ -381,7 +381,7 @@ export function MemoryViewer() {
             <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
               {filteredMessages.length === 0 ? (
                 <p className="text-sm text-[var(--text-muted)] text-center py-8">
-                  {detailSearch ? '没有搜到符合条件的消息，试试换个关键词。' : '这个会话里目前没有可显示的消息。'}
+                  {detailSearch ? '没搜到匹配的消息，换个关键词试试。' : '这个会话还没有可显示的消息。'}
                 </p>
               ) : (
                 filteredMessages.map(({ msg, idx }) => {
@@ -470,7 +470,7 @@ export function MemoryViewer() {
         onClose={() => setConfirmClear(false)}
         onConfirm={clearAll}
         title="清空当前会话"
-        message="你将把这个会话里的消息列表清空。这里确认后只是进入待保存状态，真正写回文件还要再点一次保存。"
+        message="会清空这个会话的所有消息。确认后只是进入待保存，再点一次保存才真正写回文件。"
       />
 
       <ConfirmDialog
@@ -478,7 +478,7 @@ export function MemoryViewer() {
         onClose={() => setConfirmDeleteMsg(null)}
         onConfirm={() => { if (confirmDeleteMsg !== null) deleteMsg(confirmDeleteMsg); }}
         title="删除这条消息"
-        message="这条消息会从当前会话列表里移除。这里确认后只是进入待保存状态，真正写回文件还要再点一次保存。"
+        message="这条消息会从会话列表里移除。确认后只是进入待保存，再点一次保存才真正写回文件。"
       />
 
       <ConfirmDialog
@@ -486,7 +486,7 @@ export function MemoryViewer() {
         onClose={() => setConfirmDeleteFile(null)}
         onConfirm={doDeleteFile}
         title="删除整个记忆文件"
-        message={confirmDeleteFile ? `你将直接删除记忆文件 "${confirmDeleteFile.meta.id}"。这个操作不是“待保存”，而是立刻执行，删掉后不能撤销。` : ''}
+        message={confirmDeleteFile ? `直接删除记忆文件 "${confirmDeleteFile.meta.id}"。这个不走待保存，确认即执行，删掉无法撤销。` : ''}
       />
     </div>
   );
@@ -510,7 +510,7 @@ function MemoryList({ title, subtitle, icon, memories, type, onOpen, onDelete }:
       </div>
 
       {memories.length === 0 ? (
-        <p className="text-sm text-[var(--text-muted)] text-center py-8">这里暂时还没有记忆文件。通常是还没产生长期记忆，或者你现在连到的插件目录里没有这类数据。</p>
+        <p className="text-sm text-[var(--text-muted)] text-center py-8">还没有记忆文件。可能是长期记忆还没生成，或当前连接的插件目录里没有这类数据。</p>
       ) : (
         <div className="space-y-3 max-h-[460px] overflow-y-auto pr-1">
           {memories.map((m) => (

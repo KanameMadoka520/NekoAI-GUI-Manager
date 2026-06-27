@@ -236,7 +236,7 @@ export function HistoryViewer() {
         addToast('warning', '该文件非 JSON 格式，无法解析');
       } else {
         setEntries([]);
-        addToast('warning', '该历史文件没有解析出可展示的记录，可能是旧结构、空文件，或内容已损坏。');
+        addToast('warning', '这个文件没解析出可显示的记录，可能是空文件、旧格式或已损坏。');
       }
     } catch (e: any) {
       addToast('error', `加载文件失败: ${e?.message ?? e}`);
@@ -323,7 +323,7 @@ export function HistoryViewer() {
       const results = await searchAllHistory(searchQuery, buildSearchFilters());
       setSearchResults(results ?? []);
       const total = results?.reduce((s, r) => s + r.entries.length, 0) ?? 0;
-      addToast('success', `找到了 ${total} 条结果。你可以继续缩小范围，或者展开结果逐条看。`);
+      addToast('success', `找到 ${total} 条结果，展开文件可逐条查看。`);
     } catch (e: any) {
       addToast('error', `搜索失败: ${e?.message ?? e}`);
     } finally {
@@ -338,7 +338,7 @@ export function HistoryViewer() {
       const ext = format === 'json' ? 'json' : 'csv';
       const mime = format === 'json' ? 'application/json' : 'text/csv';
       downloadTextWithTimestamp(content, activeFile, mime, ext);
-      addToast('success', `已导出 ${format.toUpperCase()}。如果你打算分享这份文件，建议先确认里面没有敏感内容。`);
+      addToast('success', `已导出 ${format.toUpperCase()}。分享前记得确认里面没有敏感内容。`);
     } catch (e: any) {
       addToast('error', `导出失败: ${e?.message ?? e}`);
     }
@@ -358,7 +358,7 @@ export function HistoryViewer() {
       }
       await importHistoryFile(activeFile, picked.data);
       await loadFile(activeFile);
-      addToast('success', `已导入并覆盖 ${activeFile}。如果这是正式数据，建议顺手检查一下内容有没有缺行或错位。`);
+      addToast('success', `已导入并覆盖 ${activeFile}。正式数据的话，顺手核对下有没有缺行或错位。`);
     } catch (e: any) {
       addToast('error', `导入失败: ${e?.message ?? e}`);
     }
@@ -510,7 +510,7 @@ export function HistoryViewer() {
 
   return (
     <div className="flex gap-4 h-full">
-      <Panel title="历史文件" subtitle="先挑一个历史文件，再决定是看原始对话、查错误，还是做全局搜索。" icon="🗂" padding="sm">
+      <Panel title="历史文件" subtitle="选个文件打开，就能浏览对话、查错误或跨文件搜索。" icon="🗂" padding="sm">
         <div className="text-xs text-[var(--text-muted)] mb-3">{files.length} 个文件</div>
         <VirtualList
           items={files}
@@ -518,7 +518,7 @@ export function HistoryViewer() {
           overscan={10}
           containerStyle={{ height: 'calc(100vh - 280px)' }}
           containerClassName="max-h-[calc(100vh-280px)]"
-          empty={<div className="px-2 py-6 text-xs text-[var(--text-muted)]">当前还没有历史文件。</div>}
+          empty={<div className="px-2 py-6 text-xs text-[var(--text-muted)]">还没有历史文件。</div>}
           getKey={(file) => file.filename}
           renderItem={(file, index) => {
             const isDay = isDayTime(file.modified);
@@ -639,7 +639,7 @@ export function HistoryViewer() {
           <div className="mb-3 rounded-[var(--radius)] border border-[var(--border-subtle)] px-4 py-3" style={{ background: 'var(--surface-card)', boxShadow: 'var(--shadow-card)' }}>
             <div className="flex items-center gap-2 flex-wrap">
               <div className="flex-1 min-w-[260px]">
-                <SearchBar value={searchQuery} onChange={setSearchQuery} onEnter={doSearch} placeholder="输入关键词后回车，或者点右侧按钮开始搜索...">
+                <SearchBar value={searchQuery} onChange={setSearchQuery} onEnter={doSearch} placeholder="输入关键词，回车或点搜索...">
                   <select value={searchType} onChange={(e) => setSearchType(e.target.value)}
                     className="px-2 py-1 text-xs bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] text-[var(--text-secondary)] outline-none cursor-pointer">
                     <option value="">全部类型</option>
@@ -666,7 +666,7 @@ export function HistoryViewer() {
                   {item}
                 </span>
               )) : (
-                <span className="text-xs text-[var(--text-muted)]">当前只会按关键词和默认范围搜索。如果你想更快缩小结果，展开高级筛选会更省事。</span>
+                <span className="text-xs text-[var(--text-muted)]">现在只按关键词搜全部记录。想缩小范围，展开高级筛选。</span>
               )}
               <div className="ml-auto text-xs text-[var(--text-muted)]">
                 命中 <span className="mono text-[var(--text-secondary)]">{searchResultSummary.total}</span> 条 / <span className="mono text-[var(--text-secondary)]">{searchResultSummary.fileCount}</span> 个文件
@@ -681,7 +681,7 @@ export function HistoryViewer() {
                       value={searchModel}
                       onChange={(e) => setSearchModel(e.target.value)}
                       className="min-w-0 flex-1 sm:flex-none sm:w-56 px-2 py-1.5 text-xs rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none cursor-pointer"
-                      title="按历史记录里实际调用过的模型筛选"
+                      title="只列出这份记录里实际调用过的模型"
                     >
                       <option value="">全部模型（单选）</option>
                       {searchModelOptions.map((model) => (
@@ -718,7 +718,7 @@ export function HistoryViewer() {
                   <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] p-2 bg-[var(--surface-card)]">
                     <p className="text-[11px] text-[var(--text-muted)] mb-1.5">模型多选</p>
                     {searchModelOptions.length === 0 ? (
-                      <p className="text-xs text-[var(--text-muted)]">当前范围里还没有可用的模型信息。</p>
+                      <p className="text-xs text-[var(--text-muted)]">这批记录里没有模型信息。</p>
                     ) : (
                       <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto pr-1">
                         {searchModelOptions.map((model) => (
@@ -737,7 +737,7 @@ export function HistoryViewer() {
                   <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] p-2 bg-[var(--surface-card)]">
                     <p className="text-[11px] text-[var(--text-muted)] mb-1.5">错误类型多选</p>
                     {searchErrorCategoryOptions.length === 0 ? (
-                      <p className="text-xs text-[var(--text-muted)]">当前范围里还没有错误类型可筛。</p>
+                      <p className="text-xs text-[var(--text-muted)]">这批记录里没有错误可筛。</p>
                     ) : (
                       <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
                         {searchErrorCategoryOptions.map((cat) => (
@@ -757,22 +757,22 @@ export function HistoryViewer() {
                 <div className="space-y-3 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] p-3 bg-[var(--bg-elevated)]">
                   <div className="space-y-2 text-xs text-[var(--text-muted)]">
                     <div>
-                      当前生效模型筛选：
+                      生效的模型筛选：
                       {activeModelFilters.length > 0 ? (
                         <span className="ml-1 text-[var(--text-secondary)] mono">{activeModelFilters.join('，')}</span>
                       ) : (
-                        <span className="ml-1">未设置，也就是不过滤模型</span>
+                        <span className="ml-1">未选，不限模型</span>
                       )}
                     </div>
                     {activeModelFilters.length > 0 && (
-                      <div className="text-[11px] text-[var(--text-muted)]">注意：单选模型和多选模型会同时生效，所以筛得越多，结果可能会一下子变少。</div>
+                      <div className="text-[11px] text-[var(--text-muted)]">上面的单选和这里的多选会叠加生效，选得越多结果越少。</div>
                     )}
                     <div>
-                      当前时间范围：
+                      时间范围：
                       <span className="ml-1 text-[var(--text-secondary)] mono">{searchFromTs || '起始不限'} ~ {searchToTs || '结束不限'}</span>
                     </div>
                     <div>
-                      当前错误类型：
+                      错误类型：
                       {activeErrorCategoryFilters.length > 0 ? (
                         <span className="ml-1 text-[var(--text-secondary)]">{activeErrorCategoryFilters.join('，')}</span>
                       ) : (
@@ -822,7 +822,7 @@ export function HistoryViewer() {
                         ))}
                       </div>
                     ) : (
-                      <p className="text-xs text-[var(--text-muted)]">你还没有保存过筛选方案。常用条件先存起来，下次点一下就能复用。</p>
+                      <p className="text-xs text-[var(--text-muted)]">还没有保存的方案。常用的筛选条件存下来，下次一点就能套用。</p>
                     )}
                   </div>
                 </div>
@@ -834,11 +834,11 @@ export function HistoryViewer() {
         )}
 
         <div className="grid grid-cols-2 xl:grid-cols-5 gap-3 mb-3">
-          <SummaryCard label="当前范围" value={viewMode === 'search' ? '搜索结果' : activeFile ?? '未选择'} hint={viewMode === 'search' ? `命中 ${searchResultSummary.total} 条 / ${searchResultSummary.fileCount} 个文件` : '这里显示的是你当前打开的文件和筛选范围'} />
+          <SummaryCard label="当前范围" value={viewMode === 'search' ? '搜索结果' : activeFile ?? '未选择'} hint={viewMode === 'search' ? `命中 ${searchResultSummary.total} 条 / ${searchResultSummary.fileCount} 个文件` : '你正在看的文件和筛选范围'} />
           <StatCard label="成功" value={stats.success} icon="✓" color="var(--success)" />
           <StatCard label="异常" value={stats.errors} icon="✕" color="var(--error)" />
           <StatCard label="异常率" value={`${stats.errorRate}%`} icon="📉" color="var(--warning)" />
-          <SummaryCard label="总字数" value={stats.totalChars.toLocaleString()} hint="按当前范围估算的 prompt + reply 总字数，用来判断这份记录大概有多长" tone="info" />
+          <SummaryCard label="总字数" value={stats.totalChars.toLocaleString()} hint="当前范围内 prompt + reply 的总字数，大致反映记录体量" tone="info" />
         </div>
 
         {subTab === 'browse' && (
@@ -921,7 +921,7 @@ export function HistoryViewer() {
           fallback={(
             <div className="rounded-[var(--radius-sm)] border border-dashed border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-4 py-6">
               <p className="text-sm text-[var(--text-primary)]">正在加载统计图表模块…</p>
-              <p className="mt-1 text-[12px] leading-relaxed text-[var(--text-muted)]">统计窗口已打开，但图表模块会再延后一点加载，避免历史页本体在未打开统计时提前吃掉图表渲染成本。</p>
+              <p className="mt-1 text-[12px] leading-relaxed text-[var(--text-muted)]">图表是按需加载的，第一次打开统计会稍等片刻。</p>
             </div>
           )}
         >
@@ -1173,7 +1173,7 @@ function SearchView({ results, renderMd }: { results: SearchResult[]; renderMd: 
   }
 
   if (results.length === 0) {
-    return <p className="text-sm text-[var(--text-muted)] text-center py-8">先输入关键词，再点搜索。你也可以顺手加上模型、时间范围或错误类型来缩小结果。</p>;
+    return <p className="text-sm text-[var(--text-muted)] text-center py-8">输入关键词再点搜索。也可以叠加模型、时间范围或错误类型来缩小结果。</p>;
   }
 
   return (

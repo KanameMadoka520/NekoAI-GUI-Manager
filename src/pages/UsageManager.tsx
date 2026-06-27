@@ -599,7 +599,7 @@ export function UsageManager() {
   const imageRuleDirty = accessDirty || quotaDirty;
   const chatRuleDirty = chatAccessDirty || chatQuotaDirty || groupLimitDirty || blacklistDirty;
   const imageRuleDirtyWithBlacklist = imageRuleDirty || blacklistDirty;
-  usePageDirtyState('usage', groupDirty || imageDirty || imageRuleDirty || chatRuleDirty, '用量计数或限额规则存在未保存改动，离开后这些改动不会自动写回文件。');
+  usePageDirtyState('usage', groupDirty || imageDirty || imageRuleDirty || chatRuleDirty, '用量计数或限额规则有未保存的改动，离开就不会写回文件了。');
 
   useEffect(() => {
     void load();
@@ -1714,7 +1714,7 @@ export function UsageManager() {
 
       <Panel
         title="用量分区"
-        subtitle="用量管理已拆成总览、聊天、图像三个分区，避免单页过长。跨页联动跳转到额度位置时，也会自动切到对应分区。"
+        subtitle="用量管理分成总览、聊天、图像三块。从别处跳转到某条额度时，会自动切到对应分区。"
         padding="sm"
       >
         <SubTabs
@@ -1731,20 +1731,20 @@ export function UsageManager() {
       {usageSection === 'overview' && (
       <Panel
         title="统一用量事件图表"
-        subtitle="图表统一基于 usage_events.json 统计。聊天和图像都只使用真正记录下来的用量事件，不再从聊天历史反推；插件最多保留最近 10000 条事件。"
+        subtitle="图表只统计 usage_events.json 里真实发生过的用量事件，不再从聊天历史反推。日志最多保留最近 10000 条。"
         icon="📈"
       >
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-3">
-            <SummaryCard label="事件总数" value={String(usageEvents.events.length)} hint="统一用量事件日志中的总事件数，包含聊天和图像。" />
-            <SummaryCard label="聊天用量事件" value={String(allowedChatUsageEvents.length)} hint="已允许并记入用量的聊天事件数量。" />
-            <SummaryCard label="图像用量事件" value={String(allowedImageUsageEvents.length)} hint="已允许并记入用量的图像事件数量。" />
-            <SummaryCard label="拒绝事件数" value={String(deniedUsageEventCount)} hint="被黑白名单、额度或其他规则拒绝的事件条数。" />
-            <SummaryCard label="保留上限" value={String(USAGE_EVENT_RETENTION_LIMIT)} hint="插件最多保留最近这么多条 usage event，超出后会自动裁剪更早记录。" />
-            <SummaryCard label="最早事件" value={usageEventTimeRange.earliestLabel} hint="当前保留区间内最早的一条 usage event 时间。" />
-            <SummaryCard label="最新事件" value={usageEventTimeRange.latestLabel} hint="当前保留区间内最新的一条 usage event 时间。" />
-            <SummaryCard label="聊天高峰时段" value={peakUsageBucket ? peakUsageBucket.label : '-'} hint={peakUsageBucket ? `该时间桶累计 ${peakUsageBucket.count} 次聊天用量。` : '当前还没有可用于统计的聊天用量事件。'} />
-            <SummaryCard label="图像高峰时段" value={peakImageUsageBucket ? peakImageUsageBucket.label : '-'} hint={peakImageUsageBucket ? `该时间桶累计 ${peakImageUsageBucket.count} 次图像用量。` : '当前还没有可用于统计的图像用量事件。'} />
+            <SummaryCard label="事件总数" value={String(usageEvents.events.length)} hint="日志里的事件总数，聊天和图像都算在内。" />
+            <SummaryCard label="聊天用量事件" value={String(allowedChatUsageEvents.length)} hint="放行并计入用量的聊天事件数。" />
+            <SummaryCard label="图像用量事件" value={String(allowedImageUsageEvents.length)} hint="放行并计入用量的图像事件数。" />
+            <SummaryCard label="拒绝事件数" value={String(deniedUsageEventCount)} hint="被黑白名单、额度等规则挡下来的事件数。" />
+            <SummaryCard label="保留上限" value={String(USAGE_EVENT_RETENTION_LIMIT)} hint="最多保留这么多条事件，超出后自动删掉更早的。" />
+            <SummaryCard label="最早事件" value={usageEventTimeRange.earliestLabel} hint="保留范围里最早一条事件的时间。" />
+            <SummaryCard label="最新事件" value={usageEventTimeRange.latestLabel} hint="保留范围里最新一条事件的时间。" />
+            <SummaryCard label="聊天高峰时段" value={peakUsageBucket ? peakUsageBucket.label : '-'} hint={peakUsageBucket ? `这个时段共记了 ${peakUsageBucket.count} 次聊天用量。` : '还没有可统计的聊天用量事件。'} />
+            <SummaryCard label="图像高峰时段" value={peakImageUsageBucket ? peakImageUsageBucket.label : '-'} hint={peakImageUsageBucket ? `这个时段共记了 ${peakImageUsageBucket.count} 次图像用量。` : '还没有可统计的图像用量事件。'} />
             <div className="flex-1" />
             <button
               onClick={() => setShowOverviewCharts((value) => !value)}
@@ -1767,8 +1767,8 @@ export function UsageManager() {
           </div>
 
           <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-4 py-3 text-xs text-[var(--text-secondary)]">
-            <p>usage_events.json 是聊天和图像共用的长期事件日志。超过 {USAGE_EVENT_RETENTION_LIMIT} 条后，插件会自动删除更早的旧记录，只保留最近的一段。</p>
-            <p className="mt-1 text-[12px] text-[var(--text-muted)]">当前保留范围：{usageEventTimeRange.earliestLabel} 至 {usageEventTimeRange.latestLabel}。如果你要做更长期的统计，建议定期备份这个文件。</p>
+            <p>usage_events.json 是聊天和图像共用的事件日志，超过 {USAGE_EVENT_RETENTION_LIMIT} 条后会自动丢掉最早的记录。</p>
+            <p className="mt-1 text-[12px] text-[var(--text-muted)]">现存范围：{usageEventTimeRange.earliestLabel} 至 {usageEventTimeRange.latestLabel}。想做更长期的统计，记得定期备份这个文件。</p>
           </div>
 
           {showOverviewCharts ? (
@@ -1776,7 +1776,7 @@ export function UsageManager() {
               fallback={(
                 <div className="rounded-[var(--radius-sm)] border border-dashed border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-4 py-6">
                   <p className="text-sm text-[var(--text-primary)]">正在加载图表模块…</p>
-                  <p className="mt-1 text-[12px] leading-relaxed text-[var(--text-muted)]">为了减轻首屏压力，统计图只会在你真正展开时再加载。</p>
+                  <p className="mt-1 text-[12px] leading-relaxed text-[var(--text-muted)]">统计图只在展开时才加载，省一点首屏开销。</p>
                 </div>
               )}
             >
@@ -1798,7 +1798,7 @@ export function UsageManager() {
             <div className="rounded-[var(--radius-sm)] border border-dashed border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-4 py-6">
               <p className="text-sm text-[var(--text-primary)]">图表已收起</p>
               <p className="mt-1 text-[12px] leading-relaxed text-[var(--text-muted)]">
-                当前只保留事件筛选和明细表，避免首屏直接渲染四张统计图。需要时再点“展开图表”即可。{lowPerformanceMode ? '低性能模式下这里默认收起，优先让核显把滚动和编辑做顺。' : ''}
+                现在只显示事件筛选和明细表，不渲染那四张统计图。想看时点“展开图表”就行。{lowPerformanceMode ? '低性能模式下默认收起，把滚动和编辑的流畅度让给核显。' : ''}
               </p>
             </div>
           )}
@@ -1901,10 +1901,10 @@ export function UsageManager() {
             </div>
 
             <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
-              <SummaryCard label="筛选命中" value={String(filteredUsageEventSummary.total)} hint="当前筛选条件下命中的 usage event 总数。" />
-              <SummaryCard label="允许事件" value={String(filteredUsageEventSummary.allowed)} hint="筛选结果中 allowed=true 的事件数量。" />
-              <SummaryCard label="拒绝事件" value={String(filteredUsageEventSummary.denied)} hint="筛选结果中 allowed=false 的事件数量。" />
-              <SummaryCard label="锁定 QQ" value={usageEventUserFilter || '-'} hint="点击图表柱子或明细表里的 QQ，可快速锁定单个用户。" />
+              <SummaryCard label="筛选命中" value={String(filteredUsageEventSummary.total)} hint="当前筛选条件下命中的事件数。" />
+              <SummaryCard label="允许事件" value={String(filteredUsageEventSummary.allowed)} hint="命中结果里放行的事件数（allowed=true）。" />
+              <SummaryCard label="拒绝事件" value={String(filteredUsageEventSummary.denied)} hint="命中结果里被拒的事件数（allowed=false）。" />
+              <SummaryCard label="锁定 QQ" value={usageEventUserFilter || '-'} hint="点图表柱子或明细里的 QQ，就能只看这一个人。" />
             </div>
 
             <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] px-4 py-3">
@@ -1914,15 +1914,15 @@ export function UsageManager() {
                     key={item.key}
                     onClick={() => clearUsageEventFilter(item.key)}
                     className="px-2 py-1 text-[11px] rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
-                    title="点击移除这个筛选条件"
+                    title="移除这个筛选条件"
                   >
                     {item.label} ×
                   </button>
                 )) : (
-                  <span className="text-xs text-[var(--text-muted)]">当前没有额外筛选。你可以点上面的图表柱子、输入关键词，或按分类/原因缩小范围。</span>
+                  <span className="text-xs text-[var(--text-muted)]">还没有任何筛选。点上面的图表柱子、输入关键词，或按分类、原因都能缩小范围。</span>
                 )}
               </div>
-              <p className="mt-2 text-[12px] text-[var(--text-muted)]">明细按时间倒序显示。点击表格里的 QQ 会锁定该用户，点击上面的筛选标签可单独移除对应条件；这些筛选和粒度会自动记住，刷新后仍保留。</p>
+              <p className="mt-2 text-[12px] text-[var(--text-muted)]">明细按时间从新到旧排。点 QQ 可锁定该用户，点筛选标签可逐个撤掉。筛选条件和粒度会记住，刷新后还在。</p>
             </div>
 
             <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] px-4 py-3 space-y-3">
@@ -1945,7 +1945,7 @@ export function UsageManager() {
                   value={usageEventPresetName}
                   onChange={(e) => setUsageEventPresetName(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') saveCurrentUsageEventPreset(); }}
-                  placeholder="把当前筛选保存成运维预设，例如：群105083735拒绝事件"
+                  placeholder="给当前筛选起个名存成预设，例如：群105083735拒绝事件"
                   className="min-w-[260px] flex-1 px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
                 />
                 <button
@@ -1968,13 +1968,13 @@ export function UsageManager() {
                     <button
                       onClick={() => deleteUsageEventPreset(preset.id)}
                       className="text-[12px] text-[var(--text-muted)] hover:text-[var(--error)] cursor-pointer"
-                      title="删除这个自定义预设"
+                      title="删除这个预设"
                     >
                       ×
                     </button>
                   </div>
                 )) : (
-                  <span className="text-[12px] text-[var(--text-muted)]">你还没有自定义运维预设。筛好一次后可以直接保存，下次一键套用。</span>
+                  <span className="text-[12px] text-[var(--text-muted)]">还没有自定义预设。筛好一次存下来，下次一键套用。</span>
                 )}
               </div>
             </div>
@@ -2003,10 +2003,10 @@ export function UsageManager() {
                     empty={(
                       <div className="px-6 py-10 text-sm text-[var(--text-muted)] text-center">
                         {usageEvents.events.length === 0
-                          ? '当前日志里还没有任何 usage event。先让插件真实运行一段时间，这里才会出现聊天 / 图像的统一事件。'
+                          ? '日志还是空的。让插件实际跑一阵，聊天和图像的用量事件才会出现在这里。'
                           : usageEventActiveFilterSummary.length > 0
-                            ? '当前筛选条件下没有命中任何 usage event。可以点上面的筛选标签逐个移除，或直接清空筛选。'
-                            : '当前还没有可显示的 usage event。'}
+                            ? '这套筛选条件没命中任何事件。撤掉几个筛选标签，或直接清空再看。'
+                            : '暂时没有可显示的事件。'}
                       </div>
                     )}
                     getKey={(event) => event.id}
@@ -2128,7 +2128,7 @@ export function UsageManager() {
       )}
 
       {usageSection === 'chat' && (
-      <Panel title="群用量管理" subtitle="这里管理群聊 12 小时周期计数，同时支持直接编辑群总额度。群总额度属于聊天规则，修改后需要点击“保存聊天权限与限额规则”才会写回 runtime_config.json。" icon="⏱️">
+      <Panel title="群用量管理" subtitle="管理每个群在 12 小时周期内的计数，也能直接改群总额度。群总额度算聊天规则，改完要点“保存聊天权限与限额规则”才会写回 runtime_config.json。" icon="⏱️">
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-3">
             <div className="min-w-[260px] flex-1">
@@ -2176,7 +2176,7 @@ export function UsageManager() {
                 >
                   切到当前周期
                 </button>
-                <span className="text-[var(--text-muted)] self-center">按东八区时间看，现在应该是：{getCurrentPeriodId()}</span>
+                <span className="text-[var(--text-muted)] self-center">按东八区算，当前周期应是：{getCurrentPeriodId()}</span>
               </div>
             </div>
 
@@ -2219,7 +2219,7 @@ export function UsageManager() {
               overscan={8}
               containerStyle={{ height: 420 }}
               containerClassName="max-h-[420px]"
-              empty={<div className="px-6 py-10 text-sm text-[var(--text-muted)] text-center">没有找到符合条件的群条目。可以换个群号搜，或者先手动补一个群条目。</div>}
+              empty={<div className="px-6 py-10 text-sm text-[var(--text-muted)] text-center">没有匹配的群。换个群号搜搜，或先手动补一个群条目。</div>}
               getKey={(row) => row.gid}
               renderItem={(row, index) => {
                 const statusText = row.limit === undefined
@@ -2277,23 +2277,23 @@ export function UsageManager() {
       )}
 
       {usageSection === 'chat' && (
-      <Panel title="聊天权限与限额规则" subtitle="这里管理普通聊天回复谁能用、每个 QQ 在 12 小时周期里还能聊多少次，以及群总额度。用户黑名单始终优先，主人始终不限额。" icon="💬">
+      <Panel title="聊天权限与限额规则" subtitle="管理谁能触发普通聊天回复、每个 QQ 一个 12 小时周期能聊多少次，以及群总额度。黑名单永远优先，主人永远不限额。" icon="💬">
         <div className="space-y-4">
           <div className="grid grid-cols-2 xl:grid-cols-6 gap-4">
-            <SummaryCard label="聊天权限模式" value={getChatAccessModeLabel(chatAccess.mode)} hint={chatAccess.mode === 'whitelist' ? '只有聊天白名单内的 QQ 能获得普通聊天回复。' : '沿用现有群聊/私聊规则，并额外允许做聊天个人限额。'} tone={chatAccess.mode === 'whitelist' ? 'warning' : 'neutral'} />
-            <SummaryCard label="聊天白名单" value={String(chatSummary.whitelistUsers)} hint="仅 whitelist 模式生效。黑名单与主人依然优先。" />
-            <SummaryCard label="全局黑名单" value={String((runtime?.userBlacklist ?? []).length)} hint="这里的黑名单同时作用于聊天与图像，优先级最高。" tone={(runtime?.userBlacklist ?? []).length > 0 ? 'warning' : 'neutral'} />
-            <SummaryCard label="聊天个人限额" value={chatQuota.enabled ? '已启用' : '未启用'} hint="关闭时，按 QQ 的聊天个人额度检查整体失效；群总额度仍独立生效。" tone={chatQuota.enabled ? 'success' : 'neutral'} />
-            <SummaryCard label="默认个人额度" value={formatQuota(chatQuota.defaultLimit)} hint="0 表示普通用户默认不限额。" />
-            <SummaryCard label="单独限额用户" value={String(chatSummary.overrideUsers)} hint="指定 QQ 的聊天额度会覆盖默认额度。" />
-            <SummaryCard label="已耗尽用户" value={String(chatSummary.exhaustedUsers)} hint="达到聊天个人额度上限的用户数量。" tone={chatSummary.exhaustedUsers > 0 ? 'warning' : 'neutral'} />
+            <SummaryCard label="聊天权限模式" value={getChatAccessModeLabel(chatAccess.mode)} hint={chatAccess.mode === 'whitelist' ? '只有聊天白名单里的 QQ 能拿到普通聊天回复。' : '沿用原有的群聊/私聊规则，另外还能给单人设聊天额度。'} tone={chatAccess.mode === 'whitelist' ? 'warning' : 'neutral'} />
+            <SummaryCard label="聊天白名单" value={String(chatSummary.whitelistUsers)} hint="只在白名单模式下生效，黑名单和主人仍排在前面。" />
+            <SummaryCard label="全局黑名单" value={String((runtime?.userBlacklist ?? []).length)} hint="一份黑名单同时管聊天和图像，优先级最高。" tone={(runtime?.userBlacklist ?? []).length > 0 ? 'warning' : 'neutral'} />
+            <SummaryCard label="聊天个人限额" value={chatQuota.enabled ? '已启用' : '未启用'} hint="关掉后不再按 QQ 查聊天个人额度，群总额度照常生效。" tone={chatQuota.enabled ? 'success' : 'neutral'} />
+            <SummaryCard label="默认个人额度" value={formatQuota(chatQuota.defaultLimit)} hint="0 表示普通用户不限额。" />
+            <SummaryCard label="单独限额用户" value={String(chatSummary.overrideUsers)} hint="给这些 QQ 单独设的额度会盖掉默认值。" />
+            <SummaryCard label="已耗尽用户" value={String(chatSummary.exhaustedUsers)} hint="聊天额度已经用完的人数。" tone={chatSummary.exhaustedUsers > 0 ? 'warning' : 'neutral'} />
           </div>
 
           {chatAccessConflictUsers.length > 0 && (
             <div className="rounded-[var(--radius-sm)] border border-[var(--error-soft-border)] bg-[var(--error-soft-bg)] px-4 py-3">
               <p className="text-sm font-medium text-[var(--error)]">检测到聊天权限冲突</p>
               <p className="mt-1 text-xs text-[var(--text-secondary)] leading-relaxed">
-                以下 QQ 同时出现在用户黑名单和聊天白名单中：<span className="mono">{chatAccessConflictUsers.join(', ')}</span>。实际运行时黑名单优先，这些人仍然不会收到普通聊天回复。建议你清理其中一侧。
+                这些 QQ 同时在黑名单和聊天白名单里：<span className="mono">{chatAccessConflictUsers.join(', ')}</span>。运行时黑名单优先，他们还是收不到普通聊天回复。建议从其中一边删掉。
               </p>
             </div>
           )}
@@ -2342,7 +2342,7 @@ export function UsageManager() {
                 />
                 <span>
                   黑名单模式
-                  <span className="block text-[12px] text-[var(--text-muted)] leading-relaxed">沿用现有群聊/私聊规则，并额外允许给单独 QQ 设置聊天个人额度。</span>
+                  <span className="block text-[12px] text-[var(--text-muted)] leading-relaxed">沿用原有的群聊/私聊规则，另外还能给单个 QQ 设聊天额度。</span>
                 </span>
               </label>
               <label className="flex items-start gap-2 text-sm text-[var(--text-primary)]">
@@ -2355,7 +2355,7 @@ export function UsageManager() {
                 />
                 <span>
                   白名单模式
-                  <span className="block text-[12px] text-[var(--text-muted)] leading-relaxed">只有聊天白名单里的 QQ 能获得普通聊天回复。黑名单用户依然会被优先拦截。</span>
+                  <span className="block text-[12px] text-[var(--text-muted)] leading-relaxed">只有聊天白名单里的 QQ 能拿到普通聊天回复，黑名单照样先拦。</span>
                 </span>
               </label>
             </div>
@@ -2410,7 +2410,7 @@ export function UsageManager() {
                 加入黑名单
               </button>
             </div>
-            <p className="text-[12px] text-[var(--text-muted)]">这里的黑名单是全局黑名单，会同时拦截普通聊天、生图和修图。若某个 QQ 同时在白名单里，实际运行时仍以黑名单优先。</p>
+            <p className="text-[12px] text-[var(--text-muted)]">全局黑名单，聊天、生图、修图一起拦。就算同时在白名单里，运行时也是黑名单说了算。</p>
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-[repeat(2,minmax(0,220px))_minmax(0,1fr)] gap-4">
@@ -2423,12 +2423,12 @@ export function UsageManager() {
                 onChange={(e) => setChatQuota({ ...chatQuota, defaultLimit: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
                 className="w-full px-3 py-2 text-sm rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] mono outline-none focus:border-[var(--accent-purple)]"
               />
-              <p className="text-[12px] text-[var(--text-muted)]">0 表示普通用户默认不限额。这里只统计普通聊天，不含生图 / 修图。</p>
+              <p className="text-[12px] text-[var(--text-muted)]">0 表示普通用户不限额。只算普通聊天，不含生图 / 修图。</p>
             </div>
 
             <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-2">
               <p className="text-xs font-medium text-[var(--text-primary)]">聊天群总额度数量</p>
-              <p className="text-[12px] text-[var(--text-muted)]">群总额度在上面的“群用量管理”表格里直接编辑。改完后仍需点击这里的“保存聊天权限与限额规则”才会写回。</p>
+              <p className="text-[12px] text-[var(--text-muted)]">群总额度在上面“群用量管理”表里改。改完还得点本区的“保存聊天权限与限额规则”才会写回。</p>
             </div>
 
             <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-3">
@@ -2449,7 +2449,7 @@ export function UsageManager() {
                   单独设置
                 </button>
               </div>
-              <p className="text-[12px] text-[var(--text-muted)]">新增后会先继承当前默认聊天个人额度，你可以在下方表格继续改。</p>
+              <p className="text-[12px] text-[var(--text-muted)]">新加的人先套用默认聊天额度，之后能在下方表格单独改。</p>
             </div>
           </div>
 
@@ -2475,7 +2475,7 @@ export function UsageManager() {
               overscan={8}
               containerStyle={{ height: 420 }}
               containerClassName="max-h-[420px]"
-              empty={<div className="px-6 py-10 text-sm text-[var(--text-muted)] text-center">没有找到符合条件的聊天用户。可以先搜索，或者手动补一个聊天单独限额用户。</div>}
+              empty={<div className="px-6 py-10 text-sm text-[var(--text-muted)] text-center">没有匹配的聊天用户。先搜搜，或手动补一个单独限额用户。</div>}
               getKey={(row) => row.uid}
               renderItem={(row, index) => (
                 <div
@@ -2573,23 +2573,23 @@ export function UsageManager() {
       )}
 
       {usageSection === 'image' && (
-      <Panel title="图像权限与限额规则" subtitle="这里同时管理谁可以生图 / 修图，以及每个 QQ 在 12 小时周期里还能用多少次。黑名单始终优先，主人始终不限额。" icon="🖼️">
+      <Panel title="图像权限与限额规则" subtitle="管理谁能生图 / 修图，以及每个 QQ 一个 12 小时周期还能用几次。黑名单永远优先，主人永远不限额。" icon="🖼️">
         <div className="space-y-4">
           <div className="grid grid-cols-2 xl:grid-cols-6 gap-4">
-            <SummaryCard label="权限模式" value={getImageAccessModeLabel(imageAccess.mode)} hint={imageAccess.mode === 'whitelist' ? '只有手动加入图像白名单的 QQ 才能生图和修图。' : '只要是群友且不在黑名单中，就可以生图和修图。'} tone={imageAccess.mode === 'whitelist' ? 'warning' : 'neutral'} />
-            <SummaryCard label="图像白名单" value={String(imageSummary.whitelistUsers)} hint="仅 whitelist 模式生效。黑名单和主人仍然优先于这份名单。" />
-            <SummaryCard label="全局黑名单" value={String((runtime?.userBlacklist ?? []).length)} hint="这里的黑名单同时作用于聊天与图像，优先级最高。" tone={(runtime?.userBlacklist ?? []).length > 0 ? 'warning' : 'neutral'} />
-            <SummaryCard label="默认生图额度" value={formatQuota(imageQuota.defaultGenerateLimit)} hint="0 表示不限额。生图如果使用 --count，会按实际 count 累加。" />
-            <SummaryCard label="默认修图额度" value={formatQuota(imageQuota.defaultEditLimit)} hint="0 表示不限额。修图每次命令默认记 1 次。" />
-            <SummaryCard label="单独限额用户" value={String(Object.keys(imageQuota.userLimits ?? {}).length)} hint="指定 QQ 的额度会覆盖全局默认额度。" />
-            <SummaryCard label="已耗尽用户" value={String(imageSummary.exhaustedUsers)} hint="任一生图或修图额度耗尽，都会计入这里。" tone={imageSummary.exhaustedUsers > 0 ? 'warning' : 'neutral'} />
+            <SummaryCard label="权限模式" value={getImageAccessModeLabel(imageAccess.mode)} hint={imageAccess.mode === 'whitelist' ? '只有手动加进图像白名单的 QQ 能生图、修图。' : '只要是群友、不在黑名单里，就能生图、修图。'} tone={imageAccess.mode === 'whitelist' ? 'warning' : 'neutral'} />
+            <SummaryCard label="图像白名单" value={String(imageSummary.whitelistUsers)} hint="只在白名单模式下生效，黑名单和主人仍排在它前面。" />
+            <SummaryCard label="全局黑名单" value={String((runtime?.userBlacklist ?? []).length)} hint="一份黑名单同时管聊天和图像，优先级最高。" tone={(runtime?.userBlacklist ?? []).length > 0 ? 'warning' : 'neutral'} />
+            <SummaryCard label="默认生图额度" value={formatQuota(imageQuota.defaultGenerateLimit)} hint="0 表示不限额。生图带 --count 时按实际张数累加。" />
+            <SummaryCard label="默认修图额度" value={formatQuota(imageQuota.defaultEditLimit)} hint="0 表示不限额。修图每条命令记 1 次。" />
+            <SummaryCard label="单独限额用户" value={String(Object.keys(imageQuota.userLimits ?? {}).length)} hint="给这些 QQ 单独设的额度会盖掉全局默认值。" />
+            <SummaryCard label="已耗尽用户" value={String(imageSummary.exhaustedUsers)} hint="生图或修图任一额度用完就算在内。" tone={imageSummary.exhaustedUsers > 0 ? 'warning' : 'neutral'} />
           </div>
 
           {imageAccessConflictUsers.length > 0 && (
             <div className="rounded-[var(--radius-sm)] border border-[var(--error-soft-border)] bg-[var(--error-soft-bg)] px-4 py-3">
               <p className="text-sm font-medium text-[var(--error)]">检测到图像权限冲突</p>
               <p className="mt-1 text-xs text-[var(--text-secondary)] leading-relaxed">
-                以下 QQ 同时出现在用户黑名单和图像白名单中：<span className="mono">{imageAccessConflictUsers.join(', ')}</span>。实际运行时黑名单优先，这些人仍然无法生图或修图。建议你清理其中一侧。
+                这些 QQ 同时在黑名单和图像白名单里：<span className="mono">{imageAccessConflictUsers.join(', ')}</span>。运行时黑名单优先，他们还是不能生图或修图。建议从其中一边删掉。
               </p>
             </div>
           )}
@@ -2635,7 +2635,7 @@ export function UsageManager() {
                 />
                 <span>
                   黑名单模式
-                  <span className="block text-[12px] text-[var(--text-muted)] leading-relaxed">只要是群友，且不在用户黑名单中，就可以生图和修图。</span>
+                  <span className="block text-[12px] text-[var(--text-muted)] leading-relaxed">只要是群友、不在黑名单里，就能生图和修图。</span>
                 </span>
               </label>
               <label className="flex items-start gap-2 text-sm text-[var(--text-primary)]">
@@ -2648,7 +2648,7 @@ export function UsageManager() {
                 />
                 <span>
                   白名单模式
-                  <span className="block text-[12px] text-[var(--text-muted)] leading-relaxed">只有手动加入图像白名单的 QQ 才能生图和修图。黑名单用户依然会被拦截。</span>
+                  <span className="block text-[12px] text-[var(--text-muted)] leading-relaxed">只有手动加进图像白名单的 QQ 能生图和修图，黑名单照样拦。</span>
                 </span>
               </label>
             </div>
@@ -2703,7 +2703,7 @@ export function UsageManager() {
                 加入黑名单
               </button>
             </div>
-            <p className="text-[12px] text-[var(--text-muted)]">这里的黑名单是全局黑名单，会同时拦截普通聊天、生图和修图。若某个 QQ 同时在图像白名单里，实际运行时仍以黑名单优先。</p>
+            <p className="text-[12px] text-[var(--text-muted)]">全局黑名单，聊天、生图、修图一起拦。就算同时在图像白名单里，运行时也是黑名单说了算。</p>
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-[repeat(2,minmax(0,220px))_minmax(0,1fr)] gap-4">
@@ -2716,7 +2716,7 @@ export function UsageManager() {
                 onChange={(e) => setImageQuota({ ...imageQuota, defaultGenerateLimit: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
                 className="w-full px-3 py-2 text-sm rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] mono outline-none focus:border-[var(--accent-purple)]"
               />
-              <p className="text-[12px] text-[var(--text-muted)]">0 表示普通用户默认不限额。生图若使用 `--count 4`，会按 4 次累计。</p>
+              <p className="text-[12px] text-[var(--text-muted)]">0 表示普通用户不限额。生图带 `--count 4` 就按 4 次记。</p>
             </div>
             <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-2">
               <p className="text-xs font-medium text-[var(--text-primary)]">默认修图额度</p>
@@ -2727,7 +2727,7 @@ export function UsageManager() {
                 onChange={(e) => setImageQuota({ ...imageQuota, defaultEditLimit: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
                 className="w-full px-3 py-2 text-sm rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] mono outline-none focus:border-[var(--accent-purple)]"
               />
-              <p className="text-[12px] text-[var(--text-muted)]">0 表示普通用户默认不限额。修图每执行一次命令，默认按 1 次累计。</p>
+              <p className="text-[12px] text-[var(--text-muted)]">0 表示普通用户不限额。修图每执行一条命令记 1 次。</p>
             </div>
             <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-3">
               <p className="text-xs font-medium text-[var(--text-primary)]">手动补一个单独限额用户</p>
@@ -2747,7 +2747,7 @@ export function UsageManager() {
                   单独设置
                 </button>
               </div>
-              <p className="text-[12px] text-[var(--text-muted)]">这里新增的是“单独限额规则”，不是计数。新增后会先继承当前全局默认值，你可以在下方表格继续改。</p>
+              <p className="text-[12px] text-[var(--text-muted)]">这里加的是“单独限额规则”，不是计数。新加的人先套用全局默认值，之后能在下方表格单独改。</p>
             </div>
           </div>
 
@@ -2773,7 +2773,7 @@ export function UsageManager() {
               overscan={8}
               containerStyle={{ height: 420 }}
               containerClassName="max-h-[420px]"
-              empty={<div className="px-6 py-10 text-sm text-[var(--text-muted)] text-center">没有找到符合条件的 QQ。可以先搜索，或者手动补一个单独限额用户。</div>}
+              empty={<div className="px-6 py-10 text-sm text-[var(--text-muted)] text-center">没有匹配的 QQ。先搜搜，或手动补一个单独限额用户。</div>}
               getKey={(row) => row.uid}
               renderItem={(row, index) => (
                   <div
@@ -2866,7 +2866,7 @@ export function UsageManager() {
       )}
 
       {usageSection === 'image' && (
-      <Panel title="图像用量计数" subtitle="这里维护生图 / 修图在当前 12 小时周期内已经累计到多少。主人虽然无限制，但如果你手工补了主人数据，这里也会显示出来供你观察。" icon="📊">
+      <Panel title="图像用量计数" subtitle="维护当前 12 小时周期里生图 / 修图各自已用多少。主人不受限额约束，但你手工补的主人数据也会在这里显示，方便查看。" icon="📊">
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-3">
             <ImportExportActions
@@ -2905,7 +2905,7 @@ export function UsageManager() {
                 >
                   切到当前周期
                 </button>
-                <span className="text-[var(--text-muted)] self-center">当前周期推荐值：{getCurrentPeriodId()}</span>
+                <span className="text-[var(--text-muted)] self-center">当前周期应是：{getCurrentPeriodId()}</span>
               </div>
             </div>
 
@@ -2921,7 +2921,7 @@ export function UsageManager() {
                   <div className="mono text-[var(--text-primary)]">{imageSummary.totalEditUsed}</div>
                 </div>
               </div>
-              <p className="text-[12px] text-[var(--text-muted)]">这里的计数会和上面的图像限额规则一起决定某个 QQ 还能不能继续生图或修图。</p>
+              <p className="text-[12px] text-[var(--text-muted)]">这些计数和上面的图像限额规则一起，决定某个 QQ 还能不能继续生图或修图。</p>
             </div>
           </div>
 
@@ -2995,7 +2995,7 @@ export function UsageManager() {
         onClose={() => setConfirmResetGroup(false)}
         onConfirm={resetGroupPeriod}
         title="重置群用量周期"
-        message="这会把群聊周期标识切到当前东八区时间段，并把所有群计数清空。这里只会进入待保存状态，真正写回文件还要再点一次“保存群用量”。"
+        message="把群周期标识切到当前东八区时段，并清零所有群计数。只是先进入待保存状态，要再点一次“保存群用量”才真正写回文件。"
         confirmText="确认重置"
       />
 
@@ -3004,7 +3004,7 @@ export function UsageManager() {
         onClose={() => setConfirmDropUnknown(false)}
         onConfirm={dropUnknownGroups}
         title="只保留监听中的群"
-        message="这会把不在 runtime.groups 里的群计数从列表中移掉。适合清理旧群或误加的群。这里只会进入待保存状态，真正写回文件还要再点一次“保存群用量”。"
+        message="把不在 runtime.groups 里的群计数从列表里删掉，用来清理旧群或误加的群。只是先进入待保存状态，要再点一次“保存群用量”才真正写回文件。"
         confirmText="确认清理"
       />
 
@@ -3013,7 +3013,7 @@ export function UsageManager() {
         onClose={() => setConfirmResetImage(false)}
         onConfirm={resetImagePeriod}
         title="重置图像用量周期"
-        message="这会把图像周期标识切到当前东八区时间段，并清空所有 QQ 的生图 / 修图计数。这里只会进入待保存状态，真正写回文件还要再点一次“保存图像计数”。"
+        message="把图像周期标识切到当前东八区时段，并清零所有 QQ 的生图 / 修图计数。只是先进入待保存状态，要再点一次“保存图像计数”才真正写回文件。"
         confirmText="确认重置"
       />
     </div>

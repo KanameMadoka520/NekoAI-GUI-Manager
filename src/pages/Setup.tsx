@@ -97,7 +97,7 @@ export function Setup({ onComplete, onEnterReadOnly }: SetupProps) {
               请选择 NekoAI 插件所在的文件夹
             </label>
             <p className="text-xs text-[var(--text-muted)] mb-3">
-              这个文件夹里通常会有 <code className="mono text-[var(--accent-purple)]">runtime_config.json</code>、<code className="mono text-[var(--accent-purple)]">runtime_schema.json</code>、<code className="mono text-[var(--accent-purple)]">api_config.json</code> 这些配置文件。选对目录后，GUI 才能读取和管理插件配置。
+              里面应该能看到 <code className="mono text-[var(--accent-purple)]">runtime_config.json</code>、<code className="mono text-[var(--accent-purple)]">runtime_schema.json</code>、<code className="mono text-[var(--accent-purple)]">api_config.json</code> 等配置文件。选对目录，才能读取和管理这些配置。
             </p>
             <div className="flex gap-2">
               <input
@@ -125,7 +125,7 @@ export function Setup({ onComplete, onEnterReadOnly }: SetupProps) {
             </div>
             {!runningInTauri && (
               <p className="text-[12px] text-[var(--text-muted)] mt-2">
-                当前是浏览器访问模式，无法直接弹出本地文件选择器，请手动填写插件目录绝对路径。
+                浏览器里弹不出本地文件选择器，请手动把插件目录的完整路径填进去。
               </p>
             )}
           </div>
@@ -145,7 +145,7 @@ export function Setup({ onComplete, onEnterReadOnly }: SetupProps) {
                 : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed'
               }`}
           >
-            {validating ? '正在检查这个目录能不能正常使用...' : isReconfig ? '用这个目录重新连接' : '连接这个目录'}
+            {validating ? '正在检查目录是否可用…' : isReconfig ? '用这个目录重新连接' : '连接这个目录'}
           </button>
 
           {runningInTauri && onEnterReadOnly && (
@@ -157,7 +157,7 @@ export function Setup({ onComplete, onEnterReadOnly }: SetupProps) {
                 暂不连接，先进入只读浏览
               </button>
               <p className="text-[12px] text-[var(--text-muted)] leading-relaxed">
-                只读浏览下可以查看各个页面与界面布局，但不会读取或写入任何文件；连接插件目录后才能正常读写。
+                只读浏览能逛遍各个页面、看看界面长什么样，但不会碰你的任何文件；想正常读写，还得连上插件目录。
               </p>
             </div>
           )}
@@ -165,7 +165,7 @@ export function Setup({ onComplete, onEnterReadOnly }: SetupProps) {
           {/* Tips */}
           <div className="pt-2 border-t border-[var(--border-subtle)]">
             <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
-              💡 常见位置：插件目录通常在 Koishi 的 <code className="mono">plugins</code> 文件夹下，例如 <code className="mono text-[var(--accent-purple)]">Koishi\\plugins\\koishi-plugin-Enhanced-NekoAI</code>。如果你不确定，就先打开 Koishi 的插件目录，再从里面找到 NekoAI。
+              💡 它一般在 Koishi 的 <code className="mono">plugins</code> 文件夹里，例如 <code className="mono text-[var(--accent-purple)]">Koishi\\plugins\\koishi-plugin-Enhanced-NekoAI</code>。一时找不到，就先打开 Koishi 的插件目录，再从里面翻出 NekoAI。
             </p>
           </div>
         </div>

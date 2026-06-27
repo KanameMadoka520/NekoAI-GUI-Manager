@@ -202,7 +202,7 @@ export function Dashboard({ onNavigate }: { onNavigate?: (page: PageId) => void 
       </section>
 
       {lowPerformanceMode ? (
-        <Panel title="快速概览" subtitle="低性能模式下先显示轻量摘要，减少顶部卡片和大字号数值一起参与首屏绘制。" icon="⚡" padding="sm">
+        <Panel title="快速概览" subtitle="低性能模式下只显示轻量摘要，不绘制顶部的大卡片和大字号数值，首屏更快。" icon="⚡" padding="sm">
           <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--text-secondary)]">
             <span className="px-2 py-1 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">API 节点 {apis.length}</span>
             <span className="px-2 py-1 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">活跃 #{runtime?.activeApiIndex ?? '-'}</span>
@@ -226,7 +226,7 @@ export function Dashboard({ onNavigate }: { onNavigate?: (page: PageId) => void 
           <StatCard label="当前活跃节点" value={runtime ? `#${runtime.activeApiIndex}` : '-'} icon="⚡" color="var(--success)" />
           <StatCard label="记忆会话数" value={totalMemorySessions} icon="🧠" color="var(--info)" />
           <StatCard label="记忆消息总数" value={totalMessages} icon="💬" color="var(--accent-pink)" />
-          <SummaryCard label="Schema" value={runtimeSchema ? `v${runtimeSchema.schemaVersion}` : '缺失'} hint={runtimeSchema ? `已识别 ${Object.keys(runtimeSchema.fields ?? {}).length} 个配置字段` : '还没读到 runtime_schema.json，说明文件可能缺失或目录没连对'} tone={runtimeSchema ? 'neutral' : 'warning'} />
+          <SummaryCard label="Schema" value={runtimeSchema ? `v${runtimeSchema.schemaVersion}` : '缺失'} hint={runtimeSchema ? `已识别 ${Object.keys(runtimeSchema.fields ?? {}).length} 个配置字段` : '没读到 runtime_schema.json，可能是文件缺失或目录没连对'} tone={runtimeSchema ? 'neutral' : 'warning'} />
         </div>
       )}
 
@@ -248,14 +248,14 @@ export function Dashboard({ onNavigate }: { onNavigate?: (page: PageId) => void 
       </div>
 
       <div className={`grid grid-cols-1 xl:grid-cols-2 ${densityGap}`}>
-        <Panel title="核心状态" subtitle="先看默认模型、人格和几个关键开关，确认机器人现在大概会怎么工作。" icon="⚙">
+        <Panel title="核心状态" subtitle="默认用哪个模型、哪套人格、几个关键开关，一眼确认机器人现在怎么工作。" icon="⚙">
           <SectionToggleRow
             expanded={showCoreDetails}
             onToggle={() => setShowCoreDetails((value) => !value)}
             collapsedText={`当前默认使用 ${activeApi ? `#${runtime!.activeApiIndex} ${activeApi.modelName}` : '未配置 API'}，群聊人格 ${activeGroupPersonality?.remark ?? '-'}，私聊人格 ${activePrivatePersonality?.remark ?? '-'}`}
           />
           {showCoreDetails && (
-            <DeferredVisibleBlock placeholder={<CollapsedHint text="滚动到这一块附近时再加载核心状态明细。" />}>
+            <DeferredVisibleBlock placeholder={<CollapsedHint text="滚到这附近再加载核心状态明细。" />}>
               <div className="space-y-3">
                 <StatusRow label="昵称" value={runtime?.nickName ?? '-'} />
                 <StatusRow label="当前 API" value={activeApi ? `#${runtime!.activeApiIndex} ${activeApi.modelName}` : '-'} badge={activeApi?.aiType} />
@@ -277,14 +277,14 @@ export function Dashboard({ onNavigate }: { onNavigate?: (page: PageId) => void 
           )}
         </Panel>
 
-        <Panel title="群组与用户" subtitle="这里能快速看出机器人会在哪些群说话、会拒绝谁、以及哪些群绑了专属模型或人格。" icon="👥">
+        <Panel title="群组与用户" subtitle="一眼看清机器人在哪些群说话、会拒绝谁、哪些群绑了专属模型或人格。" icon="👥">
           <SectionToggleRow
             expanded={showGroupDetails}
             onToggle={() => setShowGroupDetails((value) => !value)}
             collapsedText={`监听群 ${runtime?.groups?.length ?? 0} 个，私聊白名单 ${runtime?.allowPrivateTalkingUsers?.length ?? 0} 人，黑名单 ${runtime?.userBlacklist?.length ?? 0} 人`}
           />
           {showGroupDetails && (
-            <DeferredVisibleBlock placeholder={<CollapsedHint text="滚动到这一块附近时再加载群组和用户明细。" />}>
+            <DeferredVisibleBlock placeholder={<CollapsedHint text="滚到这附近再加载群组和用户明细。" />}>
               <div className="space-y-3">
                 <StatusRow label="主人 QQ" value={runtime?.masterQQ?.join(', ') || '-'} />
                 <StatusRow label="监听群组" value={`${runtime?.groups?.length ?? 0} 个群`} />
@@ -319,14 +319,14 @@ export function Dashboard({ onNavigate }: { onNavigate?: (page: PageId) => void 
       </div>
 
       {lowPerformanceMode ? (
-        <Panel title="节点类型分布" subtitle="低性能模式下默认先收起类型卡片，需要时再展开。" icon="🧩" padding="sm">
+        <Panel title="节点类型分布" subtitle="低性能模式下先收起类型卡片，需要时再展开。" icon="🧩" padding="sm">
           <SectionToggleRow
             expanded={showApiTypeDetails}
             onToggle={() => setShowApiTypeDetails((value) => !value)}
             collapsedText={`OpenAI ${apiTypeCounts.openai} · Gemini ${apiTypeCounts.gemini} · Anthropic ${apiTypeCounts.anthropic}`}
           />
           {showApiTypeDetails && (
-            <DeferredVisibleBlock placeholder={<CollapsedHint text="滚动到这一块附近时再加载节点类型分布卡片。" />}>
+            <DeferredVisibleBlock placeholder={<CollapsedHint text="滚到这附近再加载节点类型分布卡片。" />}>
               <div className={`grid grid-cols-1 xl:grid-cols-3 ${densityGap}`}>
                 <TypeCard type="OpenAI" count={apiTypeCounts.openai} total={apis.length} color="var(--success)" />
                 <TypeCard type="Gemini" count={apiTypeCounts.gemini} total={apis.length} color="var(--info)" />
@@ -344,37 +344,37 @@ export function Dashboard({ onNavigate }: { onNavigate?: (page: PageId) => void 
       )}
 
       {lowPerformanceMode ? (
-        <Panel title="记忆概览" subtitle="低性能模式下先只看群聊 / 私聊记忆摘要，需要时再展开详细进度条列表。" icon="🧠" padding="sm">
+        <Panel title="记忆概览" subtitle="低性能模式下先看群聊 / 私聊记忆摘要，需要时再展开进度条列表。" icon="🧠" padding="sm">
           <SectionToggleRow
             expanded={showMemoryDetails}
             onToggle={() => setShowMemoryDetails((value) => !value)}
             collapsedText={`群聊会话 ${groupMemories.length} 个 / ${groupMemories.reduce((s, m) => s + m.count, 0)} 条，私聊会话 ${privateMemories.length} 个 / ${privateMemories.reduce((s, m) => s + m.count, 0)} 条`}
           />
           {showMemoryDetails && (
-            <DeferredVisibleBlock placeholder={<CollapsedHint text="滚动到这一块附近时再加载记忆进度条列表。" />}>
+            <DeferredVisibleBlock placeholder={<CollapsedHint text="滚到这附近再加载记忆进度条列表。" />}>
               <div className={`grid grid-cols-1 xl:grid-cols-2 ${densityGap}`}>
-                <MemoryPanel title="群聊记忆" subtitle="查看群聊会话占用与容量接近情况。" icon="👥" memories={groupMemories} />
-                <MemoryPanel title="私聊记忆" subtitle="查看私聊会话占用与容量接近情况。" icon="👤" memories={privateMemories} />
+                <MemoryPanel title="群聊记忆" subtitle="每个群聊会话存了多少、离容量上限还有多远。" icon="👥" memories={groupMemories} />
+                <MemoryPanel title="私聊记忆" subtitle="每个私聊会话存了多少、离容量上限还有多远。" icon="👤" memories={privateMemories} />
               </div>
             </DeferredVisibleBlock>
           )}
         </Panel>
       ) : (
         <div className={`grid grid-cols-1 xl:grid-cols-2 ${densityGap}`}>
-          <MemoryPanel title="群聊记忆" subtitle="查看群聊会话占用与容量接近情况。" icon="👥" memories={groupMemories} />
-          <MemoryPanel title="私聊记忆" subtitle="查看私聊会话占用与容量接近情况。" icon="👤" memories={privateMemories} />
+          <MemoryPanel title="群聊记忆" subtitle="每个群聊会话存了多少、离容量上限还有多远。" icon="👥" memories={groupMemories} />
+          <MemoryPanel title="私聊记忆" subtitle="每个私聊会话存了多少、离容量上限还有多远。" icon="👤" memories={privateMemories} />
         </div>
       )}
 
       {systemInfo && (
-        <Panel title="配置文件检查" subtitle="如果这里有文件缺失，先别急着调参数，先把插件目录连对或把缺的文件补回来。" icon="🩺">
+        <Panel title="配置文件检查" subtitle="有文件缺失就先别调参数，先把插件目录连对、缺的文件补回来。" icon="🩺">
           <SectionToggleRow
             expanded={showFileDetails}
             onToggle={() => setShowFileDetails((value) => !value)}
             collapsedText={`共检查 ${systemInfo.files.length} 个文件，缺失 ${systemInfo.files.filter((file) => !file.exists).length} 个`}
           />
           {showFileDetails && (
-            <DeferredVisibleBlock placeholder={<CollapsedHint text="滚动到这一块附近时再加载配置文件检查表格。" />}>
+            <DeferredVisibleBlock placeholder={<CollapsedHint text="滚到这附近再加载配置文件检查表格。" />}>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>

@@ -24,18 +24,18 @@ interface Section {
 
 const sections: Section[] = [
   { id: 'core', label: '核心设置', icon: '⚙', summary: '昵称、主人账号、日志与基础身份。', mode: 'both' },
-  { id: 'active', label: '活跃节点/人格', icon: '⚡', summary: '当前生效的 API 与人格索引。', mode: 'both' },
+  { id: 'active', label: '活跃节点/人格', icon: '⚡', summary: '默认走哪个 API、用哪个人格。', mode: 'both' },
   { id: 'groups', label: '群聊与用户', icon: '👥', summary: '监听群组、私聊白名单、聊天/图像黑白名单与群总额度。', mode: 'both' },
   { id: 'quota', label: '额度规则', icon: '📊', summary: '聊天与图像的默认额度和单独用户额度。', mode: 'both' },
   { id: 'messages', label: '消息行为', icon: '💬', summary: '上下文条数、等待时间、随机回复和打字节奏。', mode: 'both' },
-  { id: 'feedback', label: '请求反馈', icon: '📣', summary: '控制处理中提示、失败回报和 API 超时。', mode: 'both' },
+  { id: 'feedback', label: '请求反馈', icon: '📣', summary: '处理中提示、失败回报和 API 超时都在这。', mode: 'both' },
   { id: 'memory', label: '记忆与摘要', icon: '🧠', summary: '闲置自动清空、记忆压缩与摘要提示词。', mode: 'common' },
-  { id: 'router', label: '智能路由', icon: '🔀', summary: '插件当前支持的路由模式、重试和排除列表。', mode: 'advanced' },
-  { id: 'imageRouter', label: '图像路由集群', icon: '🖼', summary: '按图像节点编号顺序接力尝试，任一节点成功即返回结果。', mode: 'advanced' },
-  { id: 'memes', label: '表情包', icon: '😸', summary: '控制表情包功能与触发概率。', mode: 'common' },
-  { id: 'queue', label: '请求队列', icon: '📤', summary: '当前插件实际消费的请求并发配置。', mode: 'advanced' },
-  { id: 'mapping', label: '群级映射', icon: '🗺', summary: '按群定制人格与 API 索引。', mode: 'advanced' },
-  { id: 'apiParams', label: 'API 参数', icon: '🎛', summary: '向下游模型透传的参数字典。', mode: 'advanced' },
+  { id: 'router', label: '智能路由', icon: '🔀', summary: '插件支持的路由模式、重试和排除项。', mode: 'advanced' },
+  { id: 'imageRouter', label: '图像路由集群', icon: '🖼', summary: '按图像节点编号依次接力，谁先成功就用谁的结果。', mode: 'advanced' },
+  { id: 'memes', label: '表情包', icon: '😸', summary: '表情包开关和触发概率。', mode: 'common' },
+  { id: 'queue', label: '请求队列', icon: '📤', summary: '插件真正生效的请求并发设置。', mode: 'advanced' },
+  { id: 'mapping', label: '群级映射', icon: '🗺', summary: '给不同群单独指定人格和 API。', mode: 'advanced' },
+  { id: 'apiParams', label: 'API 参数', icon: '🎛', summary: '透传给下游模型的参数表。', mode: 'advanced' },
   { id: 'forward', label: '转发设置', icon: '📨', summary: '长文本转发、模型列表输出和图片卡片风格。', mode: 'both' },
 ];
 
@@ -661,7 +661,7 @@ export function ConfigEditor() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const dirty = useMemo(() => config && JSON.stringify(config) !== original, [config, original]);
-  usePageDirtyState('config', !!dirty, '运行配置存在未保存改动，离开后这些改动不会自动写回 runtime_config.json。');
+  usePageDirtyState('config', !!dirty, '运行配置还有没保存的改动，直接离开不会写回 runtime_config.json。');
   const effectiveSections = useMemo(() => {
     const schemaSections = new Map((schema?.sections ?? []).map((section) => [section.id, section]));
     return sections.map((section) => {
@@ -1038,7 +1038,7 @@ export function ConfigEditor() {
         <div className="px-4 py-4 border-b border-[var(--border-subtle)] space-y-3">
           <div>
             <p className="text-sm font-medium text-[var(--text-primary)]">配置导航</p>
-            <p className="text-[12px] text-[var(--text-muted)] mt-1">先看常用区，进完整模式再处理高级字段。</p>
+            <p className="text-[12px] text-[var(--text-muted)] mt-1">先调常用区，要碰高级字段再切完整模式。</p>
           </div>
 
           <div className="grid grid-cols-2 gap-2">
@@ -1103,21 +1103,21 @@ export function ConfigEditor() {
 
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
         <div className="grid grid-cols-2 xl:grid-cols-5 gap-3 mb-4">
-          <SummaryCard label="模式" value={editorMode === 'common' ? '常用' : '完整'} hint={editorMode === 'common' ? '隐藏高频外章节，减少表单墙感' : '显示全部字段与高级章节'} />
-          <SummaryCard label="活跃 API" value={`#${config.activeApiIndex}`} hint="当前生效节点索引" />
-          <SummaryCard label="监听群组" value={String(summary.groups)} hint="当前配置中的群组数量" />
-          <SummaryCard label="私聊白名单" value={String(summary.privateUsers)} hint="允许私聊的用户数量" />
-          <SummaryCard label="Schema 提醒" value={summary.schemaIssues ? `${summary.schemaIssues} 项` : '无'} hint={summary.schemaIssues ? '当前配置里有需要留意的兼容或约束问题' : '当前配置和 schema 基本一致'} tone={summary.schemaIssues ? 'warning' : 'neutral'} />
-          <SummaryCard label="保存状态" value={dirty ? '待保存' : '已同步'} hint={dirty ? `与上次保存相比有 ${summary.savedDiffs} 项变动` : '当前配置与文件一致'} tone={dirty ? 'warning' : 'neutral'} />
+          <SummaryCard label="模式" value={editorMode === 'common' ? '常用' : '完整'} hint={editorMode === 'common' ? '只留常用章节，看着没那么挤' : '所有字段和高级章节都展开'} />
+          <SummaryCard label="活跃 API" value={`#${config.activeApiIndex}`} hint="正在使用的 API 节点编号" />
+          <SummaryCard label="监听群组" value={String(summary.groups)} hint="配置里监听的群组数" />
+          <SummaryCard label="私聊白名单" value={String(summary.privateUsers)} hint="能私聊机器人的人数" />
+          <SummaryCard label="Schema 提醒" value={summary.schemaIssues ? `${summary.schemaIssues} 项` : '无'} hint={summary.schemaIssues ? '有几处兼容性或取值问题值得看一眼' : '配置和 schema 对得上'} tone={summary.schemaIssues ? 'warning' : 'neutral'} />
+          <SummaryCard label="保存状态" value={dirty ? '待保存' : '已同步'} hint={dirty ? `比上次保存多了 ${summary.savedDiffs} 处改动` : '和文件里存的一样'} tone={dirty ? 'warning' : 'neutral'} />
         </div>
 
         <div className="rounded-[var(--radius)] border border-[var(--border-subtle)] mb-3 px-4 py-3" style={{ background: 'var(--surface-card)', boxShadow: 'var(--shadow-card)' }}>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs text-[var(--text-muted)]">当前模式说明：</span>
+            <span className="text-xs text-[var(--text-muted)]">模式说明：</span>
             <span className="text-xs text-[var(--text-secondary)]">
               {editorMode === 'common'
-                ? '优先展示昵称、活跃索引、群组、消息、记忆、转发等高频配置。'
-                : '显示智能路由、请求队列、群级映射、API 参数等插件真实支持字段。'}
+                ? '只显示昵称、活跃索引、群组、消息、记忆、转发这些常用配置。'
+                : '把智能路由、请求队列、群级映射、API 参数等高级字段也一并展开。'}
             </span>
             {schema && (
               <span className="text-xs text-[var(--text-muted)]">
@@ -1150,7 +1150,7 @@ export function ConfigEditor() {
                   <IssueCallout
                     key={`unknown-${path}`}
                     label={path}
-                    text="这个字段当前 schema 不认识。通常是旧字段残留、手工拼写错误，或者配置文件版本和插件版本不一致。"
+                    text="schema 里没有这个字段，多半是旧字段没清掉、手滑拼错了，或者配置和插件版本对不上。"
                     tone="muted"
                   />
                 ))}
@@ -1165,7 +1165,7 @@ export function ConfigEditor() {
                   <IssueCallout
                     key={`issue-${issue.path}`}
                     label={issue.path}
-                    text={`当前值需要检查，${issue.message}。`}
+                    text={`这个值有问题：${issue.message}。`}
                     tone="error"
                   />
                 ))}
@@ -1180,12 +1180,12 @@ export function ConfigEditor() {
                   )}
                 </div>
                 {summary.schemaIssues > 4 && (
-                  <p className="text-[var(--text-muted)]">这里只显示前几项提醒，完整情况可通过导入校验或启动自检继续检查。</p>
+                  <p className="text-[var(--text-muted)]">只列了前几条，剩下的靠导入校验或启动自检看全。</p>
                 )}
               </div>
             ) : (
               <p className="text-xs text-[var(--text-secondary)]">
-                当前配置中的字段、枚举值和数值范围都与 <span className="mono">runtime_schema.json</span> 基本一致。
+                字段名、枚举值和取值范围都和 <span className="mono">runtime_schema.json</span> 对得上。
               </p>
             )}
           </div>
@@ -1217,17 +1217,17 @@ export function ConfigEditor() {
                   )}
                 </div>
                 <p className="mt-1 text-[12px] text-[var(--text-muted)] leading-relaxed">
-                  平时可收起，只看摘要；一旦出现 schema 异常或未保存改动，会自动展开并高亮这一块。
+                  平时收起看摘要就行；一旦有 schema 问题或没保存的改动，它会自动展开并高亮。
                 </p>
               </div>
               <span className="text-xs text-[var(--text-muted)] pt-1">{diffOverviewExpanded ? '收起' : '展开'}</span>
             </button>
 
             <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 mt-3">
-              <SummaryCard label="相对默认值" value={`${summary.defaultDiffs} 项`} hint="和 schema 默认值相比，当前一共改了多少字段" />
-              <SummaryCard label="相对上次保存" value={`${summary.savedDiffs} 项`} hint="你当前还没保存的变动字段数量" tone={summary.savedDiffs ? 'warning' : 'neutral'} />
-              <SummaryCard label="默认状态" value={summary.defaultDiffs ? '已个性化' : '接近默认'} hint="字段越多，说明你当前配置越偏离默认模板" />
-              <SummaryCard label="编辑状态" value={summary.savedDiffs ? '有未保存改动' : '已同步'} hint="这块只看当前表单和上次保存文件的差异" tone={summary.savedDiffs ? 'warning' : 'neutral'} />
+              <SummaryCard label="相对默认值" value={`${summary.defaultDiffs} 项`} hint="相比 schema 默认值，一共改了几个字段" />
+              <SummaryCard label="相对上次保存" value={`${summary.savedDiffs} 项`} hint="还没保存的改动字段数" tone={summary.savedDiffs ? 'warning' : 'neutral'} />
+              <SummaryCard label="默认状态" value={summary.defaultDiffs ? '已个性化' : '接近默认'} hint="改得越多，离默认模板越远" />
+              <SummaryCard label="编辑状态" value={summary.savedDiffs ? '有未保存改动' : '已同步'} hint="只比表单和上次保存的文件差在哪" tone={summary.savedDiffs ? 'warning' : 'neutral'} />
             </div>
 
             {diffOverviewExpanded && (
@@ -1235,7 +1235,7 @@ export function ConfigEditor() {
                 <div className="space-y-2">
                   <p className="font-medium text-[var(--text-primary)]">相对默认值的主要改动</p>
                   {changedFromDefaults.length === 0 ? (
-                    <p className="text-[var(--text-muted)]">当前配置和默认值非常接近，没有明显偏离。</p>
+                    <p className="text-[var(--text-muted)]">基本就是默认值，没怎么动过。</p>
                   ) : (
                     changedFromDefaults.slice(0, 6).map((path) => (
                       <p key={`default-${path}`}>
@@ -1251,7 +1251,7 @@ export function ConfigEditor() {
                 <div className="space-y-2">
                   <p className="font-medium text-[var(--text-primary)]">相对上次保存的未提交改动</p>
                   {changedFromSaved.length === 0 ? (
-                    <p className="text-[var(--text-muted)]">当前表单和上次保存内容一致。</p>
+                    <p className="text-[var(--text-muted)]">表单和上次保存的内容一样。</p>
                   ) : (
                     changedFromSaved.slice(0, 6).map((path) => (
                       <p key={`saved-${path}`}>
@@ -1269,7 +1269,7 @@ export function ConfigEditor() {
 
             {!diffOverviewExpanded && hasConfigOverviewContent && (
               <p className="mt-3 text-[12px] text-[var(--text-muted)]">
-                当前只显示差异摘要。展开后可查看相对默认值和相对上次保存的明细。
+                现在只看摘要，展开能看到相对默认值、相对上次保存的逐项明细。
               </p>
             )}
           </div>
@@ -1290,7 +1290,7 @@ export function ConfigEditor() {
             {renderSchemaField('logLevel')}
           </SectionCard>
 
-          <SectionCard id="active" title={sectionMetaMap.get('active')?.label ?? '活跃节点/人格'} icon="⚡" summary={sectionMetaMap.get('active')?.summary ?? '这组配置决定当前默认使用哪个 API 和人格。'} refs={sectionRefs}>
+          <SectionCard id="active" title={sectionMetaMap.get('active')?.label ?? '活跃节点/人格'} icon="⚡" summary={sectionMetaMap.get('active')?.summary ?? '决定默认走哪个 API、用哪个人格。'} refs={sectionRefs}>
             {renderSchemaField('activeApiIndex', { min: 0 })}
             {renderSchemaField('activeGroupPersonalityIndex', { min: 0 })}
             {renderSchemaField('activePrivatePersonalityIndex', { min: 0 })}
@@ -1305,7 +1305,7 @@ export function ConfigEditor() {
             {chatAccessConflictUsers.length > 0 && (
               <IssueCallout
                 label="聊天权限冲突"
-                text={`以下 QQ 同时出现在用户黑名单和聊天白名单里：${chatAccessConflictUsers.join(', ')}。实际运行时黑名单优先，这些人仍然不会收到普通聊天回复。`}
+                text={`这些 QQ 同时在用户黑名单和聊天白名单里：${chatAccessConflictUsers.join(', ')}。运行时黑名单说了算，他们照样收不到普通聊天回复。`}
                 tone="error"
               />
             )}
@@ -1314,11 +1314,11 @@ export function ConfigEditor() {
             {imageAccessConflictUsers.length > 0 && (
               <IssueCallout
                 label="图像权限冲突"
-                text={`以下 QQ 同时出现在用户黑名单和图像白名单里：${imageAccessConflictUsers.join(', ')}。实际运行时黑名单优先，这些人仍然无法生图或修图。建议你清理其中一侧，避免误判。`}
+                text={`这些 QQ 同时在用户黑名单和图像白名单里：${imageAccessConflictUsers.join(', ')}。黑名单优先，他们还是没法生图或修图，建议留一边删另一边免得搞混。`}
                 tone="error"
               />
             )}
-            <InlineNote>聊天白名单只影响普通聊天回复；图像白名单只影响生图 / 修图。用户黑名单始终优先，高于聊天白名单和图像白名单。</InlineNote>
+            <InlineNote>聊天白名单只管普通聊天，图像白名单只管生图 / 修图；用户黑名单优先级最高，名单里的人哪个白名单都救不回来。</InlineNote>
             {renderSchemaField('groupLimits')}
           </SectionCard>
 
@@ -1329,7 +1329,7 @@ export function ConfigEditor() {
             {renderSchemaField('imageQuota.enabled')}
             {renderSchemaField('imageQuota.defaultGenerateLimit')}
             {renderSchemaField('imageQuota.defaultEditLimit')}
-            <InlineNote>聊天个人额度和群总额度会同时生效。图像额度仍按生图/修图分别统计。</InlineNote>
+            <InlineNote>聊天的个人额度和群总额度一起算；图像额度则把生图和修图分开计。</InlineNote>
           </SectionCard>
           </>)}
 
@@ -1345,7 +1345,7 @@ export function ConfigEditor() {
             {renderSchemaField('eachLetterCost', { min: 0 })}
           </SectionCard>
 
-          <SectionCard id="feedback" title={sectionMetaMap.get('feedback')?.label ?? '请求反馈'} icon="📣" summary={sectionMetaMap.get('feedback')?.summary ?? '管理 API 超时、处理中提示以及失败时是否回显错误详情。'} refs={sectionRefs}>
+          <SectionCard id="feedback" title={sectionMetaMap.get('feedback')?.label ?? '请求反馈'} icon="📣" summary={sectionMetaMap.get('feedback')?.summary ?? '管 API 超时、处理中提示，以及失败时要不要回显报错。'} refs={sectionRefs}>
             {renderSchemaField('apiTimeoutMs', { min: 1000 })}
             {renderSchemaField('sendProcessingNotice')}
             {renderSchemaField('processingNoticeText', { placeholder: '已接收到请求，请耐心等待处理。' })}
@@ -1356,18 +1356,18 @@ export function ConfigEditor() {
           </SectionCard>
 
           {visibleSections.some((s) => s.id === 'memory') && (
-            <SectionCard id="memory" title={sectionMetaMap.get('memory')?.label ?? '记忆与摘要'} icon="🧠" summary={sectionMetaMap.get('memory')?.summary ?? '决定何时自动清空闲置上下文，以及何时触发摘要压缩。'} refs={sectionRefs}>
+            <SectionCard id="memory" title={sectionMetaMap.get('memory')?.label ?? '记忆与摘要'} icon="🧠" summary={sectionMetaMap.get('memory')?.summary ?? '决定闲置多久清空上下文，以及什么时候触发摘要压缩。'} refs={sectionRefs}>
               {renderSchemaField('contextAutoForgetMs', { min: 0 })}
               {renderSchemaField('memorySummary.enabled')}
               {renderSchemaField('memorySummary.threshold', { min: 5 })}
-              {renderSchemaField('memorySummary.summaryPrompt', { asTextArea: true, placeholder: '留空则使用插件内置默认提示词', rows: 4 })}
+              {renderSchemaField('memorySummary.summaryPrompt', { asTextArea: true, placeholder: '不填就用插件自带的默认提示词', rows: 4 })}
             </SectionCard>
           )}
           </>)}
 
           {subTab === 'routing' && (<>
           {visibleSections.some((s) => s.id === 'router') && (
-            <SectionCard id="router" title={sectionMetaMap.get('router')?.label ?? '智能路由'} icon="🔀" summary={sectionMetaMap.get('router')?.summary ?? '仅展示插件当前真实支持的路由模式、重试和排除列表。'} refs={sectionRefs}>
+            <SectionCard id="router" title={sectionMetaMap.get('router')?.label ?? '智能路由'} icon="🔀" summary={sectionMetaMap.get('router')?.summary ?? '只列插件真正支持的路由模式、重试和排除项。'} refs={sectionRefs}>
               {renderSchemaField('smartRouter.enabled')}
               {renderSchemaField('smartRouter.mode')}
               {renderSchemaField('smartRouter.excludeIndices')}
@@ -1376,7 +1376,7 @@ export function ConfigEditor() {
               {renderSchemaField('smartRouter.retryCount', { min: 0 })}
               {renderSchemaField('smartRouter.retryDelay', { min: 0 })}
               <InlineNote>
-                同节点重试会在当前节点原地重试，智能路由关闭时也能生效；路由重试用于失败后切换到其他节点，需开启智能路由。
+                同节点重试就在原节点再试一次，关掉智能路由也有效；路由重试是失败后换别的节点，得先开智能路由。
               </InlineNote>
             </SectionCard>
           )}
@@ -1386,7 +1386,7 @@ export function ConfigEditor() {
               {renderSchemaField('imageRouter.enabled')}
               {renderSchemaField('imageRouter.order')}
               <InlineNote>
-                推荐在 API 管理页的“图像路由集群”页面维护该顺序；这里保留运行时配置的直接编辑入口。
+                顺序建议去 API 管理页的“图像路由集群”里调；这里只是留个直接改运行时配置的入口。
               </InlineNote>
             </SectionCard>
           )}
@@ -1402,11 +1402,11 @@ export function ConfigEditor() {
 
           {subTab === 'advanced' && (<>
           {visibleSections.some((s) => s.id === 'queue') && (
-            <SectionCard id="queue" title={sectionMetaMap.get('queue')?.label ?? '请求队列'} icon="📤" summary={sectionMetaMap.get('queue')?.summary ?? '可配置最大并发数、最大排队长度，以及队列满时发给用户的提示文案。'} refs={sectionRefs}>
+            <SectionCard id="queue" title={sectionMetaMap.get('queue')?.label ?? '请求队列'} icon="📤" summary={sectionMetaMap.get('queue')?.summary ?? '配最大并发、排队上限，以及队列满时发给用户的提示语。'} refs={sectionRefs}>
               {renderSchemaField('requestQueue.maxConcurrent', { min: 1 })}
               {renderSchemaField('requestQueue.maxPending', { min: 0 })}
               {renderSchemaField('requestQueue.overflowText', { asTextArea: true, rows: 3 })}
-              <InlineNote>队列配置当前会影响最大并发数、最大排队数，以及队列满时的自动撤回提示文案。请求失败后的重试仍由智能路由中的 retryCount / retryDelay 控制。</InlineNote>
+              <InlineNote>这里管的是最大并发、最大排队数，以及队列满时那条会自动撤回的提示语。请求失败后的重试不归这儿，由智能路由的 retryCount / retryDelay 决定。</InlineNote>
             </SectionCard>
           )}
 
@@ -1423,7 +1423,7 @@ export function ConfigEditor() {
               {renderSchemaField('apiParams.maxTokens')}
               {renderSchemaField('apiParams.anthropicMaxTokens')}
               {renderSchemaField('apiParams.geminiMaxTokens')}
-              <Field label="额外 API 参数 (参数名 → 值)" description="除了内置字段外，这里仍允许补充额外数值参数；与 schema 中已声明的内置参数分开维护。">
+              <Field label="额外 API 参数 (参数名 → 值)" description="内置那几个之外，还能在这儿加别的数值参数，和 schema 里声明的内置参数分开存。">
                 {(() => {
                   const extraApiParams: Record<string, number> = {};
                   for (const [key, value] of Object.entries(config.apiParams ?? {})) {
@@ -1474,7 +1474,7 @@ export function ConfigEditor() {
           setConfirmResetSecond(true);
         }}
         title="恢复全部默认"
-        message="该操作会将当前配置字段重置为默认值（需保存后生效）。是否继续？"
+        message="会把所有配置字段恢复成默认值，保存后才真正生效。继续吗？"
         confirmText="继续"
         danger={false}
       />
@@ -1487,7 +1487,7 @@ export function ConfigEditor() {
           resetAll();
         }}
         title="二次确认"
-        message="这是高风险操作：将覆盖当前编辑中的配置。请确认你已备份并仍要继续。"
+        message="高风险操作：会覆盖你正在编辑的配置。确认已备份再继续。"
         confirmText="我已了解，恢复默认"
       />
     </div>

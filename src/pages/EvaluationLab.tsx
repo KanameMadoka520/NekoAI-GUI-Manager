@@ -373,7 +373,7 @@ export function EvaluationLab() {
           scoredAt: new Date().toISOString(),
         },
       });
-      addToast('success', '评分已保存。现在这条结果已经写回实验记录里了。');
+      addToast('success', '评分已保存，已写回实验记录。');
       await loadExperiment(activeExperiment.id);
     } catch (e: any) {
       addToast('error', `保存评分失败: ${e?.message ?? e}`);
@@ -389,7 +389,7 @@ export function EvaluationLab() {
         setSelectedRunKey('');
       }
       setHistory(nextHistory);
-      addToast('success', `已删除实验 ${id}。如果这是你刚才正在看的实验，右侧内容也会一起切走。`);
+      addToast('success', `已删除实验 ${id}。若正在查看它，右侧会自动切到下一条。`);
       if (activeExperiment?.id === id && nextHistory[0]) {
         await loadExperiment(nextHistory[0].id);
       }
@@ -412,22 +412,22 @@ export function EvaluationLab() {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 xl:grid-cols-5 gap-4">
-        <SummaryCard label="评测模式" value={mode === 'group' ? '群聊' : '私聊'} hint="这里决定你现在是在比较群聊人格，还是比较私聊人格。" />
-        <SummaryCard label="参评人格" value={selectedCandidates.length} hint="至少选 2 个才有比较意义，不然看不出谁更稳定。." />
-        <SummaryCard label="API 节点" value={selectedApis.length} hint="这里选的是固定测试节点，不会走智能路由。" />
-        <SummaryCard label="测试矩阵" value={matrixTotal} hint="总任务数 = 人格 × API × 用例 × 轮次。数字太大时，跑完会很慢。." tone={matrixTotal > 100 ? 'warning' : 'neutral'} />
-        <SummaryCard label="最近实验" value={history.length} hint="做过的实验都会留在这里，之后还能回来补评分或删记录。" />
+        <SummaryCard label="评测模式" value={mode === 'group' ? '群聊' : '私聊'} hint="切换比较群聊人格还是私聊人格。" />
+        <SummaryCard label="参评人格" value={selectedCandidates.length} hint="至少选 2 个，不然没法分高下。" />
+        <SummaryCard label="API 节点" value={selectedApis.length} hint="用固定节点测试，不走智能路由。" />
+        <SummaryCard label="测试矩阵" value={matrixTotal} hint="总任务数 = 人格 × API × 用例 × 轮次，数越大跑得越久。" tone={matrixTotal > 100 ? 'warning' : 'neutral'} />
+        <SummaryCard label="最近实验" value={history.length} hint="做过的实验都存着，随时回来补评分或删掉。" />
       </div>
 
       <div className={`grid grid-cols-1 xl:grid-cols-2 ${densityClass}`}>
-        <Panel title="实验配置" subtitle="先把“谁参赛”“用什么模型”“拿什么问题去比”这三件事定下来。." icon="🧪">
+        <Panel title="实验配置" subtitle="定下三件事：谁参赛、用哪些模型、拿什么问题去比。" icon="🧪">
           <EvalToggleRow
             expanded={showConfigDetails}
             onToggle={() => setShowConfigDetails((value) => !value)}
             collapsedText={`模式 ${mode === 'group' ? '群聊' : '私聊'}，已选人格 ${selectedCandidates.length}，已选 API ${selectedApis.length}，轮次 ${rounds}`}
           />
           {showConfigDetails && (
-            <DeferredVisibleBlock placeholder={<EvalCollapsedHint text="滚动到这里附近时再挂载实验配置详情。" />}>
+            <DeferredVisibleBlock placeholder={<EvalCollapsedHint text="滚动到附近再加载配置详情。" />}>
               <div className="space-y-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <button onClick={() => setMode('group')} className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] border cursor-pointer ${mode === 'group' ? 'bg-[var(--nav-active-bg)] text-[var(--accent-purple)] border-[var(--accent-purple)]' : 'bg-[var(--bg-elevated)] border-[var(--border-subtle)] text-[var(--text-secondary)]'}`}>比较群聊人格</button>
@@ -439,7 +439,7 @@ export function EvaluationLab() {
                 </div>
 
                 <div>
-                  <p className="text-xs text-[var(--text-muted)] mb-2">要拿来比较的人格（至少选 2 个）</p>
+                  <p className="text-xs text-[var(--text-muted)] mb-2">参与比较的人格（至少 2 个）</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
                     {personalityList.map((item, index) => (
                       <label key={`${mode}-${index}`} className="flex items-start gap-2 px-3 py-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] cursor-pointer">
@@ -454,7 +454,7 @@ export function EvaluationLab() {
                 </div>
 
                 <div>
-                  <p className="text-xs text-[var(--text-muted)] mb-2">要参加评测的 API 节点（这里是固定节点，不会自动切路由）</p>
+                  <p className="text-xs text-[var(--text-muted)] mb-2">参与评测的 API 节点（固定节点，不走自动路由）</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
                     {apiNodes.map((item) => (
                       <label key={item.index} className="flex items-start gap-2 px-3 py-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] cursor-pointer">
@@ -472,14 +472,14 @@ export function EvaluationLab() {
           )}
         </Panel>
 
-        <Panel title="测试用例集" subtitle="这里决定你拿什么问题去比较人格。问题设计得越清楚，结论就越稳定。." icon="📝">
+        <Panel title="测试用例集" subtitle="用来比较人格的问题。问题越具体，结论越可靠。" icon="📝">
           <EvalToggleRow
             expanded={showCaseDetails}
             onToggle={() => setShowCaseDetails((value) => !value)}
-            collapsedText={`当前共有 ${cases.length} 个测试用例。低性能模式下这一整块默认收起，避免一进页就先挂满多组文本框。`}
+            collapsedText={`共 ${cases.length} 个测试用例。低性能模式下默认收起，免得一进页就堆满文本框。`}
           />
           {showCaseDetails && (
-            <DeferredVisibleBlock placeholder={<EvalCollapsedHint text="滚动到这里附近时再挂载测试用例编辑区。" />}>
+            <DeferredVisibleBlock placeholder={<EvalCollapsedHint text="滚动到附近再加载用例编辑区。" />}>
               <div className="space-y-3">
                 {cases.map((item) => (
                   <div key={item.id} className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-2">
@@ -488,9 +488,9 @@ export function EvaluationLab() {
                       <button onClick={() => duplicateCase(item.id)} className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] cursor-pointer">复制一份</button>
                       <button onClick={() => setCases((items) => items.length <= 1 ? items : items.filter((x) => x.id !== item.id))} className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--error-soft-bg)] text-[var(--error)] cursor-pointer">删掉</button>
                     </div>
-                    <input value={item.tags.join(', ')} onChange={(e) => updateCase(item.id, { tags: e.target.value.split(',').map((x) => x.trim()).filter(Boolean) })} placeholder="标签，用逗号分隔，方便以后筛选" className="w-full px-3 py-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] text-sm text-[var(--text-primary)]" />
-                    <textarea value={item.contextText ?? ''} onChange={(e) => updateCase(item.id, { contextText: e.target.value })} placeholder="补充上下文（可选）。适合放人物关系、前文摘要或任务背景。" rows={3} className="w-full px-3 py-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] text-sm text-[var(--text-primary)] resize-y" />
-                    <textarea value={item.latestUserMessage} onChange={(e) => updateCase(item.id, { latestUserMessage: e.target.value })} placeholder="用户最后一句会说什么（必填）。尽量写成你真的会拿去问机器人的话。" rows={3} className="w-full px-3 py-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] text-sm text-[var(--text-primary)] resize-y" />
+                    <input value={item.tags.join(', ')} onChange={(e) => updateCase(item.id, { tags: e.target.value.split(',').map((x) => x.trim()).filter(Boolean) })} placeholder="标签，逗号分隔，方便以后筛选" className="w-full px-3 py-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] text-sm text-[var(--text-primary)]" />
+                    <textarea value={item.contextText ?? ''} onChange={(e) => updateCase(item.id, { contextText: e.target.value })} placeholder="补充上下文（可选），比如人物关系、前文摘要或任务背景。" rows={3} className="w-full px-3 py-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] text-sm text-[var(--text-primary)] resize-y" />
+                    <textarea value={item.latestUserMessage} onChange={(e) => updateCase(item.id, { latestUserMessage: e.target.value })} placeholder="用户最后说的那句话（必填），尽量贴近你真会拿去问的内容。" rows={3} className="w-full px-3 py-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-card)] text-sm text-[var(--text-primary)] resize-y" />
                   </div>
                 ))}
                 <button onClick={() => setCases((items) => [...items, makeCase()])} className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-[var(--on-accent)] cursor-pointer">+ 新增一个用例</button>
@@ -501,7 +501,7 @@ export function EvaluationLab() {
       </div>
 
       <div className={`grid grid-cols-1 xl:grid-cols-[1.1fr_0.9fr] ${densityClass}`}>
-        <Panel title="执行与进度" subtitle="这里告诉你这次实验会有多大、能不能跑，以及现在跑到哪一步了。." icon="⚙️">
+        <Panel title="执行与进度" subtitle="看这次实验有多大、能不能跑、现在跑到哪了。" icon="⚙️">
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--text-secondary)]">
               <span className="px-2 py-1 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)]">人格 {selectedCandidates.length}</span>
@@ -512,11 +512,11 @@ export function EvaluationLab() {
             </div>
 
             <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 text-xs space-y-1 text-[var(--text-secondary)]">
-              <p>当前保护上限：API ≤ {MAX_API_COUNT}、人格 ≤ {MAX_CANDIDATE_COUNT}、用例 ≤ {MAX_CASE_COUNT}、轮次 ≤ {MAX_ROUNDS}、总任务 ≤ {MAX_TOTAL_RUNS}</p>
+              <p>规模上限：API ≤ {MAX_API_COUNT}、人格 ≤ {MAX_CANDIDATE_COUNT}、用例 ≤ {MAX_CASE_COUNT}、轮次 ≤ {MAX_ROUNDS}、总任务 ≤ {MAX_TOTAL_RUNS}</p>
               {scaleBlocked ? (
-                <p className="text-[var(--warning)]">现在还不能直接开跑：{scaleWarnings.join('；')}。先把规模收小一点，再开始实验。</p>
+                <p className="text-[var(--warning)]">超限了，暂时不能跑：{scaleWarnings.join('；')}。先把规模调小再开始。</p>
               ) : (
-                <p className="text-[var(--text-muted)]">当前规模在可执行范围内，可以直接开始实验。</p>
+                <p className="text-[var(--text-muted)]">规模没超限，可以直接开跑。</p>
               )}
             </div>
 
@@ -540,19 +540,19 @@ export function EvaluationLab() {
           </div>
         </Panel>
 
-        <Panel title="实验记录" subtitle="这里存的是你做过的评测。可以回看、继续补评分，或者删掉不需要的实验。." icon="🗂️">
+        <Panel title="实验记录" subtitle="做过的评测都在这，可以回看、补评分，或删掉不需要的。" icon="🗂️">
           <EvalToggleRow
             expanded={showHistoryDetails}
             onToggle={() => setShowHistoryDetails((value) => !value)}
-            collapsedText={`当前实验记录 ${filteredHistory.length} 条。需要回看或删除时再展开，避免默认就挂载完整记录列表。`}
+            collapsedText={`共 ${filteredHistory.length} 条实验记录。要回看或删除时再展开。`}
           />
           {showHistoryDetails && (
-            <DeferredVisibleBlock placeholder={<EvalCollapsedHint text="滚动到这里附近时再挂载实验记录列表。" />}>
+            <DeferredVisibleBlock placeholder={<EvalCollapsedHint text="滚动到附近再加载记录列表。" />}>
               <div className="space-y-3">
                 <SearchBar value={historySearch} onChange={setHistorySearch} placeholder="搜索实验 ID 或模式..." />
                 <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
                   {filteredHistory.length === 0 ? (
-                    <p className="text-sm text-[var(--text-muted)]">你还没有做过实验。先把左边配置好，跑一次之后，这里就会出现记录。</p>
+                    <p className="text-sm text-[var(--text-muted)]">还没有实验。先在左边配好跑一次，记录就会出现在这。</p>
                   ) : filteredHistory.map((item) => (
                     <div key={item.id} className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3">
                       <div className="flex items-start justify-between gap-3">
@@ -576,16 +576,16 @@ export function EvaluationLab() {
       </div>
 
       <div className={`grid grid-cols-1 xl:grid-cols-[0.95fr_1.05fr] ${densityClass}`}>
-        <Panel title="评分与结果" subtitle="先选一条结果，再按维度打分。保存后，这条评分会直接写回实验记录。." icon="⭐">
+        <Panel title="评分与结果" subtitle="选一条结果按维度打分，保存后写回实验记录。" icon="⭐">
           <EvalToggleRow
             expanded={showScoreDetails}
             onToggle={() => setShowScoreDetails((value) => !value)}
-            collapsedText={activeExperiment ? `当前实验共有 ${filteredRuns.length} 条运行记录。评分区展开后才会加载左侧长列表和右侧打分表单。` : '先打开一个实验，再展开这里评分。'}
+            collapsedText={activeExperiment ? `共 ${filteredRuns.length} 条运行记录。展开后才加载左侧列表和右侧打分表单。` : '先打开一个实验，再展开来评分。'}
           />
           {showScoreDetails && (
-            <DeferredVisibleBlock placeholder={<EvalCollapsedHint text="滚动到这里附近时再挂载评分列表与打分表单。" />}>
+            <DeferredVisibleBlock placeholder={<EvalCollapsedHint text="滚动到附近再加载评分列表和打分表单。" />}>
               {!activeExperiment ? (
-                <p className="text-sm text-[var(--text-muted)]">先从右侧选一个实验打开，这里才会出现可评分的结果列表。</p>
+                <p className="text-sm text-[var(--text-muted)]">先从右侧打开一个实验，这里才会列出可评分的结果。</p>
               ) : (
                 <div className="space-y-3">
                   <SearchBar value={runSearch} onChange={setRunSearch} placeholder="搜索人格 / API / 用例 / 输出内容..." />
@@ -615,7 +615,7 @@ export function EvaluationLab() {
                           onSave={saveScore}
                         />
                       ) : (
-                        <p className="text-sm text-[var(--text-muted)]">没有匹配的运行记录。可以换个关键词，或者先清空搜索再看全部结果。</p>
+                        <p className="text-sm text-[var(--text-muted)]">没有匹配的记录。换个关键词，或清空搜索看全部。</p>
                       )}
                     </div>
                   </div>
@@ -625,16 +625,16 @@ export function EvaluationLab() {
           )}
         </Panel>
 
-        <Panel title="统计摘要" subtitle="这里不是学术报告，而是帮你快速看出谁更稳、谁更像人、哪组组合更强。只统计已经打过分的结果。" icon="📈">
+        <Panel title="统计摘要" subtitle="快速看出谁更稳、谁更像人、哪组组合更强，只统计打过分的结果。" icon="📈">
           <EvalToggleRow
             expanded={showStatsDetails}
             onToggle={() => setShowStatsDetails((value) => !value)}
-            collapsedText={activeExperiment ? `已评分统计：人格 ${stats.byCandidate.length} 条，API ${stats.byApi.length} 条，组合 ${stats.byCombo.length} 条。` : '先打开并评分一个实验，再展开这里看统计。'}
+            collapsedText={activeExperiment ? `已评分统计：人格 ${stats.byCandidate.length} 条，API ${stats.byApi.length} 条，组合 ${stats.byCombo.length} 条。` : '先打开实验并打分，再展开看统计。'}
           />
           {showStatsDetails && (
-            <DeferredVisibleBlock placeholder={<EvalCollapsedHint text="滚动到这里附近时再挂载统计摘要。" />}>
+            <DeferredVisibleBlock placeholder={<EvalCollapsedHint text="滚动到附近再加载统计摘要。" />}>
               {!activeExperiment ? (
-                <p className="text-sm text-[var(--text-muted)]">先打开一个实验，再给几条结果打分，这里才会开始出现有意义的统计。</p>
+                <p className="text-sm text-[var(--text-muted)]">先打开实验、给几条结果打分，这里才有统计可看。</p>
               ) : (
                 <div className="space-y-4">
                   <div>
@@ -693,7 +693,7 @@ export function EvaluationLab() {
         onClose={() => setDeleteTarget(null)}
         onConfirm={() => { if (deleteTarget) void deleteExperiment(deleteTarget.id); }}
         title="删除这个实验"
-        message={`你将删除实验 ${deleteTarget?.id ?? ''}。删掉后这次实验的结果和评分都不会再保留。`}
+        message={`将删除实验 ${deleteTarget?.id ?? ''}，它的结果和评分都会一并清掉，无法恢复。`}
         confirmText="删除"
       />
     </div>
