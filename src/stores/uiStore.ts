@@ -41,7 +41,7 @@ export interface AppSettings {
 }
 
 const defaultSettings: AppSettings = {
-  uiScale: 1,
+  uiScale: 1.1,
   theme: 'dark',
   renderMode: 'standard',
   sidebarCollapsed: false,

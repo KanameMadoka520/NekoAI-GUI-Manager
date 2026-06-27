@@ -10,6 +10,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { SearchBar } from '../components/common/SearchBar';
+import { CollapsibleSection } from '../components/common/CollapsibleSection';
 import { ConfirmDialog } from '../components/common/ConfirmDialog';
 import { ImportExportActions } from '../components/common/ImportExportActions';
 import { Panel } from '../components/common/Panel';
@@ -1450,6 +1451,7 @@ export function ApiManager() {
   return (
     <div className={`flex flex-col min-h-full ${density.pageGap}`}>
       {modeSwitcher}
+      <CollapsibleSection title="节点概要" storageKey="api.chat.summary" subtitle="一眼看清节点数、活跃节点和健康分布；高度不够时可收起。" padding="sm">
       <div className={`grid grid-cols-2 xl:grid-cols-5 ${density.summaryGrid}`}>
         <SummaryCard label="节点总数" value={String(nodes.length)} hint="这是你当前可以切换和测试的 API 节点总数。" />
         <SummaryCard label="活跃节点" value={summary.activeNode} hint={`机器人默认会从 #${activeIndex} 这个节点开始用。`} />
@@ -1457,8 +1459,9 @@ export function ApiManager() {
         <SummaryCard label="批量测试" value={batchPinging ? `${batchProgress.done}/${batchProgress.total || nodes.length}` : `${summary.tested} 个结果`} hint={batchPinging ? '正在逐个测试节点可不可用。' : '这里显示的是本次会话里已经拿到的测试结果。'} />
         <SummaryCard label="保存状态" value={dirty ? '待保存' : '已同步'} hint={dirty ? '你已经改了节点列表或默认节点，但还没真正写回文件。' : '当前编辑内容已经和文件一致。'} tone={dirty ? 'warning' : 'neutral'} />
       </div>
+      </CollapsibleSection>
 
-      <Panel title="操作区" subtitle="常规顺序通常是：新增或修改节点 -> 测试可用性 -> 确认默认节点 -> 最后保存。节点健康明细默认收起，可在这里统一展开。" padding="sm">
+      <CollapsibleSection title="操作区" storageKey="api.chat.ops" subtitle="新增/改节点 → 测试 → 确认默认 → 保存；高度不够时可收起。" padding="sm">
         <div className="flex flex-wrap items-center gap-2">
           <button onClick={save} disabled={!dirty}
             className={`px-4 py-2 text-xs rounded-[var(--radius-sm)] font-medium transition-colors cursor-pointer ${dirty ? 'bg-[var(--accent-purple)] text-[var(--on-accent)] hover:opacity-90 pulse-dirty' : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed'}`}
@@ -1572,7 +1575,7 @@ export function ApiManager() {
             </div>
           </div>
         )}
-      </Panel>
+      </CollapsibleSection>
 
       <div className="rounded-[var(--radius-sm)] border border-[var(--error-soft-border)] bg-[var(--error-soft-bg)] px-3 py-2">
         <p className="text-[12px] text-[var(--error)] leading-relaxed">
@@ -1582,8 +1585,8 @@ export function ApiManager() {
       </div>
 
       <div className={`flex items-start ${density.pageGap}`}>
-      <div className="w-64 flex-shrink-0 sticky top-0 self-start z-[2]">
-        <Panel title="节点目录" subtitle="这个目录会像悬浮导航一样跟随页面滚动，滚到很下面时也能直接点回来。" padding="sm">
+      <div className="w-64 flex-shrink-0 sticky top-0 self-start z-[2] max-h-[78vh] overflow-y-auto overscroll-contain pr-0.5">
+        <Panel title="节点目录" subtitle="固定在左侧、独立滚动；下方看节点时它不会跟着跑，鼠标移进来再滚它自己。" padding="sm">
           <div className={density.sectionGap}>
             <SearchBar value={search} onChange={setSearch} placeholder="搜索模型 / 备注 / 类型..." />
 
@@ -1886,6 +1889,7 @@ function ImageApiManagerPanel({
 
   return (
     <div className="flex-1 min-h-0 flex flex-col gap-4">
+      <CollapsibleSection title="图像节点概要" storageKey="api.image.summary" subtitle="图像节点数、活跃节点、路由与超时；高度不够时可收起。" padding="sm">
       <div className={`grid grid-cols-2 xl:grid-cols-6 ${densityClass.summaryGrid}`}>
         <SummaryCard label="图像节点总数" value={String(nodes.length)} hint="这里是独立的 image_api_config.json，不会混进聊天节点列表。" />
         <SummaryCard label="当前图像节点" value={nodes[activeIndex]?.modelName || (nodes[activeIndex] ? getDefaultImageModel(normalizeImageProviderType(nodes[activeIndex].providerType)) : `#${activeIndex}`)} hint={`命令会优先从 #${activeIndex} 开始使用。`} />
@@ -1895,8 +1899,9 @@ function ImageApiManagerPanel({
         <SummaryCard label="当前显示" value={`${filteredIndices.length}/${nodes.length}`} hint="搜索只影响当前列表显示，不会改真实顺序。" />
         <SummaryCard label="保存状态" value={dirty ? '待保存' : '已同步'} hint={dirty ? '图像节点或全局图像设置有未保存改动。' : '图像节点列表和全局设置已经和文件一致。'} tone={dirty ? 'warning' : 'neutral'} />
       </div>
+      </CollapsibleSection>
 
-      <Panel title="图像节点操作" subtitle="这里管理独立的图像 API 节点。聊天节点和图像节点已经分离，图像一键测活默认不提供，避免直接消耗图像额度。" padding="sm">
+      <CollapsibleSection title="图像节点操作" storageKey="api.image.ops" subtitle="管理独立的图像 API 节点；高度不够时可收起。" padding="sm">
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => void onSave()}
@@ -1961,7 +1966,7 @@ function ImageApiManagerPanel({
         <p className="mt-2 text-[12px] leading-relaxed text-[var(--text-muted)]">
           图像超时只影响 <span className="mono">neko.生图</span> / <span className="mono">neko.修图</span> 的下游图像接口等待时间；聊天 API 仍使用 <span className="mono">apiTimeoutMs</span>。例如填 300 就是 5 分钟。
         </p>
-      </Panel>
+      </CollapsibleSection>
 
       <Panel title="图像配置页面" subtitle="节点列表维护具体供应商、URL 和密钥；路由集群维护这些节点的尝试顺序。" padding="sm">
         <div className="flex flex-wrap items-center gap-2">
