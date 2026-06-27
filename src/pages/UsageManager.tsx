@@ -5,6 +5,7 @@ import { ConfirmDialog } from '../components/common/ConfirmDialog';
 import { ImportExportActions } from '../components/common/ImportExportActions';
 import { Panel } from '../components/common/Panel';
 import { SummaryCard } from '../components/common/SummaryCard';
+import { SubTabs } from '../components/common/SubTabs';
 import { TagList } from '../components/common/TagList';
 import { VirtualList } from '../components/common/VirtualList';
 import type { VirtualListHandle } from '../components/common/VirtualList';
@@ -1716,26 +1717,15 @@ export function UsageManager() {
         subtitle="用量管理已拆成总览、聊天、图像三个分区，避免单页过长。跨页联动跳转到额度位置时，也会自动切到对应分区。"
         padding="sm"
       >
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => setUsageSection('overview')}
-            className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] border cursor-pointer ${usageSection === 'overview' ? 'border-transparent bg-[var(--accent-purple)] text-[var(--on-accent)]' : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
-          >
-            总览与事件
-          </button>
-          <button
-            onClick={() => setUsageSection('chat')}
-            className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] border cursor-pointer ${usageSection === 'chat' ? 'border-transparent bg-[var(--accent-purple)] text-[var(--on-accent)]' : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
-          >
-            聊天额度与群计数
-          </button>
-          <button
-            onClick={() => setUsageSection('image')}
-            className={`px-3 py-2 text-xs rounded-[var(--radius-sm)] border cursor-pointer ${usageSection === 'image' ? 'border-transparent bg-[var(--accent-purple)] text-[var(--on-accent)]' : 'border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
-          >
-            图像额度与计数
-          </button>
-        </div>
+        <SubTabs
+          tabs={[
+            { id: 'overview', label: '总览与事件', icon: '📈', badge: usageEvents.events.length },
+            { id: 'chat', label: '聊天额度与群计数', icon: '💬', badge: chatSummary.trackedUsers },
+            { id: 'image', label: '图像额度与计数', icon: '🖼️', badge: imageSummary.trackedUsers },
+          ]}
+          active={usageSection}
+          onChange={(id) => setUsageSection(id as UsageSection)}
+        />
       </Panel>
 
       {usageSection === 'overview' && (

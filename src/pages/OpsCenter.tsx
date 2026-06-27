@@ -3,6 +3,7 @@ import { StatCard } from '../components/common/StatCard';
 import { Panel } from '../components/common/Panel';
 import { SummaryCard, MiniInfo } from '../components/common/SummaryCard';
 import { DeferredVisibleBlock } from '../components/common/DeferredVisibleBlock';
+import { SubTabs } from '../components/common/SubTabs';
 import { useUiStore } from '../stores/uiStore';
 import {
   listSnapshots,
@@ -45,6 +46,7 @@ export function OpsCenter() {
   const [showEnvDetails, setShowEnvDetails] = useState(!lowPerformanceMode);
   const [showSelfCheckDetails, setShowSelfCheckDetails] = useState(true);
   const [showAuditDetails, setShowAuditDetails] = useState(!lowPerformanceMode);
+  const [subTab, setSubTab] = useState('snapshot');
 
   useEffect(() => {
     loadAll();
@@ -273,7 +275,18 @@ export function OpsCenter() {
         </p>
       </div>
 
-      <div className={`grid grid-cols-1 xl:grid-cols-2 ${densityGap}`}>
+      <SubTabs
+        active={subTab}
+        onChange={setSubTab}
+        tabs={[
+          { id: 'snapshot', label: '快照与回滚', icon: '📸', badge: snapshots.length },
+          { id: 'deploy', label: '部署与环境模板', icon: '📦' },
+          { id: 'check', label: '启动自检与审计', icon: '🩺', badge: checkStats.total },
+        ]}
+      />
+
+      {subTab === 'snapshot' && (
+      <div className={`grid grid-cols-1 ${densityGap}`}>
         <OpsPanel title="快照中心" subtitle="把它当成“后悔药”。先存一个快照，再做高风险改动，出问题就能退回来。" icon="📸">
           <PanelToggleRow
             expanded={showSnapshotDetails}
@@ -342,7 +355,11 @@ export function OpsCenter() {
             </DeferredVisibleBlock>
           )}
         </OpsPanel>
+      </div>
+      )}
 
+      {subTab === 'deploy' && (
+      <div className={`grid grid-cols-1 ${densityGap}`}>
         <OpsPanel title="部署包与环境模板" subtitle="适合把当前配置打包带走，或者保存成 dev / test / prod 三套环境模板。" icon="📦">
           <PanelToggleRow
             expanded={showEnvDetails}
@@ -381,7 +398,9 @@ export function OpsCenter() {
           )}
         </OpsPanel>
       </div>
+      )}
 
+      {subTab === 'check' && (
       <div className={`grid grid-cols-1 xl:grid-cols-2 ${densityGap}`}>
         <OpsPanel title="启动前自检" subtitle="它会先帮你找出明显问题。建议先看说明，再决定要不要自动修复。" icon="🩺">
           <PanelToggleRow
@@ -506,6 +525,7 @@ export function OpsCenter() {
           )}
         </OpsPanel>
       </div>
+      )}
     </div>
   );
 }

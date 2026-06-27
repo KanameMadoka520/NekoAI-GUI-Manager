@@ -6,6 +6,7 @@ import { ImportExportActions } from '../components/common/ImportExportActions';
 import { Panel } from '../components/common/Panel';
 import { SummaryCard } from '../components/common/SummaryCard';
 import { VirtualList } from '../components/common/VirtualList';
+import { SubTabs } from '../components/common/SubTabs';
 import { useUiStore } from '../stores/uiStore';
 import { listHistoryFiles, getHistoryFile, searchAllHistory, exportHistory, importHistoryFile } from '../lib/tauri-commands';
 import { downloadTextWithTimestamp, pickJsonAndParse } from '../lib/json-transfer';
@@ -126,6 +127,7 @@ export function HistoryViewer() {
   const [showTimeline, setShowTimeline] = useState(false);
   const [showAdvancedSearch, setShowAdvancedSearch] = useState(true);
   const [targetEntryIndex, setTargetEntryIndex] = useState<number | null>(null);
+  const [subTab, setSubTab] = useState<'browse' | 'filter'>('browse');
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -622,6 +624,17 @@ export function HistoryViewer() {
           </button>
         </div>
 
+        <SubTabs
+          tabs={[
+            { id: 'browse', label: '记录浏览', icon: '💬', badge: displayEntries.length },
+            { id: 'filter', label: '检索筛选', icon: '🔍', badge: searchStateSummary.length || undefined },
+          ]}
+          active={subTab}
+          onChange={(id) => setSubTab(id as 'browse' | 'filter')}
+        />
+
+        {subTab === 'filter' && (
+          <>
         {viewMode === 'search' && (
           <div className="mb-3 rounded-[var(--radius)] border border-[var(--border-subtle)] px-4 py-3" style={{ background: 'var(--surface-card)', boxShadow: 'var(--shadow-card)' }}>
             <div className="flex items-center gap-2 flex-wrap">
@@ -817,6 +830,8 @@ export function HistoryViewer() {
             )}
           </div>
         )}
+          </>
+        )}
 
         <div className="grid grid-cols-2 xl:grid-cols-5 gap-3 mb-3">
           <SummaryCard label="当前范围" value={viewMode === 'search' ? '搜索结果' : activeFile ?? '未选择'} hint={viewMode === 'search' ? `命中 ${searchResultSummary.total} 条 / ${searchResultSummary.fileCount} 个文件` : '这里显示的是你当前打开的文件和筛选范围'} />
@@ -826,6 +841,8 @@ export function HistoryViewer() {
           <SummaryCard label="总字数" value={stats.totalChars.toLocaleString()} hint="按当前范围估算的 prompt + reply 总字数，用来判断这份记录大概有多长" tone="info" />
         </div>
 
+        {subTab === 'browse' && (
+          <>
         {/* Content area with optional timeline */}
         <div className="flex-1 flex gap-3 overflow-hidden">
           {/* Main content */}
@@ -893,6 +910,8 @@ export function HistoryViewer() {
               </button>
             </div>
           </div>
+        )}
+          </>
         )}
       </div>
 

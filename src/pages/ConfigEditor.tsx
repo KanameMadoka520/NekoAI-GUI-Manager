@@ -6,6 +6,7 @@ import { KeyValueEditor } from '../components/common/KeyValueEditor';
 import { ConfirmDialog } from '../components/common/ConfirmDialog';
 import { ImportExportActions } from '../components/common/ImportExportActions';
 import { Panel } from '../components/common/Panel';
+import { SubTabs } from '../components/common/SubTabs';
 import { SummaryCard, MiniInfo } from '../components/common/SummaryCard';
 import { useUiStore } from '../stores/uiStore';
 import { usePageDirtyState } from '../hooks/usePageDirtyState';
@@ -655,6 +656,7 @@ export function ConfigEditor() {
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmResetSecond, setConfirmResetSecond] = useState(false);
   const [diffOverviewExpanded, setDiffOverviewExpanded] = useState(false);
+  const [subTab, setSubTab] = useState('basic');
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -964,6 +966,16 @@ export function ConfigEditor() {
 
   function scrollTo(id: string) {
     setActiveSection(id);
+    // 目标 section 可能在非当前子标签分组里（此时它已卸载、ref 为 null）：
+    // 先切到它所属的子标签，等下一帧挂载完成后再滚动过去，避免点击导航无反应。
+    const targetTab = Object.keys(subTabGroups).find((t) => subTabGroups[t].includes(id));
+    if (targetTab && targetTab !== subTab) {
+      setSubTab(targetTab);
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        sectionRefs.current[id]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }));
+      return;
+    }
     sectionRefs.current[id]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
@@ -1006,6 +1018,19 @@ export function ConfigEditor() {
 
   const isSpacious = settings.contentDensity === 'spacious';
   const contentGap = isSpacious ? 'space-y-7' : settings.contentDensity === 'compact' ? 'space-y-4' : 'space-y-6';
+
+  const subTabGroups: Record<string, string[]> = {
+    basic: ['core', 'active', 'groups', 'quota'],
+    message: ['messages', 'feedback', 'memory'],
+    routing: ['router', 'imageRouter', 'memes'],
+    advanced: ['queue', 'mapping', 'apiParams', 'forward'],
+  };
+  const subTabItems = [
+    { id: 'basic', label: '基础设置', icon: '⚙', badge: visibleSections.filter((s) => subTabGroups.basic.includes(s.id)).length },
+    { id: 'message', label: '消息与记忆', icon: '💬', badge: visibleSections.filter((s) => subTabGroups.message.includes(s.id)).length },
+    { id: 'routing', label: '路由与表情', icon: '🔀', badge: visibleSections.filter((s) => subTabGroups.routing.includes(s.id)).length },
+    { id: 'advanced', label: '进阶与转发', icon: '📤', badge: visibleSections.filter((s) => subTabGroups.advanced.includes(s.id)).length },
+  ];
 
   return (
     <div className="flex gap-4 h-full">
@@ -1250,7 +1275,14 @@ export function ConfigEditor() {
           </div>
         )}
 
+        <SubTabs
+          tabs={subTabItems}
+          active={subTab}
+          onChange={setSubTab}
+        />
+
         <div ref={scrollRef} className={`flex-1 min-h-0 overflow-y-auto pr-2 ${contentGap}`}>
+          {subTab === 'basic' && (<>
           <SectionCard id="core" title={sectionMetaMap.get('core')?.label ?? '核心设置'} icon="⚙" summary={sectionMetaMap.get('core')?.summary ?? '昵称、主人账号、拒绝文案与日志级别。'} refs={sectionRefs}>
             {renderSchemaField('nickName')}
             {renderSchemaField('masterQQ')}
@@ -1299,7 +1331,9 @@ export function ConfigEditor() {
             {renderSchemaField('imageQuota.defaultEditLimit')}
             <InlineNote>聊天个人额度和群总额度会同时生效。图像额度仍按生图/修图分别统计。</InlineNote>
           </SectionCard>
+          </>)}
 
+          {subTab === 'message' && (<>
           <SectionCard id="messages" title={sectionMetaMap.get('messages')?.label ?? '消息行为'} icon="💬" summary={sectionMetaMap.get('messages')?.summary ?? '上下文长度、消息上限与随机回复节奏。'} refs={sectionRefs}>
             {renderSchemaField('maxGroupMessages', { min: 1 })}
             {renderSchemaField('singleMaxMessages', { min: 1 })}
@@ -1329,7 +1363,9 @@ export function ConfigEditor() {
               {renderSchemaField('memorySummary.summaryPrompt', { asTextArea: true, placeholder: '留空则使用插件内置默认提示词', rows: 4 })}
             </SectionCard>
           )}
+          </>)}
 
+          {subTab === 'routing' && (<>
           {visibleSections.some((s) => s.id === 'router') && (
             <SectionCard id="router" title={sectionMetaMap.get('router')?.label ?? '智能路由'} icon="🔀" summary={sectionMetaMap.get('router')?.summary ?? '仅展示插件当前真实支持的路由模式、重试和排除列表。'} refs={sectionRefs}>
               {renderSchemaField('smartRouter.enabled')}
@@ -1362,7 +1398,9 @@ export function ConfigEditor() {
               {renderSchemaField('memesPath', { placeholder: '例如: plugins/koishi-plugin-Enhanced-NekoAI/neko_memes' })}
             </SectionCard>
           )}
+          </>)}
 
+          {subTab === 'advanced' && (<>
           {visibleSections.some((s) => s.id === 'queue') && (
             <SectionCard id="queue" title={sectionMetaMap.get('queue')?.label ?? '请求队列'} icon="📤" summary={sectionMetaMap.get('queue')?.summary ?? '可配置最大并发数、最大排队长度，以及队列满时发给用户的提示文案。'} refs={sectionRefs}>
               {renderSchemaField('requestQueue.maxConcurrent', { min: 1 })}
@@ -1424,6 +1462,7 @@ export function ConfigEditor() {
             {renderSchemaField('modelListImageEnabled')}
             {renderSchemaField('uiStyle')}
           </SectionCard>
+          </>)}
         </div>
       </div>
 
