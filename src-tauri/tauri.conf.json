@@ -21,7 +21,9 @@
         "close": true,
         "startDragging": true,
         "setSize": true,
-        "setPosition": true
+        "setPosition": true,
+        "create": true,
+        "setFocus": true
       },
       "dialog": {
         "all": true,

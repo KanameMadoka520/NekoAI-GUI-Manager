@@ -108,8 +108,8 @@ const scaleOptions = [
 ];
 
 const themeOptions = [
-  { label: '亮色', value: 'light' as const },
   { label: '暗色', value: 'dark' as const },
+  { label: '亮色', value: 'light' as const },
   { label: '羊皮纸', value: 'parchment' as const },
 ];
 
@@ -754,6 +754,26 @@ function App() {
     updateSettings({ sidebarCollapsed: !settings.sidebarCollapsed });
   }
 
+  // 显示设置：桌面端开一个独立 OS 窗口（不受主窗口高度束缚、可拖到别的屏）；
+  // 创建失败或浏览器端则回退到应用内弹窗。两窗设置经 localStorage storage 事件即时同步。
+  async function handleOpenSettings() {
+    if (!runningInTauri) { setShowSettings(true); return; }
+    try {
+      const { WebviewWindow } = await import('@tauri-apps/api/window');
+      const existing = WebviewWindow.getByLabel('neko-settings');
+      if (existing) { try { await existing.setFocus(); } catch { /* ignore */ } return; }
+      const w = new WebviewWindow('neko-settings', {
+        url: 'index.html?view=settings',
+        title: '显示设置 · NekoAI Manager',
+        width: 460, height: 820, minWidth: 380, minHeight: 480,
+        resizable: true, decorations: true,
+      });
+      w.once('tauri://error', () => { setShowSettings(true); });
+    } catch {
+      setShowSettings(true);
+    }
+  }
+
   function beginResize(e: { clientX: number }) {
     if (settings.sidebarCollapsed) return;
     resizeRef.current = { startX: e.clientX, startWidth: settings.sidebarWidth };
@@ -876,7 +896,7 @@ function App() {
             activePage={activePage}
             onNavigate={handleNavigate}
             onChangeDir={handleChangeDir}
-            onOpenSettings={() => setShowSettings(true)}
+            onOpenSettings={handleOpenSettings}
             onOpenWebConsole={() => setShowWebConsolePanel(true)}
             onToggleCollapse={toggleSidebar}
             collapsed={settings.sidebarCollapsed}

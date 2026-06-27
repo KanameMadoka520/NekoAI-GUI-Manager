@@ -129,3 +129,14 @@ export const useUiStore = create<UiState>((set) => ({
   requestPageJump: (request) => set({ pageJumpRequest: request }),
   clearPageJumpRequest: () => set({ pageJumpRequest: null }),
 }));
+
+// 跨窗口设置同步：另一个窗口（如独立的「显示设置」窗口）写入 nekoai-settings 时，
+// storage 事件会在本窗口触发，这里据此热更新 store，让主窗口与设置窗口实时一致。
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (e) => {
+    if (e.key !== 'nekoai-settings' || !e.newValue) return;
+    try {
+      useUiStore.setState({ settings: { ...defaultSettings, ...JSON.parse(e.newValue) } });
+    } catch { /* ignore malformed */ }
+  });
+}
