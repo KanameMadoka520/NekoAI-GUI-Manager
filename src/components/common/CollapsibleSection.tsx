@@ -36,14 +36,13 @@ export function CollapsibleSection({ title, subtitle, icon, defaultOpen = true, 
         tabIndex={0}
         onClick={toggle}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }}
-        className={`w-full flex items-center gap-2 px-4 py-2 cursor-pointer text-left select-none ${open ? 'border-b border-dashed border-[var(--border-subtle)]' : ''}`}
+        className="ba-head w-full flex items-center gap-2 px-4 py-2 cursor-pointer text-left select-none"
         style={{ background: 'var(--surface-header)' }}
         title={open ? '点击收起' : '点击展开'}
       >
         <span className="text-[12px] text-[var(--accent-purple)] w-3 leading-none select-none">{open ? '▾' : '▸'}</span>
-        <span className="text-[12px] text-[var(--accent-purple)] leading-none select-none">✦</span>
-        {icon ? <span className="text-sm leading-none opacity-70">{icon}</span> : null}
-        <span className="text-[13px] font-semibold tracking-[0.01em] text-[var(--text-primary)]">{title}</span>
+        {icon ? <span className="text-sm leading-none opacity-80">{icon}</span> : null}
+        <span className="text-[13px] font-bold tracking-[0.01em] text-[var(--text-primary)]">{title}</span>
         {subtitle ? <InfoHint text={subtitle} /> : null}
         {!open ? <span className="mono text-[10px] text-[var(--text-muted)] ml-auto whitespace-nowrap tracking-[0.04em]">已收起 · 点击展开</span> : null}
         {right && open ? <span className="ml-auto flex items-center gap-2" onClick={(e) => e.stopPropagation()}>{right}</span> : null}

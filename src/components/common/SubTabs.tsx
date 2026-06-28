@@ -41,19 +41,20 @@ export function SubTabs({ tabs, active, onChange, trailing, className }: SubTabs
               role="tab"
               aria-selected={isActive}
               onClick={() => onChange(tab.id)}
-              className={`group relative flex items-center gap-2 whitespace-nowrap px-3.5 py-2 rounded-[var(--radius-sm)] text-sm font-medium cursor-pointer border
+              className={`group relative flex items-center gap-2 whitespace-nowrap px-4 py-2 text-sm font-medium cursor-pointer
                 ${isActive
-                  ? 'bg-[var(--accent-purple)] text-[var(--on-accent)] border-transparent shadow-[var(--glow-soft)]'
-                  : 'bg-transparent text-[var(--text-secondary)] border-transparent hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
+                  ? 'text-white font-bold'
+                  : 'rounded-[var(--radius-sm)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
                 }`}
             >
-              {tab.icon && <span className="text-base leading-none">{tab.icon}</span>}
-              <span>{tab.label}</span>
+              {isActive && <span className="ba-fill" aria-hidden />}
+              {tab.icon && <span className="relative z-[1] text-base leading-none">{tab.icon}</span>}
+              <span className="relative z-[1]">{tab.label}</span>
               {tab.badge !== undefined && tab.badge !== '' && (
                 <span
-                  className={`inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-[var(--radius-pill)] text-[12px] font-semibold
+                  className={`relative z-[1] inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-[var(--radius-pill)] text-[12px] font-semibold
                     ${isActive
-                      ? 'bg-[var(--on-accent)] text-[var(--accent-purple)]'
+                      ? 'bg-white text-[var(--accent-purple)]'
                       : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] border border-[var(--border-subtle)]'
                     }`}
                 >

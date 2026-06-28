@@ -71,10 +71,10 @@ export function Sidebar({ activePage, onNavigate, onChangeDir, onOpenSettings, o
     >
       {/* brand */}
       <div className={`h-11 flex items-center ${collapsed ? 'justify-center' : 'gap-2.5 px-4'} border-b border-[var(--border-subtle)] flex-shrink-0`}>
-        <span className="status-dot live" />
+        <span className="ba-halo" aria-hidden />
         {!collapsed && (
           <div className="leading-none">
-            <span className="mono text-[14px] font-bold text-glow-accent tracking-[0.12em]">NEKO</span>
+            <span className="text-[15px] font-extrabold text-[var(--accent-purple)] tracking-[0.06em]">NEKO</span>
             <span className="mono text-[10px] text-[var(--text-muted)] ml-1.5 tracking-[0.16em]">MGR</span>
           </div>
         )}
@@ -88,16 +88,17 @@ export function Sidebar({ activePage, onNavigate, onChangeDir, onOpenSettings, o
               key={item.id}
               onClick={() => onNavigate(item.id)}
               title={collapsed ? `${item.label} (^${item.shortcut})` : undefined}
-              className={`relative w-full flex items-center ${collapsed ? 'justify-center' : 'gap-2.5'} pl-2.5 pr-2 py-1.5 rounded-[var(--radius-sm)] text-[13px] cursor-pointer
+              className={`relative w-full flex items-center ${collapsed ? 'justify-center' : 'gap-2.5'} pl-3 pr-2 py-2 text-[13px] cursor-pointer
                 ${active
-                  ? 'bg-[var(--nav-active-bg)] text-[var(--accent-purple)] font-semibold'
-                  : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+                  ? 'text-white font-bold'
+                  : 'rounded-[var(--radius-sm)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
                 }`}
-              style={{ borderLeft: `3px solid ${active ? 'var(--accent-purple)' : 'transparent'}`, transition: 'background-color 0.15s var(--ease-spring), color 0.15s var(--ease-spring)' }}
+              style={{ transition: 'color 0.15s var(--ease-spring)' }}
             >
-              <span className="text-[15px] leading-none w-4 text-center">{item.icon}</span>
-              {!collapsed && <span className="flex-1 text-left">{item.label}</span>}
-              {!collapsed && <span className={`mono text-[10px] tracking-[0.08em] ${active ? 'text-[var(--accent-purple)] opacity-80' : 'text-[var(--text-muted)] opacity-60'}`}>{item.code}</span>}
+              {active && <span className="ba-fill" aria-hidden />}
+              <span className="relative z-[1] text-[15px] leading-none w-4 text-center">{item.icon}</span>
+              {!collapsed && <span className="relative z-[1] flex-1 text-left">{item.label}</span>}
+              {!collapsed && <span className={`relative z-[1] mono text-[10px] tracking-[0.08em] ${active ? 'text-white opacity-85' : 'text-[var(--text-muted)] opacity-60'}`}>{item.code}</span>}
             </button>
           );
         })}
