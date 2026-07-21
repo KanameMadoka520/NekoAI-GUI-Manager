@@ -30,9 +30,10 @@ function SectionLabel({ title, hint }: { title: string; hint: string }) {
 export function SettingsPanel({ onChangeDir }: { onChangeDir?: () => void }) {
   const settings = useUiStore((s) => s.settings);
   const updateSettings = useUiStore((s) => s.updateSettings);
+  // 选中态用「浅强调底 + 深强调字」，避免亮色主题实心蓝底配蓝字看不清
   const btn = (active: boolean) =>
     `py-2 text-sm rounded-[var(--radius-sm)] font-medium border cursor-pointer ${active
-      ? 'bg-[var(--accent-purple)] text-[var(--on-accent)] border-transparent'
+      ? 'bg-[var(--nav-active-bg)] text-[var(--accent-strong)] border-[var(--accent-soft-border)] shadow-[inset_0_0_0_1px_var(--accent-soft-border)]'
       : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'}`;
 
   return (
@@ -66,7 +67,7 @@ export function SettingsPanel({ onChangeDir }: { onChangeDir?: () => void }) {
             <button
               key={opt.value}
               onClick={() => updateSettings({ uiScale: opt.value })}
-              className={`py-2 text-sm rounded-[var(--radius-sm)] font-medium cursor-pointer ${settings.uiScale === opt.value ? 'bg-[var(--accent-purple)] text-[var(--on-accent)]' : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'}`}
+              className={`py-2 text-sm rounded-[var(--radius-sm)] font-medium border cursor-pointer ${settings.uiScale === opt.value ? 'bg-[var(--nav-active-bg)] text-[var(--accent-strong)] border-[var(--accent-soft-border)]' : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'}`}
             >{opt.label}</button>
           ))}
         </div>

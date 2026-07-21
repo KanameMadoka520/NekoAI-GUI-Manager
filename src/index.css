@@ -190,7 +190,8 @@
   --surface-header: #E1F0FB;
   --surface-titlebar: #FFFFFF;
   --card-top-highlight: rgba(255, 255, 255, 0.9);
-  --nav-active-bg: var(--accent-purple);
+  /* 必须是浅底，不能用实心强调色：全库大量「bg-nav-active + text-accent」；实心蓝+蓝字会糊成一团 */
+  --nav-active-bg: rgba(30, 155, 230, 0.14);
 
   --surface-tile: #FFFFFF;
   --surface-tile-hover: #F1F8FD;
