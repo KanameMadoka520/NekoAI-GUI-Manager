@@ -622,7 +622,7 @@ npm install --no-save @rollup/rollup-win32-x64-msvc@4.59.0
 1. 代码与命令注册（前后端）
 2. 类型定义（`src/lib/types.ts`）
 3. 文档更新（README + CONTRIBUTING）
-4. 交接文档更新（`开发交接文档-当前开发目标.md`）
+4. 路线图更新（`ROADMAP.md`）
 
 ---
 
