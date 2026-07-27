@@ -31,7 +31,7 @@ const sections: Section[] = [
   { id: 'feedback', label: '请求反馈', icon: '📣', summary: '处理中提示、失败回报和 API 超时都在这。', mode: 'both' },
   { id: 'memory', label: '记忆与摘要', icon: '🧠', summary: '闲置自动清空、记忆压缩与摘要提示词。', mode: 'common' },
   { id: 'router', label: '智能路由', icon: '🔀', summary: '插件支持的路由模式、重试和排除项。', mode: 'advanced' },
-  { id: 'imageRouter', label: '图像路由集群', icon: '🖼', summary: '按图像节点编号依次接力，谁先成功就用谁的结果。', mode: 'advanced' },
+  { id: 'imageRouter', label: '图像路由集群', icon: '🖼', summary: '定义允许调用的图像节点范围，以及这些节点的尝试顺序。', mode: 'advanced' },
   { id: 'memes', label: '表情包', icon: '😸', summary: '表情包开关和触发概率。', mode: 'common' },
   { id: 'queue', label: '请求队列', icon: '📤', summary: '插件真正生效的请求并发设置。', mode: 'advanced' },
   { id: 'mapping', label: '群级映射', icon: '🗺', summary: '给不同群单独指定人格和 API。', mode: 'advanced' },
@@ -1387,11 +1387,11 @@ export function ConfigEditor() {
           )}
 
           {visibleSections.some((s) => s.id === 'imageRouter') && (
-            <SectionCard id="imageRouter" title={sectionMetaMap.get('imageRouter')?.label ?? '图像路由集群'} icon="🖼" summary={sectionMetaMap.get('imageRouter')?.summary ?? '按图像节点编号顺序接力尝试。'} refs={sectionRefs}>
+            <SectionCard id="imageRouter" title={sectionMetaMap.get('imageRouter')?.label ?? '图像路由集群'} icon="🖼" summary={sectionMetaMap.get('imageRouter')?.summary ?? '定义授权节点范围与尝试顺序。'} refs={sectionRefs}>
               {renderSchemaField('imageRouter.enabled')}
               {renderSchemaField('imageRouter.order')}
               <InlineNote>
-                顺序建议去 API 管理页的“图像路由集群”里调；这里只是留个直接改运行时配置的入口。
+                集群关闭或顺序为空时，所有图像命令都会停止。顺序外节点不能被 --node、--model 或旧版活跃节点配置单独调用。
               </InlineNote>
             </SectionCard>
           )}

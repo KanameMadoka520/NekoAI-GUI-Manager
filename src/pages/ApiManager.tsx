@@ -1427,7 +1427,6 @@ export function ApiManager() {
           onAdd={addImageNode}
           onClone={cloneImageNode}
           onRemove={removeImageNode}
-          onSetActive={(index) => setImageState({ ...imageState, activeIndex: index })}
           onImageRouterChange={updateImageRouter}
           onImageApiTimeoutSecondsChange={updateImageApiTimeoutSeconds}
           onJumpToNode={(index) => {
@@ -1841,7 +1840,6 @@ function ImageApiManagerPanel({
   onAdd,
   onClone,
   onRemove,
-  onSetActive,
   onImageRouterChange,
   onImageApiTimeoutSecondsChange,
   onJumpToNode,
@@ -1873,7 +1871,6 @@ function ImageApiManagerPanel({
   onAdd: (providerType?: ImageApiProviderType) => void;
   onClone: (index: number) => void;
   onRemove: (index: number) => void;
-  onSetActive: (index: number) => void;
   onImageRouterChange: (next: ImageRouterConfig) => void;
   onImageApiTimeoutSecondsChange: (seconds: number) => void;
   onJumpToNode: (index: number) => void;
@@ -1889,11 +1886,11 @@ function ImageApiManagerPanel({
 
   return (
     <div className="flex-1 min-h-0 flex flex-col gap-4">
-      <CollapsibleSection title="图像节点概要" storageKey="api.image.summary" subtitle="图像节点数、活跃节点、路由与超时；高度不够时可收起。" padding="sm">
+      <CollapsibleSection title="图像节点概要" storageKey="api.image.summary" subtitle="图像节点数、集群授权范围、路由顺序与超时；高度不够时可收起。" padding="sm">
       <div className={`grid grid-cols-2 xl:grid-cols-6 ${densityClass.summaryGrid}`}>
         <SummaryCard label="图像节点总数" value={String(nodes.length)} hint="单独存在 image_api_config.json，不会混进聊天节点列表。" />
-        <SummaryCard label="当前图像节点" value={nodes[activeIndex]?.modelName || (nodes[activeIndex] ? getDefaultImageModel(normalizeImageProviderType(nodes[activeIndex].providerType)) : `#${activeIndex}`)} hint={`命令会优先从 #${activeIndex} 开始使用。`} />
-        <SummaryCard label="路由集群" value={imageRouter.enabled ? `${imageRouter.order.length} 节点` : '关闭'} hint={imageRouter.enabled ? `按 ${imageRouter.order.join(' → ') || '空路径'} 依次尝试。` : '关闭时仍按当前图像节点运行。'} tone={imageRouter.enabled ? 'warning' : 'neutral'} />
+        <SummaryCard label="旧版节点索引" value={`#${activeIndex}`} hint="仅保留旧配置兼容；严格图像路由不会按此索引单独调度。" />
+        <SummaryCard label="路由集群" value={imageRouter.enabled ? `${imageRouter.order.length} 节点` : '已停用'} hint={imageRouter.enabled ? (imageRouter.order.length > 0 ? `仅允许 ${imageRouter.order.join(' → ')}，并按此顺序尝试。` : '授权顺序为空，所有图像命令均不可用。') : '集群关闭时，所有图像命令均不可用。'} tone="warning" />
         <SummaryCard label="可参考图节点" value={String(nodes.filter((node) => imageNodeSupportsEdit(node)).length)} hint="配了修图 URL 的节点，能在 neko.生图 里拿引用图片当参考。" />
         <SummaryCard label="图像超时" value={formatTimeoutMs(imageApiTimeoutMs)} hint="neko.生图 / neko.修图 等图像接口出图的最长等待时间。" />
         <SummaryCard label="当前显示" value={`${filteredIndices.length}/${nodes.length}`} hint="搜索只改这里显示哪些，不动节点真实顺序。" />
@@ -2023,7 +2020,6 @@ function ImageApiManagerPanel({
                         <span className="text-[11px] px-1.5 py-0.5 rounded-[var(--radius-pill)] bg-[var(--info-soft-bg)] text-[var(--info)]">{getImageProviderLabel(providerType)}</span>
                         <span className={`text-[11px] px-1.5 py-0.5 rounded-[var(--radius-pill)] ${supportsEdit ? 'bg-[var(--success-soft-bg)] text-[var(--success)]' : 'bg-[var(--warning-soft-bg)] text-[var(--warning)]'}`}>{getImageCapabilityLabel(node)}</span>
                         {providerType === 'openai' && node.streamingEnabled ? <span className="text-[11px] px-1.5 py-0.5 rounded-[var(--radius-pill)] bg-[var(--info-soft-bg)] text-[var(--info)]">流式 partial {normalizePartialImages(node.partialImages)}</span> : null}
-                        {index === activeIndex ? <span className="text-[11px] px-1.5 py-0.5 rounded-[var(--radius-pill)] bg-[var(--accent-purple)] text-[var(--on-accent)]">活跃</span> : null}
                         <div className="flex-1" />
                         <button
                           onClick={() => {
@@ -2041,12 +2037,6 @@ function ImageApiManagerPanel({
                           className="px-2.5 py-1.5 text-[11px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer">
                           📋 克隆
                         </button>
-                        {index !== activeIndex && (
-                          <button onClick={() => onSetActive(index)}
-                            className="px-2.5 py-1.5 text-[11px] rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] text-[var(--success)] hover:bg-[var(--success-soft-bg)] transition-colors cursor-pointer">
-                            ⚡ 设为活跃
-                          </button>
-                        )}
                         <button onClick={() => { if (window.confirm(`确定删除图像节点 #${index}？`)) onRemove(index); }}
                           className="px-2.5 py-1.5 text-[11px] rounded-[var(--radius-sm)] text-[var(--text-muted)] hover:text-[var(--error)] hover:bg-[var(--error-soft-bg)] transition-colors cursor-pointer">
                           🗑 移除
@@ -2060,7 +2050,7 @@ function ImageApiManagerPanel({
                         placeholder={(
                           <DeferredCardPlaceholder
                             title="表单等滚动到附近再加载"
-                            subtitle="离屏幕较远的图像节点先不渲染表单，省下大量输入框同时挂载的开销。设为活跃或展开 Key 后会马上加载。"
+                            subtitle="离屏幕较远的图像节点先不渲染表单，省下大量输入框同时挂载的开销。滚动到附近或展开 Key 后会马上加载。"
                           />
                         )}
                       >
@@ -2376,7 +2366,7 @@ function ImageRouterPanel({
   }
 
   return (
-    <Panel title="图像路由集群" subtitle="按设定顺序逐个图像节点接力，谁先成功就用谁的结果。顺序只管生图和修图怎么调，不动节点本身。" padding="sm">
+    <Panel title="图像路由集群" subtitle="该列表同时决定允许调用的节点范围和实际尝试顺序。未加入集群的节点即使已经添加，也不能被命令指定或单独调度。" padding="sm">
       <div className="space-y-4">
         <div className="flex flex-wrap items-center gap-3">
           <label className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
@@ -2394,12 +2384,12 @@ function ImageRouterPanel({
           >
             清空顺序
           </button>
-          <span className="text-[12px] text-[var(--text-muted)]">成功节点会直接返回；只有整条路径都失败才视为失败。</span>
+          <span className="text-[12px] text-[var(--text-muted)]">关闭集群或清空顺序会停用所有生图与修图命令。</span>
         </div>
 
         <div className="grid gap-3 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
           <div>
-            <label className="text-[11px] text-[var(--text-muted)] mb-1 block">路由顺序（用逗号或换行分隔节点编号）</label>
+            <label className="text-[11px] text-[var(--text-muted)] mb-1 block">授权节点与尝试顺序（用逗号或换行分隔节点编号）</label>
             <textarea
               value={orderText}
               onChange={(e) => updateOrder(normalizeImageRouteOrder(e.target.value))}
@@ -2407,7 +2397,7 @@ function ImageRouterPanel({
               placeholder="例如: 5, 4, 2"
             />
             <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-muted)]">
-              写的就是实际尝试顺序。填 <span className="mono">5, 4, 2</span>，就先试节点 5，不行再 4，还不行再 2。修图和参考图生图会自动跳过不支持修图的节点。
+              填 <span className="mono">5, 4, 2</span>，表示只授权节点 5、4、2，并依次尝试。<span className="mono">--node</span> 只能指定其中一个编号，<span className="mono">--model</span> 也只会匹配这些节点。修图和参考图生图会跳过不支持修图的节点。
             </p>
           </div>
 
@@ -2419,7 +2409,7 @@ function ImageRouterPanel({
                   const node = nodes[index];
                   return node ? `#${index} ${node.remark || node.modelName || '未命名'}` : `#${index}（无效）`;
                 }).join(' → ')
-                : '尚未配置路由顺序'}
+                : '尚未授权任何图像节点，图像命令不可用'}
             </p>
           </div>
         </div>
@@ -2448,7 +2438,7 @@ function ImageRouterPanel({
                   {isInRoute ? (
                     <span className="text-[11px] px-1.5 py-0.5 rounded-[var(--radius-pill)] bg-[var(--accent-purple)] text-[var(--on-accent)]">顺位 {position + 1}</span>
                   ) : (
-                    <span className="text-[11px] px-1.5 py-0.5 rounded-[var(--radius-pill)] bg-[var(--surface-card)] text-[var(--text-muted)]">未加入</span>
+                    <span className="text-[11px] px-1.5 py-0.5 rounded-[var(--radius-pill)] bg-[var(--surface-card)] text-[var(--text-muted)]">未授权</span>
                   )}
                   <div className="flex-1" />
                   <button
@@ -2461,7 +2451,7 @@ function ImageRouterPanel({
                     onClick={() => (isInRoute ? removeNode(index) : addNode(index))}
                     className={`px-2.5 py-1.5 text-[11px] rounded-[var(--radius-sm)] cursor-pointer ${isInRoute ? 'bg-[var(--error-soft-bg)] text-[var(--error)] hover:bg-[color-mix(in_srgb,var(--error)_28%,transparent)]' : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
                   >
-                    {isInRoute ? '移出路径' : '加入路径'}
+                    {isInRoute ? '移出集群' : '加入集群'}
                   </button>
                   {isInRoute ? (
                     <>
