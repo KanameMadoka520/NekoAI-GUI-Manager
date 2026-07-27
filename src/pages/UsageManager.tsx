@@ -128,6 +128,9 @@ function normalizeImageAccess(input: ImageAccessConfig | null | undefined): Imag
     whitelistUsers: Array.isArray(input?.whitelistUsers)
       ? [...new Set(input.whitelistUsers.map((item) => String(item || '').trim()).filter(Boolean))]
       : [],
+    whitelistGroups: Array.isArray(input?.whitelistGroups)
+      ? [...new Set(input.whitelistGroups.map((item) => String(item || '').trim()).filter(Boolean))]
+      : [],
   };
 }
 
@@ -421,6 +424,7 @@ function getUsageEventReasonLabel(reason: string) {
     blacklist: '黑名单',
     'whitelist-required': '需要白名单',
     'whitelist-allowed': '白名单放行',
+    'group-whitelist-required': '群未授权',
     'blacklist-mode': '黑名单模式放行',
     'blacklist-mode-group': '群聊默认放行',
     'blacklist-mode-group-friend': '群友默认放行',
@@ -558,6 +562,7 @@ export function UsageManager() {
   const [newChatWhitelistUserId, setNewChatWhitelistUserId] = useState('');
   const [newUserId, setNewUserId] = useState('');
   const [newWhitelistUserId, setNewWhitelistUserId] = useState('');
+  const [newWhitelistGroupId, setNewWhitelistGroupId] = useState('');
   const [newBlacklistUserId, setNewBlacklistUserId] = useState('');
   const [usageChartGranularity, setUsageChartGranularity] = useState<'hour' | 'day' | 'week' | 'month'>(initialViewState.usageChartGranularity);
   const [showOverviewCharts, setShowOverviewCharts] = useState(initialViewState.showOverviewCharts);
@@ -1323,6 +1328,20 @@ export function UsageManager() {
       whitelistUsers: [...imageAccess.whitelistUsers, uid],
     });
     setNewWhitelistUserId('');
+  }
+
+  function addWhitelistGroup() {
+    const groupId = newWhitelistGroupId.trim();
+    if (!groupId) return;
+    if ((imageAccess.whitelistGroups ?? []).includes(groupId)) {
+      addToast('warning', `群 ${groupId} 已在图像群白名单中`);
+      return;
+    }
+    setImageAccess({
+      ...imageAccess,
+      whitelistGroups: [...imageAccess.whitelistGroups, groupId],
+    });
+    setNewWhitelistGroupId('');
   }
 
   function addUserOverride(uid: string) {
@@ -2573,11 +2592,12 @@ export function UsageManager() {
       )}
 
       {usageSection === 'image' && (
-      <Panel title="图像权限与限额规则" subtitle="管理谁能生图 / 修图，以及每个 QQ 一个 12 小时周期还能用几次。黑名单永远优先，主人永远不限额。" icon="🖼️">
+      <Panel title="图像权限与限额规则" subtitle="管理允许使用图像功能的群、用户权限和个人额度。群白名单优先限制群聊，黑名单始终优先。" icon="🖼️">
         <div className="space-y-4">
-          <div className="grid grid-cols-2 xl:grid-cols-6 gap-4">
-            <SummaryCard label="权限模式" value={getImageAccessModeLabel(imageAccess.mode)} hint={imageAccess.mode === 'whitelist' ? '只有手动加进图像白名单的 QQ 能生图、修图。' : '只要是群友、不在黑名单里，就能生图、修图。'} tone={imageAccess.mode === 'whitelist' ? 'warning' : 'neutral'} />
+          <div className="grid grid-cols-2 xl:grid-cols-7 gap-4">
+            <SummaryCard label="权限模式" value={getImageAccessModeLabel(imageAccess.mode)} hint={imageAccess.mode === 'whitelist' ? '群白名单通过后，只有用户白名单里的 QQ 能生图、修图。' : '群白名单通过后，群友可使用图像功能。'} tone={imageAccess.mode === 'whitelist' ? 'warning' : 'neutral'} />
             <SummaryCard label="图像白名单" value={String(imageSummary.whitelistUsers)} hint="只在白名单模式下生效，黑名单和主人仍排在它前面。" />
+            <SummaryCard label="图像群白名单" value={String(imageAccess.whitelistGroups.length)} hint="群聊必须在此名单内才能生图或修图；空列表表示所有群聊图像命令均被拦截。" tone={imageAccess.whitelistGroups.length > 0 ? 'success' : 'warning'} />
             <SummaryCard label="全局黑名单" value={String((runtime?.userBlacklist ?? []).length)} hint="一份黑名单同时管聊天和图像，优先级最高。" tone={(runtime?.userBlacklist ?? []).length > 0 ? 'warning' : 'neutral'} />
             <SummaryCard label="默认生图额度" value={formatQuota(imageQuota.defaultGenerateLimit)} hint="0 表示不限额。生图带 --count 时按实际张数累加。" />
             <SummaryCard label="默认修图额度" value={formatQuota(imageQuota.defaultEditLimit)} hint="0 表示不限额。修图每条命令记 1 次。" />
@@ -2622,7 +2642,7 @@ export function UsageManager() {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-[240px_minmax(0,1fr)] gap-4">
+          <div className="grid grid-cols-1 xl:grid-cols-[220px_minmax(0,1fr)_minmax(0,1fr)] gap-4">
             <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-3">
               <p className="text-xs font-medium text-[var(--text-primary)]">图像权限模式</p>
               <label className="flex items-start gap-2 text-sm text-[var(--text-primary)]">
@@ -2635,7 +2655,7 @@ export function UsageManager() {
                 />
                 <span>
                   黑名单模式
-                  <span className="block text-[12px] text-[var(--text-muted)] leading-relaxed">只要是群友、不在黑名单里，就能生图和修图。</span>
+                  <span className="block text-[12px] text-[var(--text-muted)] leading-relaxed">通过图像群白名单后，只要是群友且不在黑名单里，就能生图和修图。</span>
                 </span>
               </label>
               <label className="flex items-start gap-2 text-sm text-[var(--text-primary)]">
@@ -2648,7 +2668,7 @@ export function UsageManager() {
                 />
                 <span>
                   白名单模式
-                  <span className="block text-[12px] text-[var(--text-muted)] leading-relaxed">只有手动加进图像白名单的 QQ 能生图和修图，黑名单照样拦。</span>
+                  <span className="block text-[12px] text-[var(--text-muted)] leading-relaxed">通过图像群白名单后，只有手动加进图像白名单的 QQ 能生图和修图，黑名单照样拦。</span>
                 </span>
               </label>
             </div>
@@ -2676,7 +2696,33 @@ export function UsageManager() {
                   加入白名单
                 </button>
               </div>
-              <p className="text-[12px] text-[var(--text-muted)]">这份名单只控制生图 / 修图权限，不影响普通聊天。若同一个 QQ 同时在用户黑名单里，实际运行时仍以黑名单为准。</p>
+              <p className="text-[12px] text-[var(--text-muted)]">这份名单只控制生图 / 修图的用户权限，不影响普通聊天；群聊还必须通过右侧的图像群白名单。若同一个 QQ 同时在用户黑名单里，实际运行时仍以黑名单为准。</p>
+            </div>
+
+            <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 space-y-3">
+              <p className="text-xs font-medium text-[var(--text-primary)]">图像群白名单</p>
+              <TagList
+                tags={imageAccess.whitelistGroups}
+                onChange={(tags) => setImageAccess({ ...imageAccess, whitelistGroups: normalizeImageAccess({ ...imageAccess, whitelistGroups: tags }).whitelistGroups })}
+                placeholder="输入群号后回车加入图像群白名单"
+              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newWhitelistGroupId}
+                  onChange={(e) => setNewWhitelistGroupId(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') addWhitelistGroup(); }}
+                  placeholder="再手动补一个群号"
+                  className="flex-1 px-3 py-2 text-sm rounded-[var(--radius-sm)] bg-[var(--surface-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
+                />
+                <button
+                  onClick={addWhitelistGroup}
+                  className="px-3 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--accent-purple)] text-[var(--on-accent)] hover:opacity-90 cursor-pointer"
+                >
+                  加入群白名单
+                </button>
+              </div>
+              <p className="text-[12px] text-[var(--text-muted)]">群聊中的生图和修图必须命中这里的群号。空列表会禁止所有群聊图像命令，主人也不会绕过；私聊不受此列表影响。</p>
             </div>
           </div>
 

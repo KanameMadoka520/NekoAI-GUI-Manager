@@ -68,7 +68,7 @@ const DEMO_RUNTIME: RuntimeConfig = {
   groupMentionFocusMode: true,
   chatAccess: { mode: 'blacklist', whitelistUsers: [] },
   chatQuota: { enabled: true, defaultLimit: 50, userLimits: { '10001': 100, '88888': 9999 } },
-  imageAccess: { mode: 'blacklist', whitelistUsers: [] },
+  imageAccess: { mode: 'blacklist', whitelistUsers: [], whitelistGroups: ['100200300'] },
   imageQuota: { enabled: true, defaultGenerateLimit: 10, defaultEditLimit: 5, userLimits: { '88888': { generateLimit: 999, editLimit: 999 } } },
   groupLimits: { '100200300': 20, '100200301': 12 },
   groupPersonalityMap: { '100200300': 0, '100200301': 1 },

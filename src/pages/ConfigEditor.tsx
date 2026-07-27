@@ -91,6 +91,7 @@ const defaults: Partial<RuntimeConfig> = {
   imageAccess: {
     mode: 'blacklist',
     whitelistUsers: [],
+    whitelistGroups: [],
   },
   imageQuota: {
     enabled: false,
@@ -237,6 +238,9 @@ function normalizeImageAccess(input: RuntimeConfig['imageAccess'] | undefined): 
     mode: input?.mode === 'whitelist' ? 'whitelist' : 'blacklist',
     whitelistUsers: Array.isArray(input?.whitelistUsers)
       ? [...new Set(input.whitelistUsers.map((item) => String(item || '').trim()).filter(Boolean))]
+      : [],
+    whitelistGroups: Array.isArray(input?.whitelistGroups)
+      ? [...new Set(input.whitelistGroups.map((item) => String(item || '').trim()).filter(Boolean))]
       : [],
   };
 }
@@ -1311,6 +1315,7 @@ export function ConfigEditor() {
             )}
             {renderSchemaField('imageAccess.mode')}
             {renderSchemaField('imageAccess.whitelistUsers')}
+            {renderSchemaField('imageAccess.whitelistGroups')}
             {imageAccessConflictUsers.length > 0 && (
               <IssueCallout
                 label="图像权限冲突"
@@ -1318,7 +1323,7 @@ export function ConfigEditor() {
                 tone="error"
               />
             )}
-            <InlineNote>聊天白名单只管普通聊天，图像白名单只管生图 / 修图；用户黑名单优先级最高，名单里的人哪个白名单都救不回来。</InlineNote>
+            <InlineNote>聊天白名单只管普通聊天，图像用户白名单只管生图 / 修图的使用者；图像群白名单独立限制可执行图像命令的群。用户黑名单优先级最高，图像群白名单不允许主人绕过。</InlineNote>
             {renderSchemaField('groupLimits')}
           </SectionCard>
 

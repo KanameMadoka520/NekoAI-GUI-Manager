@@ -87,6 +87,7 @@ export interface ChatAccessConfig {
 export interface ImageAccessConfig {
   mode: ImageAccessMode;
   whitelistUsers: string[];
+  whitelistGroups: string[];
 }
 
 export interface ApiParams {
