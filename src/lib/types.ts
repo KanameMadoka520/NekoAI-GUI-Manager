@@ -21,6 +21,7 @@ export interface ImageApiNode {
   remark: string;
   aspectRatio?: string;
   resolution?: string;
+  size?: string;
   supportsEdit?: boolean;
   streamingEnabled?: boolean;
   partialImages?: number;

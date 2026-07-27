@@ -155,7 +155,7 @@ function getImageApiKeyPlaceholder(providerType: ImageApiProviderType) {
 }
 
 function isGptImage2Model(modelName?: string) {
-  return String(modelName ?? '').trim().toLowerCase() === 'gpt-image-2';
+  return /^gpt-image-2(?:-\d{4}-\d{2}-\d{2})?$/i.test(String(modelName ?? '').trim());
 }
 
 function isGptImage2ImageNode(node: Partial<ImageApiNode>) {
@@ -231,6 +231,7 @@ function normalizeImageApiNode(input?: Partial<ImageApiNode>): ImageApiNode {
     remark: typeof input?.remark === 'string' ? input.remark : '',
     aspectRatio: typeof input?.aspectRatio === 'string' ? input.aspectRatio : '',
     resolution: typeof input?.resolution === 'string' ? input.resolution : '',
+    size: typeof input?.size === 'string' ? input.size : '',
     supportsEdit: imageNodeSupportsEdit(base),
     streamingEnabled: input?.streamingEnabled === true,
     partialImages: normalizePartialImages(input?.partialImages),
@@ -1008,8 +1009,7 @@ export function ApiManager() {
         apiKey: 'sk-your-openai-key',
         modelName: 'gpt-image-2',
         remark: 'OpenAI 图像模板',
-        aspectRatio: '',
-        resolution: '',
+        size: '',
         supportsEdit: true,
         streamingEnabled: false,
         partialImages: 2,
@@ -2250,43 +2250,60 @@ function ImageApiManagerPanel({
                             </p>
                           </div>
 
-                          <div>
-                            <label className="text-[11px] text-[var(--text-muted)] mb-1 block">默认宽高比</label>
-                            <select
-                              value={node.aspectRatio || ''}
-                              onChange={(e) => onUpdate(index, 'aspectRatio', e.target.value)}
-                              className="w-full px-2.5 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)] cursor-pointer"
-                            >
-                              {IMAGE_ASPECT_RATIO_OPTIONS.map((option) => (
-                                <option key={option.value || 'default'} value={option.value}>
-                                  {option.label}
-                                </option>
-                              ))}
-                            </select>
-                            <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-muted)]">
-                              `空白` 和 `auto` 不一样：`空白` 是这个节点根本不传 `aspect_ratio`，命令里又没写 `--ratio` 的话，比例全交给图像接口定。
-                              `auto` 是显式传 `aspect_ratio=auto`，让接口自己挑个合适比例。命令里手动写 `--ratio 16:9` 时，冒号要用英文 `:`
-                            </p>
-                          </div>
+                          {providerType === 'openai' ? (
+                            <div className="xl:col-span-2">
+                              <label className="text-[11px] text-[var(--text-muted)] mb-1 block">默认尺寸（OpenAI size）</label>
+                              <input
+                                value={node.size || ''}
+                                onChange={(e) => onUpdate(index, 'size', e.target.value)}
+                                className="w-full px-2.5 py-2 text-xs mono rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)]"
+                                placeholder="auto / 1024x1024 / 2880x2880 / 3840x2160"
+                              />
+                              <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-muted)]">
+                                GPT Image 2 会将此值作为官方 `size` 参数发送。支持 `auto` 或任意宽x高；可填写 `3840×2160`，核心插件会转换为 `3840x2160`。留空表示不传，由上游决定最终尺寸。
+                              </p>
+                            </div>
+                          ) : (
+                            <>
+                              <div>
+                                <label className="text-[11px] text-[var(--text-muted)] mb-1 block">默认宽高比</label>
+                                <select
+                                  value={node.aspectRatio || ''}
+                                  onChange={(e) => onUpdate(index, 'aspectRatio', e.target.value)}
+                                  className="w-full px-2.5 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)] cursor-pointer"
+                                >
+                                  {IMAGE_ASPECT_RATIO_OPTIONS.map((option) => (
+                                    <option key={option.value || 'default'} value={option.value}>
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </select>
+                                <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-muted)]">
+                                  `空白` 和 `auto` 不一样：`空白` 是这个节点根本不传 `aspect_ratio`，命令里又没写 `--ratio` 的话，比例全交给图像接口定。
+                                  `auto` 是显式传 `aspect_ratio=auto`，让接口自己挑个合适比例。命令里手动写 `--ratio 16:9` 时，冒号要用英文 `:`
+                                </p>
+                              </div>
 
-                          <div>
-                            <label className="text-[11px] text-[var(--text-muted)] mb-1 block">默认分辨率</label>
-                            <select
-                              value={node.resolution || ''}
-                              onChange={(e) => onUpdate(index, 'resolution', e.target.value)}
-                              className="w-full px-2.5 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)] cursor-pointer"
-                            >
-                              {IMAGE_RESOLUTION_OPTIONS.map((option) => (
-                                <option key={option.value || 'default'} value={option.value}>
-                                  {option.label}
-                                </option>
-                              ))}
-                            </select>
-                            <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-muted)]">
-                              `空白` 是这个节点不传 `resolution`，命令里又没写 `--resolution` 的话，清晰度交给 xAI 定。
-                              内置两档预设：`1k（标准清晰度）` 和 `2k（高清清晰度）`。
-                            </p>
-                          </div>
+                              <div>
+                                <label className="text-[11px] text-[var(--text-muted)] mb-1 block">默认分辨率</label>
+                                <select
+                                  value={node.resolution || ''}
+                                  onChange={(e) => onUpdate(index, 'resolution', e.target.value)}
+                                  className="w-full px-2.5 py-2 text-xs rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-purple)] cursor-pointer"
+                                >
+                                  {IMAGE_RESOLUTION_OPTIONS.map((option) => (
+                                    <option key={option.value || 'default'} value={option.value}>
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </select>
+                                <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-muted)]">
+                                  `空白` 是这个节点不传 `resolution`，命令里又没写 `--resolution` 的话，清晰度交给 xAI 定。
+                                  内置两档预设：`1k（标准清晰度）` 和 `2k（高清清晰度）`。
+                                </p>
+                              </div>
+                            </>
+                          )}
 
                           {keyVisible ? (
                             <div className="xl:col-span-2">
